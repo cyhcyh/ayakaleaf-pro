@@ -1,5 +1,7 @@
 import Settings from '@overleaf/settings'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { codexModel } from './personal-ai/CodexModel.mjs'
+import { currentConfig } from './personal-ai/Runtime.mjs'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import nodeFetch from 'node-fetch'
 import { Readable } from 'node:stream'
@@ -16,11 +18,9 @@ let _proxyFetch = null
  * Whether AI is enabled and its gateway, API key, and text model are configured.
  */
 export function isConfigured() {
+  const config = currentConfig()
   return Boolean(
-    Settings.workbenchAi?.enabled &&
-      Settings.workbenchAi?.baseURL &&
-      Settings.workbenchAi?.apiKey &&
-      Settings.workbenchAi?.model
+    config?.enabled && config.baseURL && config.apiKey && config.model
   )
 }
 
@@ -32,7 +32,7 @@ export function isConfigured() {
  * working. No proxy configured -> undefined -> the SDK uses global fetch.
  */
 function _getProxyFetch() {
-  const proxyUrl = Settings.workbenchAi?.proxyUrl
+  const proxyUrl = currentConfig()?.proxyUrl
   if (!proxyUrl) {
     return undefined
   }
@@ -53,18 +53,24 @@ function _getProxyFetch() {
 
 /** Lazily build (and cache) the OpenAI-compatible provider. */
 export function getProvider() {
-  if (!_provider) {
+  const active = currentConfig()
+  if (active?.kind === 'codex') {
+    return codexModel(active, _getProxyFetch() || fetch)
+  }
+  if (!_provider || active !== Settings.workbenchAi) {
     const config = {
       name: 'workbench',
-      baseURL: Settings.workbenchAi.baseURL,
-      apiKey: Settings.workbenchAi.apiKey,
+      baseURL: active.baseURL,
+      apiKey: active.apiKey,
       includeUsage: true,
     }
     const proxyFetch = _getProxyFetch()
     if (proxyFetch) {
       config.fetch = proxyFetch
     }
-    _provider = createOpenAICompatible(config)
+    const provider = createOpenAICompatible(config)
+    if (active === Settings.workbenchAi) _provider = provider
+    return provider
   }
   return _provider
 }
@@ -73,9 +79,10 @@ export function getProvider() {
  * Selects the instance's configured text or image model for a request.
  */
 export function resolveModel(messages = []) {
+  const config = currentConfig()
   // Follow-up requests retain earlier images, so route the entire conversation.
   if (
-    Settings.workbenchAi?.imageModel &&
+    config?.imageModel &&
     messages.some(message =>
       message.parts?.some(
         part =>
@@ -84,9 +91,13 @@ export function resolveModel(messages = []) {
       )
     )
   ) {
-    return Settings.workbenchAi.imageModel
+    return config.imageModel
   }
-  return Settings.workbenchAi?.model
+  return config?.model
+}
+
+export function getProviderOptions() {
+  return currentConfig()?.kind === 'codex' ? { openai: { store: false } } : undefined
 }
 
 /** Maximum tool calls per user message, including automatic continuations. */

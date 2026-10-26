@@ -12,6 +12,11 @@ import EditorWatchdogManager from '@/features/ide-react/connection/editor-watchd
 export class OpenDocuments {
   private openDocs = new Map<string, DocumentContainer>()
 
+  // Read an already joined document without reopening or cleaning it up.
+  peekDocument(docId: string) {
+    return this.openDocs.get(docId)
+  }
+
   // eslint-disable-next-line no-useless-constructor
   constructor(
     private readonly socket: Socket,

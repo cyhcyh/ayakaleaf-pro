@@ -12,6 +12,8 @@ import { useEditorViewContext } from '@/features/ide-react/context/editor-view-c
 import { useRailContext } from '@/features/ide-react/context/rail-context'
 import { useAssistantDock } from '../assistant-dock-context'
 import ChatView from './chat-view'
+import { useLayoutContext } from '@/shared/context/layout-context'
+import { openAiSettings } from '../personal-ai/api'
 
 function HeaderButton({
   id,
@@ -42,6 +44,7 @@ function HeaderButton({
 
 export default function AssistantPanel() {
   const { t } = useTranslation()
+  const { setSettingsShown } = useLayoutContext()
   const { view } = useEditorViewContext()
   const { side, moveTo, setOpen } = useAssistantDock()
   const { isOpen, setIsOpen } = useRailContext()
@@ -62,6 +65,7 @@ export default function AssistantPanel() {
         title="AI assistant"
         actions={
           <>
+            <HeaderButton id="assistant-model-settings" label="AI 与翻译设置" icon="settings" onClick={() => { setSettingsShown(true); openAiSettings() }} />
             <HeaderButton
               id="assistant-new-chat"
               label={t('start_new_chat')}

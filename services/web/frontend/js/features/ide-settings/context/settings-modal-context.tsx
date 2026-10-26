@@ -54,6 +54,10 @@ const [referenceSearchSettingModule] = importOverleafModules(
 )
 const ReferenceSearchSetting = referenceSearchSettingModule?.import.default
 
+// Additive module tabs keep instance extensions out of the core settings list.
+const moduleSettingsTabs: SettingsEntry[] = importOverleafModules('settingsModalTabs')
+  .map((module: any) => module.import.default)
+
 const editorTabExtraSectionHooks: SettingsSectionHook[] = importOverleafModules(
   'settingsModalEditorTabSections'
 )
@@ -344,7 +348,7 @@ export const SettingsModalProvider: FC<React.PropsWithChildren> = ({
   )
 
   const settingsTabs = useMemo(
-    () => allSettingsTabs.filter(tab => !tab.hidden),
+    () => [...allSettingsTabs.slice(0, -2), ...moduleSettingsTabs, ...allSettingsTabs.slice(-2)].filter(tab => !tab.hidden),
     [allSettingsTabs]
   )
 

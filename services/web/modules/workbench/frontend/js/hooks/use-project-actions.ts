@@ -10,7 +10,9 @@ import { useEditorManagerContext } from '@/features/ide-react/context/editor-man
 import { useDetachCompileContext } from '@/shared/context/detach-compile-context'
 import { useProjectSettingsContext } from '@/features/ide-settings/context/project-settings-context'
 import { syncCreateEntity } from '@/features/file-tree/util/sync-mutation'
-import { getJSON } from '@/infrastructure/fetch-json'
+import { getJSON, postJSON } from '@/infrastructure/fetch-json'
+import RangesTracker from '@overleaf/ranges-tracker'
+import { findUniqueQuote } from '../../../shared/quote-position.mjs'
 import { signalWithTimeout } from '@/utils/abort-signal'
 import { ToolRefusal } from '../errors'
 
@@ -42,6 +44,7 @@ function compileReport(compile: CompileContext) {
 export type CompileReport = ReturnType<typeof compileReport>
 
 export type ProjectActions = {
+  commentOnQuote: (path: string, quote: string, content: string, signal: AbortSignal) => Promise<unknown>
   listFiles: () => string[]
   readFile: (path: string, signal: AbortSignal) => Promise<string>
   newFile: (path: string) => Promise<void>
@@ -203,6 +206,23 @@ export function useProjectActions(): ProjectActions {
     [loadPdf]
   )
 
+  const commentOnQuote = useCallback(async (path: string, quote: string, content: string, signal: AbortSignal) => {
+    const file = findDoc(path)
+    await openDocs.awaitBufferedOps(signal)
+    await openDoc(file as any)
+    signal.throwIfAborted()
+    const document = openDocs.peekDocument(file._id)
+    if (!document || typeof document.getSnapshot() !== 'string') throw new ToolRefusal('文档尚未加载，请稍后重新定位评论。')
+    findUniqueQuote(document.getSnapshot()!, quote)
+    const threadId = RangesTracker.generateId()
+    await postJSON(`/project/${projectId}/thread/${threadId}/messages`, { body: { content: `[AI 审阅]\n${content}` }, signal })
+    // Resolve the quote again after the request, because collaborators may edit.
+    const position = findUniqueQuote(document.getSnapshot()!, quote)
+    document.submitOp({ c: quote, p: position, t: threadId } as any)
+    await openDocs.awaitBufferedOps(signal)
+    return { threadId, path, quote, added: true }
+  }, [findDoc, openDoc, openDocs, projectId])
+
   return useMemo(
     () => ({
       listFiles,
@@ -213,7 +233,8 @@ export function useProjectActions(): ProjectActions {
       setCompiler,
       renderPage,
       pdfOutline,
+      commentOnQuote,
     }),
-    [listFiles, readFile, newFile, lastCompile, compile, setCompiler, renderPage, pdfOutline]
+    [listFiles, readFile, newFile, lastCompile, compile, setCompiler, renderPage, pdfOutline, commentOnQuote]
   )
 }

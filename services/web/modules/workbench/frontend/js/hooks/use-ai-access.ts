@@ -5,6 +5,12 @@ import useInstanceFeatures from '@modules/instance-features/frontend/js/use-inst
 // Share the permission request across chat and compile-log components.
 type AiAccess = { chat: boolean; errorAssistant: boolean }
 let access: Promise<AiAccess> | undefined
+if (typeof window !== 'undefined') {
+  window.addEventListener('personal-ai:settings', () => {
+    access = undefined
+    window.dispatchEvent(new Event('personal-ai:access'))
+  })
+}
 
 export default function useAiAccess(feature: keyof AiAccess = 'chat') {
   const { ai } = useInstanceFeatures()
@@ -13,6 +19,7 @@ export default function useAiAccess(feature: keyof AiAccess = 'chat') {
   useEffect(() => {
     if (!ai) return
     let active = true
+    const refresh = () => {
     access ??= getJSON('/workbench/access')
       .then((data: { allowed: boolean; errorAssistant: boolean }) => ({
         chat: data.allowed === true,
@@ -25,8 +32,12 @@ export default function useAiAccess(feature: keyof AiAccess = 'chat') {
     access.then(value => {
       if (active) setAllowed(value[feature])
     })
+    }
+    refresh()
+    window.addEventListener('personal-ai:access', refresh)
     return () => {
       active = false
+      window.removeEventListener('personal-ai:access', refresh)
     }
   }, [ai, feature])
 

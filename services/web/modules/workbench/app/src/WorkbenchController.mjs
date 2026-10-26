@@ -12,6 +12,7 @@ import SessionManager from '../../../../app/src/Features/Authentication/SessionM
 import {
   isConfigured,
   getProvider,
+  getProviderOptions,
   resolveModel,
   getMaxSteps,
   SYSTEM_PROMPT,
@@ -21,6 +22,7 @@ import { WEB_SEARCH_TOOL, isWebSearchConfigured } from './WebSearchTool.mjs'
 import { DOCS_SEARCH_TOOL, isDocsSearchConfigured } from './DocsSearchTool.mjs'
 import { createToolCallLimit } from './ToolCallLimit.mjs'
 import { condenseOldToolOutputs, compactHistory } from './ContextCompaction.mjs'
+import { researchTools, REVIEW_INSTRUCTIONS } from './personal-ai/ResearchTools.mjs'
 import {
   isQuotaEnabled,
   getRemainingTokens,
@@ -115,12 +117,12 @@ async function chat(req, res) {
   // Server-side search tools can run alongside browser document tools.
   const webSearch = enabledTools.includes('web_search') && isWebSearchConfigured()
   const docsSearch = enabledTools.includes('search_docs') && isDocsSearchConfigured()
-  const tools = { ...CLIENT_TOOLS }
+  const tools = { ...CLIENT_TOOLS, ...(req.body.projectId && researchTools(userId, req.body.projectId)) }
   if (webSearch) tools.web_search = WEB_SEARCH_TOOL
   if (docsSearch) tools.search_docs = DOCS_SEARCH_TOOL
 
   // Include instructions for the search tools available in this request.
-  let system = SYSTEM_PROMPT
+  let system = SYSTEM_PROMPT + (req.body.projectId ? REVIEW_INSTRUCTIONS : '')
   if (webSearch) {
     system += `\n\nweb_search looks things up on the internet. Use it for anything recent or outside what you know, such as news, prices or the latest version of a package, answer from what it returns and link the pages you used. You do have internet access through it.`
   }
@@ -157,6 +159,8 @@ async function chat(req, res) {
   }
 
   const resolvedModel = resolveModel(history)
+  const abort = new AbortController()
+  res.once('close', () => abort.abort())
 
   try {
     const result = streamText({
@@ -167,6 +171,8 @@ async function chat(req, res) {
       system,
       messages: modelMessages,
       tools,
+      providerOptions: getProviderOptions(),
+      abortSignal: abort.signal,
       // Finish the current step for its usage report, but stop after a disconnect.
       stopWhen: [toolCallLimit.exhausted, () => res.destroyed],
       onStepFinish: async ({ usage }) => {

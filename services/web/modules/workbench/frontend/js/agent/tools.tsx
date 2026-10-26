@@ -10,6 +10,7 @@ import type { ProjectActions } from '../hooks/use-project-actions'
 import EditProposal, { type EditPart } from '../chat/edit-proposal'
 import SourceLinks from '../chat/source-links'
 import { boxed } from '../chat/themed'
+import { REVIEW_TOOLS } from '../personal-ai/review-tools'
 
 export type ToolOutput =
   | { tool: string; toolCallId: string; output: unknown }
@@ -18,6 +19,8 @@ export type ToolOutput =
 export type Respond = (output: ToolOutput) => void
 
 export type ToolRun = {
+  projectId: string
+  chatId: string
   view: EditorView
   // Project path of the document the view shows
   openPath: string
@@ -57,6 +60,7 @@ async function readLines(
 }
 
 export const TOOLS: Record<string, ToolSpec> = {
+  ...REVIEW_TOOLS,
   get_lines: {
     label: ({ path, start, end }) => `Read line ${range(start, end)} of ${path}`,
     run: ({ path, start, end }, context) => readLines(context, path, start, end),

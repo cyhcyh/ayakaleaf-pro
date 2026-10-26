@@ -7,6 +7,7 @@ import DocumentUpdaterHandler from '../../../../app/src/Features/DocumentUpdater
 import {
   isConfigured,
   getProvider,
+  getProviderOptions,
   resolveModel,
 } from '../../../workbench/app/src/WorkbenchAiClient.mjs'
 import {
@@ -161,6 +162,7 @@ async function fixError(req, res) {
   try {
     const result = streamText({
       model: getProvider()(resolveModel()),
+      providerOptions: getProviderOptions(),
       system: INSTRUCTIONS,
       prompt: describeEntry(entry, path, lines),
       tools: { propose_fix: proposeFix },

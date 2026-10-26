@@ -31,6 +31,10 @@ import StarterPrompts from './starter-prompts'
 import ConsentCard from './consent-card'
 import { AiOffNotice, ChatFailedNotice, ChatNotice, QuotaNotice } from './notices'
 import { faint, muted, plain, ruleAbove } from './themed'
+import { useProjectContext } from '@/shared/context/project-context'
+import { ReviewChatContext, approve } from '../personal-ai/review-tools'
+import { api, openAiSettings } from '../personal-ai/api'
+import { useLayoutContext } from '@/shared/context/layout-context'
 
 // The browser offers both searches; the server adds the configured ones
 const SEARCH_TOOLS = ['web_search', 'search_docs']
@@ -77,6 +81,9 @@ function useFollowBottom(trigger: unknown) {
 }
 
 export default function ChatView({ chatId, view }: { chatId: string; view: EditorView }) {
+  const { projectId } = useProjectContext()
+  const { setSettingsShown } = useLayoutContext()
+  const reviewId = useRef<string | null>(null)
   const {
     hasSuggestionsLeft,
     premiumSuggestionResetDate,
@@ -149,6 +156,8 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
           return {
             body: {
               id,
+              projectId,
+              reviewId: reviewId.current || undefined,
               trigger,
               messageId,
               messages: messages.slice(from),
@@ -209,6 +218,8 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
               view,
               openPath: path,
               actions: actionsRef.current,
+              projectId,
+              chatId,
               signal: controller.signal,
             })
           ),
@@ -252,7 +263,9 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
     stopped.current = true
     running.current.forEach(controller => controller.abort())
     stop()
-  }, [stop])
+    reviewId.current = null
+    api('/reviews/stop', { projectId, chatId }).catch(() => {})
+  }, [stop, projectId, chatId])
 
   const { editorSelection } = useEditorSelectionContext()
   const selection: Selection[] = useMemo(() => {
@@ -267,17 +280,28 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
   }, [editorSelection, view])
 
   const send = useCallback(
-    (draft: Draft) => {
+    async (draft: Draft) => {
       if (!canChat) return
       setProblem(false)
       stopped.current = false
+      const pending = messages.at(-1)?.parts.find((part: any) => part.type === 'tool-request_review' && part.state === 'input-available') as any
+      let approval: unknown = { approved: false, reason: '用户尚未确认，继续讨论要求。' }
+      if (pending && /^(同意|确认|可以|开始|好的|好|同意审阅|开始审阅|同意审阅并添加评论|可以开始|按这个范围开始|yes|approve|go ahead|start)[。.!！\s]*$/i.test(draft.text.trim())) {
+        try {
+          const result = await approve(pending.input, projectId, chatId)
+          reviewId.current = result.reviewId
+          approval = result
+        } catch (error) { setProblem((error as Error).message); return }
+      }
       // An edit still waiting for Apply or Reject would reach the model as a
       // call without a result, which the gateway refuses
       setMessages(current =>
         current.map(message => ({
           ...message,
           parts: message.parts.map(part =>
-            isToolUIPart(part) && part.type === 'tool-propose_edit' && part.state === 'input-available'
+            pending && isToolUIPart(part) && part.type === 'tool-request_review' && part.state === 'input-available'
+              ? { ...part, state: 'output-available' as const, output: approval }
+              : isToolUIPart(part) && part.type === 'tool-propose_edit' && part.state === 'input-available'
               ? {
                   ...part,
                   state: 'output-error' as const,
@@ -296,7 +320,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
       toldPath.current = path
       sendMessage({ text: withContext, files: draft.files })
     },
-    [canChat, path, selection, sendMessage, setMessages]
+    [canChat, path, selection, sendMessage, setMessages, messages, projectId, chatId]
   )
 
   const { box, onScroll } = useFollowBottom(messages)
@@ -305,7 +329,9 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
     : undefined
 
   let body
-  if (hasAccess && !hasGivenAiConsent) {
+  if (!hasAccess) {
+    body = <div className="pa-empty m-3"><h4>连接你的 AI 助手</h4><p>在个人设置中添加模型服务或登录 Codex，即可对话、阅读参考资料和审阅论文。</p><button className="btn btn-primary btn-sm" onClick={() => { setSettingsShown(true); openAiSettings() }}>配置模型连接</button></div>
+  } else if (hasAccess && !hasGivenAiConsent) {
     body = <ConsentCard />
   } else if (messages.length === 0) {
     body = (
@@ -333,7 +359,8 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
   }
 
   return (
-    // The editor's panels use the 14px body size; the disclaimer 12px
+    <ReviewChatContext.Provider value={{ projectId, chatId, onApproved: id => { reviewId.current = id } }}>
+    {/* Match the editor panel's body text size. */}
     <div className="d-flex flex-column h-100" style={{ ...plain, fontSize: 'var(--font-size-02)' }}>
       <div
         ref={box}
@@ -372,5 +399,6 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
         </p>
       </div>
     </div>
+    </ReviewChatContext.Provider>
   )
 }

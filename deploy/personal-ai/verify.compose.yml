@@ -1,0 +1,15 @@
+# Isolated verification services. Run with -p ayakaleaf-pro-checks.
+services:
+  sharelatex:
+    image: ayakaleaf-pro:personal-ai
+    ports: !override
+      - "127.0.0.1:39080:80"
+    environment:
+      OVERLEAF_SITE_URL: http://localhost:39080
+      OVERLEAF_APP_NAME: Ayakaleaf Verification
+      OVERLEAF_SESSION_SECRET: personal-ai-isolated-verification-only
+      OVERLEAF_INVITE_TOKEN_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  mock:
+    image: ayakaleaf-pro:personal-ai
+    restart: "no"
+    entrypoint: ["node", "/overleaf/services/web/modules/workbench/test/mock-ai.mjs"]

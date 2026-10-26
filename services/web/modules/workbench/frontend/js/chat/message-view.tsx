@@ -25,7 +25,11 @@ function UserMessage({ message }: { message: UIMessage }) {
     <div className="align-self-end rounded-3 px-3 py-2" style={{ ...surface, ...plain, maxWidth: '85%' }}>
       {message.parts.map((part, index) => {
         if (part.type === 'text') {
-          return <Markdown text={part.text.split(CONTEXT_OPEN)[0].trimEnd()} key={index} />
+          const visible = part.text.split(CONTEXT_OPEN)[0]
+          const block = visible.match(/<reference-attachments>\s*([\s\S]*?)\s*<\/reference-attachments>/)
+          let references: { id: string; name: string }[] = []
+          try { references = block ? JSON.parse(block[1]) : [] } catch {}
+          return <div key={index}><Markdown text={visible.replace(/<reference-attachments>[\s\S]*?<\/reference-attachments>/, '').trimEnd()} />{references.map(reference => <span className="pa-reference-chip" key={reference.id}>▤ {reference.name}</span>)}</div>
         }
         if (part.type === 'file') {
           const name = part.filename ?? 'Attached image'

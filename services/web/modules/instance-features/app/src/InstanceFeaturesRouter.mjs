@@ -1,7 +1,6 @@
 import Settings from '@overleaf/settings'
 import Features from '../../../../app/src/infrastructure/Features.mjs'
 import AuthenticationController from '../../../../app/src/Features/Authentication/AuthenticationController.mjs'
-import { isConfigured } from '../../../workbench/app/src/WorkbenchAiClient.mjs'
 
 // Reports instance features independently of user permissions.
 // (Need login to avoid abuse)
@@ -24,7 +23,7 @@ export default {
       AuthenticationController.requireLogin(),
       (req, res) => {
         res.json({
-          ai: isConfigured(),
+          ai: true,
           githubSync: Features.hasFeature('github-sync'),
           gitlabSync: Boolean(Settings.gitlabSync),
           giteaSync: Boolean(Settings.giteaSync),

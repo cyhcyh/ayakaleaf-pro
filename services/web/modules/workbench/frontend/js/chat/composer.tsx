@@ -10,6 +10,8 @@ import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import MaterialIcon from '@/shared/components/material-icon'
 import { boxed, flatGhost, plain, surface } from './themed'
 import ImagePreview from './image-preview'
+import { useProjectContext } from '@/shared/context/project-context'
+import { api } from '../personal-ai/api'
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 const MAX_ROWS = 8
@@ -30,12 +32,14 @@ const Composer = forwardRef<
   {
     working: boolean
     selectionNote?: string
-    onSend: (draft: Draft) => void
+    onSend: (draft: Draft) => void | Promise<void>
     onStop: () => void
     onProblem: (message: string | false) => void
   }
 >(function Composer({ working, selectionNote, onSend, onStop, onProblem }, ref) {
   const { t } = useTranslation()
+  const { projectId } = useProjectContext()
+  const [uploading, setUploading] = useState(false)
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [images, setImages] = useState<File[]>([])
@@ -46,28 +50,42 @@ const Composer = forwardRef<
 
   const attach = (files: File[]) => {
     onProblem(false)
-    if (files.some(file => !file.type.startsWith('image/'))) {
-      onProblem('Only images can be attached.')
-    } else if (files.some(file => file.size > MAX_IMAGE_BYTES)) {
-      onProblem('Images must be smaller than 2 MB.')
+    if (files.some(file => !file.type.startsWith('image/') && !['application/pdf', 'text/plain', 'text/markdown'].includes(file.type) && !/\.(txt|md)$/i.test(file.name))) {
+      onProblem('支持图片、PDF、TXT 和 Markdown 参考资料。')
+    } else if (files.some(file => file.size > (file.type.startsWith('image/') ? MAX_IMAGE_BYTES : 8 * 1024 * 1024))) {
+      onProblem('图片需小于 2 MB，参考资料需小于 8 MB。')
+    } else if (images.length + files.length > 10) {
+      onProblem('每条消息最多附加 10 个文件。')
     } else {
       setImages(current => [...current, ...files])
     }
   }
 
   const send = async () => {
-    if (working || !text.trim()) return
-    const files = await Promise.all(
-      images.map(async file => ({
+    if (working || uploading || !text.trim()) return
+    setUploading(true)
+    try {
+    const references = []
+    const files = []
+    for (const file of images) {
+      const dataURL = await readAsDataUrl(file)
+      if (file.type.startsWith('image/')) files.push({
         type: 'file' as const,
         mediaType: file.type,
         filename: file.name,
-        url: await readAsDataUrl(file),
+        url: dataURL,
+      })
+      else references.push(await api('/references', {
+        projectId, name: file.name, mediaType: file.type === 'application/pdf' ? 'application/pdf' : /\.md$/i.test(file.name) ? 'text/markdown' : 'text/plain',
+        data: dataURL.slice(dataURL.indexOf(',') + 1),
       }))
-    )
-    onSend({ text, files })
+    }
+    const referenceBlock = references.length ? `\n\n<reference-attachments>\n${JSON.stringify(references)}\n</reference-attachments>` : ''
+    await onSend({ text: text + referenceBlock, files })
     setText('')
     setImages([])
+    } catch (error) { onProblem((error as Error).message) }
+    finally { setUploading(false) }
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -116,11 +134,11 @@ const Composer = forwardRef<
           )}
           {images.map((image, index) => (
             <span className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }} key={index}>
-              <ImagePreview src={previews[index]} name={image.name}>
+              {image.type.startsWith('image/') ? <ImagePreview src={previews[index]} name={image.name}>
                 <span className="d-inline-flex align-items-center gap-1" tabIndex={0}>
                   <MaterialIcon type="image" /> {image.name}
                 </span>
-              </ImagePreview>
+              </ImagePreview> : <span className="d-inline-flex align-items-center gap-1"><MaterialIcon type="description" />{image.name}</span>}
               <button
                 type="button"
                 className="btn btn-link p-0 text-reset d-inline-flex"
@@ -150,10 +168,10 @@ const Composer = forwardRef<
         <input
           ref={picker}
           type="file"
-          accept="image/*"
+          accept="image/*,application/pdf,text/plain,text/markdown,.txt,.md"
           multiple
           hidden
-          aria-label="Attach images"
+          aria-label="附加图片或参考资料"
           onChange={event => {
             attach(Array.from(event.target.files ?? []))
             event.target.value = ''
@@ -177,10 +195,11 @@ const Composer = forwardRef<
             variant="ghost"
             style={{ ...flatGhost, ...plain }}
             accessibilityLabel={t('send')}
-            disabled={!text.trim()}
+            disabled={!text.trim() || uploading}
             onClick={send}
           />
         )}
+        {uploading && <span role="status" className="small ms-2">正在上传参考资料…</span>}
       </div>
     </div>
   )

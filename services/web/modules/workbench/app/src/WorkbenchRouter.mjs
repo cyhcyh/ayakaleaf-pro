@@ -1,12 +1,13 @@
 import AuthenticationController from '../../../../app/src/Features/Authentication/AuthenticationController.mjs'
 import WorkbenchController from './WorkbenchController.mjs'
 import PermissionsMiddleware from './PermissionsMiddleware.mjs'
-import { isConfigured } from './WorkbenchAiClient.mjs'
+import { applyPersonalAiRouter, chatRuntime } from './personal-ai/Router.mjs'
 
 export default {
   apply(webRouter) {
+    applyPersonalAiRouter(webRouter)
     webRouter.use('/project', (req, res, next) => {
-      res.locals.ExposedSettings.aiAvailable = isConfigured()
+      res.locals.ExposedSettings.aiAvailable = true
       next()
     })
     webRouter.get(
@@ -20,6 +21,7 @@ export default {
       '/workbench/chat',
       AuthenticationController.requireLogin(),
       PermissionsMiddleware.requireAiAccess,
+      chatRuntime,
       WorkbenchController.chat
     )
   },

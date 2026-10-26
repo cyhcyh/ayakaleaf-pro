@@ -1,0 +1,76 @@
+name: ayakaleaf-pro-local
+
+services:
+  sharelatex:
+    image: ${AYAKALEAF_IMAGE:-ghcr.io/ayaka-notes/overleaf-pro:latest}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    stop_grace_period: 60s
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+    environment:
+      OVERLEAF_APP_NAME: Ayakaleaf Pro Local
+      OVERLEAF_SITE_URL: http://localhost:8080
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      OVERLEAF_SESSION_SECRET: ${OVERLEAF_SESSION_SECRET:?Set OVERLEAF_SESSION_SECRET in .env}
+      OVERLEAF_INVITE_TOKEN_SECRET: ${OVERLEAF_INVITE_TOKEN_SECRET:?Set OVERLEAF_INVITE_TOKEN_SECRET in .env}
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      ENABLE_CONVERSIONS: "true"
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      # Use the image's bundled TeX Live Basic for this local trial.
+      SANDBOXED_COMPILES: "false"
+      SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
+      DOCKER_RUNNER: "false"
+      COMPILE_TIMEOUT: "180"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://127.0.0.1/login"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "overleaf", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+      - ./bin/shared/mongodb-init-replica-set.js:/docker-entrypoint-initdb.d/mongodb-init-replica-set.js:ro
+    environment:
+      MONGO_INITDB_DATABASE: sharelatex
+    extra_hosts:
+      - mongo:127.0.0.1
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "if (!db.hello().isWritablePrimary) { quit(1) }"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:

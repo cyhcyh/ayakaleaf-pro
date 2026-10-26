@@ -1091,6 +1091,7 @@ module.exports = {
       ),
     ],
     mainEditorLayoutModals: [
+      Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/translation-overlay'),
       Path.resolve(
         __dirname,
         '../modules/reference-picker/frontend/js/components/reference-picker-controller.tsx'
@@ -1286,6 +1287,9 @@ module.exports = {
     ],
     referenceSearchSetting: [],
     settingsModalEditorTabSections: [],
+    settingsModalTabs: [
+      Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/settings-tab'),
+    ],
     settingsModalSpellcheckSections: [],
     editorFloatingMenuActions: [],
     referenceIndices: [

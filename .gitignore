@@ -4,3 +4,6 @@
 # user defined files
 .env
 docker-compose.override.yml
+
+# Local build archives, verification artifacts and caches
+.local/
