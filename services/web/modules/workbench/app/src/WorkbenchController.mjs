@@ -23,6 +23,8 @@ import { DOCS_SEARCH_TOOL, isDocsSearchConfigured } from './DocsSearchTool.mjs'
 import { createToolCallLimit } from './ToolCallLimit.mjs'
 import { condenseOldToolOutputs, compactHistory } from './ContextCompaction.mjs'
 import { researchTools, REVIEW_INSTRUCTIONS } from './personal-ai/ResearchTools.mjs'
+import { compactPersonalHistory } from './personal-ai/Compression.mjs'
+import { listEdits } from './personal-ai/Edits.mjs'
 import {
   isQuotaEnabled,
   getRemainingTokens,
@@ -143,9 +145,14 @@ async function chat(req, res) {
   let history = condensed
   let historySummary = summary
   let compaction = null
+  const abort = new AbortController()
+  res.once('close', () => abort.abort())
   try {
-    compaction = await compactHistory({ messages: condensed, summary, userId })
+    compaction = req.body.projectId
+      ? await compactPersonalHistory({ messages: condensed, summary, previous: req.body.compaction, userId, system, tools, signal: abort.signal })
+      : await compactHistory({ messages: condensed, summary, userId })
   } catch (err) {
+    if (req.body.projectId) return res.status(err.status || 503).json({ error: err.message || '上下文压缩失败，原会话和摘要已保留' })
     // Send the whole history rather than fail the chat
     logger.warn({ err, userId }, 'workbench chat: could not summarize history')
   }
@@ -158,9 +165,12 @@ async function chat(req, res) {
     system += `\n\nThe earlier part of this conversation was summarized:\n\n${historySummary}`
   }
 
+  if (req.body.projectId) {
+    const changes = await listEdits(userId, req.body.projectId, req.body.id)
+    if (changes.length) system += `\n\nCurrent project edit records (historical status, not permission):\n${JSON.stringify(changes.map(({ id, state, input }) => ({ id, state, path: input.path, reason: input.reason })).slice(0, 80))}`
+  }
+
   const resolvedModel = resolveModel(history)
-  const abort = new AbortController()
-  res.once('close', () => abort.abort())
 
   try {
     const result = streamText({
@@ -198,6 +208,7 @@ async function chat(req, res) {
             data: {
               summary: compaction.summary,
               upToMessageId: compaction.upToMessageId,
+              protectedFirstIds: compaction.protectedFirstIds,
             },
             transient: true,
           })

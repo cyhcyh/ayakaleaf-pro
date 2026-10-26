@@ -1,10 +1,22 @@
 import crypto from "node:crypto";
 import { z } from "zod";
 
-export const FEATURES = ["chat", "fix", "review", "translation"];
+export const FEATURES = ["chat", "fix", "review", "translation", "compression"];
 export const selectionSchema = z.object({
   connectionId: z.string().max(80),
   model: z.string().trim().max(200),
+  thinking: z.enum(["auto", "on", "off"]).default("auto"),
+  reasoningEffort: z.enum(["auto", "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]).default("auto"),
+});
+export const compressionSchema = z.object({
+  enabled: z.boolean().default(true),
+  contextWindow: z.number().int().min(0).max(2000000).default(0),
+  summaryContextWindow: z.number().int().min(0).max(2000000).default(0),
+  threshold: z.number().min(0.1).max(0.95).default(0.85),
+  targetRatio: z.number().min(0.01).max(0.8).default(0.2),
+  protectLast: z.number().int().min(1).max(500).default(30),
+  protectFirst: z.number().int().min(0).max(100).default(3),
+  summaryMaxTokens: z.number().int().min(0).max(100000).default(0),
 });
 export const settingsSchema = z.object({
   revision: z.string().optional(),
@@ -21,8 +33,9 @@ export const settingsSchema = z.object({
     )
     .max(20),
   bindings: z.object(
-    Object.fromEntries(FEATURES.map((key) => [key, selectionSchema])),
+    Object.fromEntries(FEATURES.map((key) => [key, selectionSchema.default(() => selectionSchema.parse({ connectionId: "", model: "" }))])),
   ),
+  compression: compressionSchema.default(() => compressionSchema.parse({})),
   translation: z.object({
     enabled: z.boolean(),
     provider: z.enum(["google-free", "mymemory", "google", "llm"]),
@@ -33,6 +46,8 @@ export const settingsSchema = z.object({
 
 export function validateSettings(input) {
   const settings = settingsSchema.parse(input);
+  if (settings.compression.targetRatio >= settings.compression.threshold)
+    throw new Error("摘要目标比例必须小于压缩触发阈值");
   const ids = new Set();
   for (const connection of settings.connections) {
     if (ids.has(connection.id)) throw new Error("连接 ID 重复");
@@ -126,8 +141,9 @@ export const emptySettings = () => ({
   revision: "",
   connections: [],
   bindings: Object.fromEntries(
-    FEATURES.map((key) => [key, { connectionId: "", model: "" }]),
+    FEATURES.map((key) => [key, selectionSchema.parse({ connectionId: "", model: "" })]),
   ),
+  compression: compressionSchema.parse({}),
   translation: {
     enabled: true,
     provider: "google-free",

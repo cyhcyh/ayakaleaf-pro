@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import Settings from "@overleaf/settings";
 import Mongoose from "../../../../../app/src/infrastructure/Mongoose.mjs";
 import { emptySettings, seal, unseal, validateSettings } from "./Pure.mjs";
+import { modelMetadata, reasoningOptions } from "./ModelCapabilities.mjs";
 
 export async function collection(name) {
   await Mongoose.connectionPromise;
@@ -15,10 +16,11 @@ export const decrypt = (value, owner) => unseal(value, secret(), owner);
 
 export async function loadProfile(userId) {
   if (!userId) return emptySettings();
-  return (
-    (await (await collection("Profiles")).findOne({ _id: String(userId) })) ||
-    emptySettings()
-  );
+  const defaults = emptySettings();
+  const saved = await (await collection("Profiles")).findOne({ _id: String(userId) });
+  if (!saved) return defaults;
+  return { ...defaults, ...saved, compression: { ...defaults.compression, ...saved.compression },
+    bindings: Object.fromEntries(Object.keys(defaults.bindings).map(key => [key, { ...defaults.bindings[key], ...saved.bindings?.[key] }])) };
 }
 
 export async function publicProfile(userId) {
@@ -26,15 +28,21 @@ export async function publicProfile(userId) {
   const auth = await (await collection("Codex"))
     .find({ userId: String(userId) })
     .toArray();
+  const catalogs = await (await collection("Catalogs")).find({ userId: String(userId) }).toArray();
   return {
     revision: profile.revision,
     bindings: profile.bindings,
     translation: profile.translation,
+    compression: profile.compression,
+    siteDefault: Settings.workbenchAi?.enabled && Settings.workbenchAi?.model && Settings.workbenchAi?.apiKey
+      ? { model: Settings.workbenchAi.model } : null,
     connections: profile.connections.map(({ encryptedKey, ...connection }) => {
       const state = auth.find((a) => a.connectionId === connection.id);
+      const catalog = catalogs.find(c => c.connectionId === connection.id && c.credentialRevision === connection.credentialRevision && c.baseURL === connection.baseURL);
       return {
         ...connection,
         hasKey: Boolean(encryptedKey),
+        catalog: catalog ? { models: catalog.models, updatedAt: catalog.updatedAt } : null,
         authStatus: state?.tokens
           ? "ready"
           : state?.device
@@ -45,7 +53,7 @@ export async function publicProfile(userId) {
   };
 }
 
-export async function saveProfile(userId, input) {
+export async function saveProfile(userId, input, { validateBindings = true } = {}) {
   const next = validateSettings(input);
   const old = await loadProfile(userId);
   const owner = String(userId);
@@ -58,6 +66,7 @@ export async function saveProfile(userId, input) {
         previous && previous.baseURL !== connection.baseURL;
       return {
         ...connection,
+        credentialRevision: apiKey || clearKey || addressChanged ? crypto.randomUUID() : previous?.credentialRevision || '',
         encryptedKey:
           clearKey || (addressChanged && !apiKey)
             ? null
@@ -67,6 +76,13 @@ export async function saveProfile(userId, input) {
       };
     },
   );
+  for (const binding of Object.values(next.bindings)) {
+    if (!validateBindings) break;
+    if (!binding.connectionId) continue;
+    const connection = next.connections.find(c => c.id === binding.connectionId);
+    const cached = await (await collection("Catalogs")).findOne({ userId: owner, connectionId: binding.connectionId, baseURL: connection.baseURL, credentialRevision: connection.credentialRevision });
+    reasoningOptions(binding, cached?.models.find(m => m.id === binding.model) || modelMetadata({ id: binding.model }));
+  }
   const profiles = await collection("Profiles");
   const revision = crypto.randomUUID();
   if (old._id) {
@@ -107,4 +123,15 @@ export async function getConnection(userId, id) {
     ...connection,
     apiKey: decrypt(connection.encryptedKey, `${userId}:${id}:key`),
   };
+}
+
+export async function saveConnection(userId, input) {
+  const profile = await publicProfile(userId);
+  if (profile.revision !== input.revision) throw Object.assign(new Error('设置已在其他页面更新，请重新加载'), { status: 409 });
+  const connection = input.connection;
+  if (!connection || typeof connection.id !== 'string') throw new Error('连接格式不正确');
+  const found = profile.connections.some(item => item.id === connection.id);
+  return await saveProfile(userId, { ...profile, connections: found
+    ? profile.connections.map(item => item.id === connection.id ? connection : item)
+    : [...profile.connections, connection] }, { validateBindings: false });
 }

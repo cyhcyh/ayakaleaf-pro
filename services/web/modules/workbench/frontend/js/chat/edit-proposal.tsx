@@ -2,7 +2,7 @@
  * A propose_edit call as the user reviews it: the reason, the change as a
  * word diff, and Apply/Reject before it is applied, Undo/Apply after.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { EditorView } from '@codemirror/view'
 import OLButton from '@/shared/components/ol/ol-button'
@@ -16,6 +16,8 @@ import { applyEdit, revertEdit, wordDiff } from '../agent/apply-edit'
 import type { Respond } from '../agent/tools'
 import { ChatNotice } from './notices'
 import { flatGhost, framed, muted, plain, useChangeColors } from './themed'
+import PersonalEditProposal from '../personal-ai/edit-proposal'
+import { ReviewChatContext } from '../personal-ai/review-tools'
 
 export type EditPart = {
   toolCallId: string
@@ -87,7 +89,7 @@ function DiffText({ before, after }: { before: string; after: string }) {
   )
 }
 
-export default function EditProposal({ part, respond }: { part: EditPart; respond: Respond }) {
+function LegacyEditProposal({ part, respond }: { part: EditPart; respond: Respond }) {
   const { t } = useTranslation()
   const { input } = part
   const openDocument = useOpenDocument()
@@ -200,4 +202,14 @@ export default function EditProposal({ part, respond }: { part: EditPart; respon
       {problem && <ChatNotice type="error" text={problem} />}
     </div>
   )
+}
+
+export default function EditProposal({ part, respond }: { part: EditPart; respond: Respond }) {
+  const context = useContext(ReviewChatContext)
+  const output = (part as EditPart & { output?: unknown }).output
+  // Existing instance integrations and previously applied legacy cards keep
+  // their established Apply/Undo behavior.
+  if (!context || (part.state === 'output-available' && typeof output === 'string')) return <LegacyEditProposal part={part} respond={respond} />
+  if (!['input-available', 'output-available'].includes(part.state)) return null
+  return <PersonalEditProposal part={part} respond={respond} />
 }

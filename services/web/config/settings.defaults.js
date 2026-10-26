@@ -1046,13 +1046,15 @@ module.exports = {
     ],
     contactUsModal: [],
     sourceEditorExtensions: [
+      Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/edit-decorations'),
       Path.resolve(
         __dirname,
         '../modules/error-assistant/frontend/js/last-fix-store'
       ),
     ],
     sourceEditorVisualExtensions: [],
-    sourceEditorComponents: [],
+    sourceEditorComponents: [Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/edit-decoration-sync')],
+    reviewPanelExtensions: [Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/review-extension')],
     pdfLogEntryHeaderActionComponents: [
       Path.resolve(
         __dirname,

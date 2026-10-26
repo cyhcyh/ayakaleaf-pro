@@ -35,13 +35,12 @@ import { useProjectContext } from '@/shared/context/project-context'
 import { ReviewChatContext, approve } from '../personal-ai/review-tools'
 import { api, openAiSettings } from '../personal-ai/api'
 import { useLayoutContext } from '@/shared/context/layout-context'
+import { useSessionAutosave, type SavedSession, type Summary } from '../personal-ai/session-state'
 
 // The browser offers both searches; the server adds the configured ones
 const SEARCH_TOOLS = ['web_search', 'search_docs']
 
 /** Set by the server when it summarizes turns up to and including a message. */
-type Summary = { summary: string; upToMessageId: string }
-
 type Selection = { fromLine: number; toLine: number; content: string }
 
 /** Settles with work, or rejects as soon as the signal aborts. */
@@ -80,7 +79,7 @@ function useFollowBottom(trigger: unknown) {
   return { box, onScroll }
 }
 
-export default function ChatView({ chatId, view }: { chatId: string; view: EditorView }) {
+export default function ChatView({ chatId, view, initial, registerFlush }: { chatId: string; view: EditorView; initial?: SavedSession; registerFlush?: (flush: () => Promise<void>) => (() => void) }) {
   const { projectId } = useProjectContext()
   const { setSettingsShown } = useLayoutContext()
   const reviewId = useRef<string | null>(null)
@@ -104,8 +103,8 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
 
   const [problem, setProblem] = useState<string | boolean>(false)
   const [quotaHit, setQuotaHit] = useState(false)
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const summaryRef = useRef<Summary | null>(null)
+  const [summary, setSummary] = useState<Summary | null>(initial?.summary || null)
+  const summaryRef = useRef<Summary | null>(initial?.summary || null)
   // The open file the model was last told about
   const toldPath = useRef<string | null>(null)
   // Browser tools still running, and whether the user stopped the reply
@@ -153,6 +152,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
         prepareSendMessagesRequest({ id, messages, trigger, messageId }) {
           const kept = summaryRef.current
           const from = kept ? messages.findIndex(m => m.id === kept.upToMessageId) + 1 : 0
+          const protectedIds = new Set(kept?.protectedFirstIds || [])
           return {
             body: {
               id,
@@ -160,8 +160,9 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
               reviewId: reviewId.current || undefined,
               trigger,
               messageId,
-              messages: messages.slice(from),
+              messages: messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
               summary: kept?.summary,
+              compaction: kept || undefined,
               enabledTools: SEARCH_TOOLS,
             },
           }
@@ -172,6 +173,10 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
           if (response.status === 403) throw new AiUnavailableError()
           if (response.status === 409) throw new ToolBudgetError()
           if (response.status === 429) throw new QuotaExceededError()
+          if (!response.ok) {
+            const detail = await response.json().catch(() => ({}))
+            throw new Error(detail.error || `AI 请求失败（HTTP ${response.status}）`)
+          }
           return response
         },
       }),
@@ -180,6 +185,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
 
   const { messages, setMessages, sendMessage, addToolOutput, stop, status } = useChat({
     id: chatId,
+    messages: initial?.messages,
     transport,
     // A tool that ends after Stop must not start the next step
     sendAutomaticallyWhen: options =>
@@ -197,7 +203,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
         setProblem(error.message)
       } else {
         debugConsole.error(error)
-        setProblem(true)
+        setProblem(error.message || true)
       }
     },
     async onToolCall({ toolCall }) {
@@ -246,6 +252,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
       }
     },
   })
+  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted')
 
   // A new chat must not keep running when the panel goes away
   const stopRef = useRef(stop)
@@ -266,6 +273,9 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
     reviewId.current = null
     api('/reviews/stop', { projectId, chatId }).catch(() => {})
   }, [stop, projectId, chatId])
+  const leave = useRef(stopReply)
+  leave.current = stopReply
+  useEffect(() => registerFlush?.(async () => { leave.current(); await persistence.flush() }), [registerFlush, persistence.flush])
 
   const { editorSelection } = useEditorSelectionContext()
   const selection: Selection[] = useMemo(() => {
@@ -329,9 +339,9 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
     : undefined
 
   let body
-  if (!hasAccess) {
+  if (!hasAccess && messages.length === 0) {
     body = <div className="pa-empty m-3"><h4>连接你的 AI 助手</h4><p>在个人设置中添加模型服务或登录 Codex，即可对话、阅读参考资料和审阅论文。</p><button className="btn btn-primary btn-sm" onClick={() => { setSettingsShown(true); openAiSettings() }}>配置模型连接</button></div>
-  } else if (hasAccess && !hasGivenAiConsent) {
+  } else if (hasAccess && !hasGivenAiConsent && messages.length === 0) {
     body = <ConsentCard />
   } else if (messages.length === 0) {
     body = (
@@ -351,7 +361,7 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
         />
         {message.id === summary?.upToMessageId && (
           <div className="small text-center pt-1" style={{ ...muted, ...ruleAbove }}>
-            The assistant now sees the messages above as a summary.
+            以上早期对话已整理为摘要，完整记录仍保留在此会话。
           </div>
         )}
       </div>
@@ -398,6 +408,8 @@ export default function ChatView({ chatId, view }: { chatId: string; view: Edito
           <span className="text-nowrap">Always check responses.</span>
         </p>
       </div>
+      {persistence.error && <div className="pa-save-error" role="alert">会话尚未保存：{persistence.error}<button className="pa-text-action" onClick={() => persistence.flush().catch(() => {})}>重试保存</button></div>}
+      {persistence.saving && <small className="pa-muted text-center pb-1" role="status">正在保存会话…</small>}
     </div>
     </ReviewChatContext.Provider>
   )

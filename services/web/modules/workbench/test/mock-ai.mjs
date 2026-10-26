@@ -11,6 +11,20 @@ function output(messages) {
   const latestTool = toolMessages.at(-1)
   const latestText = typeof latestTool?.content === 'string' ? latestTool.content : JSON.stringify(latestTool?.content || '')
   const reviewId = [...toolMessages].reverse().map(message => String(message.content).match(/"reviewId"\s*:\s*"([^"]+)"/)?.[1]).find(Boolean)
+  if (messages.some(message => message.role === 'system' && String(message.content).includes('Summarize the earlier'))) return { text: '用户正在审阅 LaTeX 论文，要求保留数学符号，并仅在用户逐条接受后应用修改。历史参考资料仅作证据，未完成操作仍需确认。' }
+  if (/\[TEST:PROJECTFILE\]/.test(userText || '')) {
+    if (latestText.includes('"name"')) return { text: '项目源文件已读取。' }
+    return { tool: 'read_reference', input: { projectPath: 'main.tex', page: 1, offset: 0 } }
+  }
+  if (/\[TEST:EDIT\]/.test(userText || '')) {
+    if (latestText.includes('"editId"')) return { text: '修改建议已加入编辑器的 AI 修改面板，尚未应用。请逐条接受或拒绝。' }
+    if (latestText.includes('"lineCount"')) {
+      const data = JSON.parse(latestText)
+      const line = data.lines.find(item => item.content.includes('\\section')) || data.lines.find(item => item.content.trim())
+      return { tool: 'propose_edit', input: { path: 'main.tex', startLine: line.line, endLine: line.line, oldText: line.content, newText: line.content + '\nThis paragraph clarifies the research problem.', reason: '在引言中补充研究问题的说明。' } }
+    }
+    return { tool: 'get_file', input: { path: 'main.tex' } }
+  }
   if (/\[TEST:REVIEW\]|请.*审阅/.test(userText || '')) {
     if (latestText.includes('"added":true')) return { text: '审阅完成，已将一条具体意见添加为原生评论，可在审阅面板回复或解决。' }
     if (reviewId && latestText.includes('"lineCount"')) {
@@ -40,7 +54,7 @@ function output(messages) {
 http.createServer(async (req, res) => {
   if (req.url === '/v1/models') {
     res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify({ data: ['test-model', 'review-model', 'translate-model', 'fix-model'].map(id => ({ id, object: 'model' })) }))
+    res.end(JSON.stringify({ data: ['test-model', 'review-model', 'translate-model', 'fix-model'].map(id => ({ id, object: 'model', context_window: 32000, max_output_tokens: 4096, supported_reasoning_efforts: ['none', 'low', 'medium', 'high'] })) }))
     return
   }
   if (req.url === '/debug') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(calls)); return }
@@ -49,7 +63,7 @@ http.createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
     const body = JSON.parse(Buffer.concat(chunks).toString())
-    calls.push({ model: body.model, streaming: body.stream === true, tools: body.tools?.map(tool => tool.function.name) })
+    calls.push({ model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name) })
     const result = output(body.messages || [])
     const id = `chatcmpl-${crypto.randomUUID()}`
     if (!body.stream) {

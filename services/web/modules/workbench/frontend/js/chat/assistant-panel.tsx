@@ -2,9 +2,8 @@
  * The assistant's panel: a header with new chat, dock side and close, and
  * the chat below it. A new chat is a fresh ChatView under a new id.
  */
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { v4 as uuid } from 'uuid'
 import RailPanelHeader from '@/features/ide-react/components/rail/rail-panel-header'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
 import OLTooltip from '@/shared/components/ol/ol-tooltip'
@@ -14,6 +13,10 @@ import { useAssistantDock } from '../assistant-dock-context'
 import ChatView from './chat-view'
 import { useLayoutContext } from '@/shared/context/layout-context'
 import { openAiSettings } from '../personal-ai/api'
+import { api } from '../personal-ai/api'
+import HistoryPicker from '../personal-ai/history-picker'
+import type { SavedSession } from '../personal-ai/session-state'
+import { useProjectContext } from '@/shared/context/project-context'
 
 function HeaderButton({
   id,
@@ -48,7 +51,35 @@ export default function AssistantPanel() {
   const { view } = useEditorViewContext()
   const { side, moveTo, setOpen } = useAssistantDock()
   const { isOpen, setIsOpen } = useRailContext()
-  const [chatId, setChatId] = useState(() => uuid())
+  const { projectId } = useProjectContext()
+  const [session, setSession] = useState<SavedSession | null>(null)
+  const [epoch, setEpoch] = useState(0)
+  const [error, setError] = useState('')
+  const flush = useRef<() => Promise<void>>(async () => {})
+  const registerFlush = useCallback((work: () => Promise<void>) => {
+    flush.current = work
+    return () => { if (flush.current === work) flush.current = async () => {} }
+  }, [])
+  const beforeChange = useCallback(async () => { await flush.current() }, [])
+  const load = useCallback(async () => {
+    const result = await api<SavedSession>(`/sessions/current?projectId=${projectId}`)
+    setSession(result); setError('')
+  }, [projectId])
+  useEffect(() => {
+    let active = true
+    api<SavedSession>(`/sessions/current?projectId=${projectId}`).then(result => { if (active) setSession(result) }).catch(error => { if (active) setError(error.message) })
+    return () => { active = false }
+  }, [projectId])
+  const selectSession = async (id: string) => {
+    await beforeChange()
+    const result = await api<SavedSession>(`/sessions/${id}?projectId=${projectId}`)
+    setSession(result); setEpoch(value => value + 1)
+  }
+  const newSession = async (skipFlush = false) => {
+    if (!skipFlush) await beforeChange()
+    const result = await api<SavedSession>('/sessions', { projectId })
+    setSession(result); setEpoch(value => value + 1)
+  }
 
   if (!view) return null
 
@@ -65,13 +96,14 @@ export default function AssistantPanel() {
         title="AI assistant"
         actions={
           <>
+            <HistoryPicker projectId={projectId} currentId={session?.id} beforeChange={beforeChange} onSelect={selectSession} onNew={newSession} />
             <HeaderButton id="assistant-model-settings" label="AI 与翻译设置" icon="settings" onClick={() => { setSettingsShown(true); openAiSettings() }} />
             <HeaderButton
               id="assistant-new-chat"
               label={t('start_new_chat')}
               icon="edit_square"
               unfilled
-              onClick={() => setChatId(uuid())}
+              onClick={() => newSession().catch(error => setError(error.message))}
             />
             <HeaderButton
               id="assistant-dock-side"
@@ -84,7 +116,8 @@ export default function AssistantPanel() {
         onClose={close}
       />
       <div className="flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
-        <ChatView chatId={chatId} view={view} key={chatId} />
+        {error && <div className="pa-save-error" role="alert">{error}<button className="pa-text-action" onClick={() => load().catch(error => setError(error.message))}>重试加载</button></div>}
+        {session ? <ChatView chatId={session.id} initial={session} registerFlush={registerFlush} view={view} key={`${session.id}:${epoch}`} /> : !error && <div className="pa-muted p-3" role="status">正在加载会话…</div>}
       </div>
     </div>
   )

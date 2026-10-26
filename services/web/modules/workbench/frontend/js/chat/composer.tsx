@@ -56,6 +56,8 @@ const Composer = forwardRef<
       onProblem('图片需小于 2 MB，参考资料需小于 8 MB。')
     } else if (images.length + files.length > 10) {
       onProblem('每条消息最多附加 10 个文件。')
+    } else if ([...images, ...files].filter(file => file.type.startsWith('image/')).reduce((size, file) => size + file.size, 0) > 6 * 1024 * 1024) {
+      onProblem('单条消息中的图片总大小需小于 6 MB，较大参考资料请用 PDF 上传。')
     } else {
       setImages(current => [...current, ...files])
     }

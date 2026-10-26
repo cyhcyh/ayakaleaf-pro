@@ -9,12 +9,18 @@ export type Connection = {
   clearKey?: boolean;
   hasKey?: boolean;
   authStatus?: string;
+  credentialRevision?: string;
+  catalog?: { models: ModelInfo[]; updatedAt: string } | null;
 };
-export type Binding = { connectionId: string; model: string };
+export type ModelInfo = { id: string; name: string; thinkingModes: string[]; reasoningEfforts: string[]; contextWindow: number; outputLimit: number; source: string };
+export type Binding = { connectionId: string; model: string; thinking?: string; reasoningEffort?: string };
+export type Compression = { enabled: boolean; contextWindow: number; summaryContextWindow: number; threshold: number; targetRatio: number; protectLast: number; protectFirst: number; summaryMaxTokens: number };
 export type Profile = {
   revision: string;
   connections: Connection[];
-  bindings: Record<"chat" | "fix" | "review" | "translation", Binding>;
+  bindings: Record<"chat" | "fix" | "review" | "translation" | "compression", Binding>;
+  compression: Compression;
+  siteDefault?: { model: string } | null;
   translation: {
     enabled: boolean;
     provider: string;

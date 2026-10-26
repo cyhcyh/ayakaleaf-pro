@@ -3,7 +3,7 @@ import { streamText } from "ai";
 import AuthenticationController from "../../../../../app/src/Features/Authentication/AuthenticationController.mjs";
 import SessionManager from "../../../../../app/src/Features/Authentication/SessionManager.mjs";
 import AuthorizationManager from "../../../../../app/src/Features/Authorization/AuthorizationManager.mjs";
-import { publicProfile, saveProfile, getConnection } from "./ProfileStore.mjs";
+import { publicProfile, saveProfile, saveConnection, getConnection } from "./ProfileStore.mjs";
 import * as codex from "./Codex.mjs";
 import { translate } from "./Translation.mjs";
 import { upload } from "./References.mjs";
@@ -11,6 +11,9 @@ import { approveReview, checkReview, stopReview } from "./Review.mjs";
 import { withUserAi, withConnection } from "./Runtime.mjs";
 import { getProvider, getProviderOptions } from "../WorkbenchAiClient.mjs";
 import { buildCommentTools } from "../../../../mcp-server/app/src/CommentTools.mjs";
+import { updateCatalog } from "./Catalog.mjs";
+import { applyWorkspaceRoutes } from "./WorkspaceRouter.mjs";
+import { getCapabilities } from "./Catalog.mjs";
 
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
 const projectSchema = z.string().regex(/^[a-f0-9]{24}$/i);
@@ -47,35 +50,10 @@ export function applyPersonalAiRouter(router) {
     router.post(`/personal-ai${path}`, login, handler(run));
   get("/settings", async (req) => await publicProfile(user(req)));
   post("/settings", async (req) => await saveProfile(user(req), req.body));
-  post("/connections/:id/models", async (req) => {
-    const connection = await getConnection(user(req), id.parse(req.params.id));
-    if (connection.kind === "google") return { models: [] };
-    const headers =
-      connection.kind === "codex"
-        ? codex.headers(await codex.credentials(user(req), connection.id))
-        : { Authorization: `Bearer ${connection.apiKey}` };
-    const suffix =
-      connection.kind === "codex"
-        ? "/models?client_version=0.160.0"
-        : "/models";
-    const response = await fetch(connection.baseURL + suffix, {
-      headers,
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!response.ok)
-      throw new Error(
-        `模型目录返回 HTTP ${response.status}；可以手动填写模型 ID`,
-      );
-    const data = await response.json();
-    return {
-      models: (data.data || data.models || [])
-        .map((model) => ({
-          id: model.id || model.slug,
-          name: model.display_name || model.id || model.slug,
-        }))
-        .filter((m) => m.id),
-    };
-  });
+  post('/connections/save', async req => await saveConnection(user(req), req.body));
+  post('/connections/:id/capabilities', async req => await getCapabilities(user(req), await getConnection(user(req), id.parse(req.params.id)), z.string().min(1).max(200).parse(req.body.model)));
+  applyWorkspaceRoutes({ get, post, user, projectAccess });
+  post("/connections/:id/models", async (req) => await updateCatalog(user(req), id.parse(req.params.id)));
   post("/connections/:id/test", async (req) => {
     const connection = await getConnection(user(req), id.parse(req.params.id));
     const model = z.string().min(1).max(200).parse(req.body.model);

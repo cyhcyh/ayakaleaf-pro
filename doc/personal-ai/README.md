@@ -19,8 +19,25 @@ project history and collaboration continue to use the upstream implementations.
   search public references and extract webpage or linked-PDF text.
 - A review starts with a consent tool inside the conversation. Its explicit
   approval is scoped to the user, project, chat and files. Specific findings
-  become native comments after approval; ordinary source edits still use the
-  existing Apply/Reject workflow. Stopping revokes the current review round.
+  become native comments after approval. Stopping revokes the current review round.
+- Model catalogs persist per connection. Search/select or enter a model ID; fetch
+  and test actions share one row. Feature assignments are full-width list cards.
+  Thinking mode and effort are checked against provider metadata or known model
+  capabilities, rather than sending unsupported parameters to every model.
+- The flat Context Compression subtab selects its own connection/model and
+  policy. Compression retains whole initial/recent turns and incremental summaries;
+  original messages stay available in history. Unknown capacities can be entered
+  in advanced settings. Token budgeting is an estimate, not a provider tokenizer.
+- History lives per user/project. The header button before the settings gear opens
+  search, switching, rename and batch deletion. Restoring never replays interrupted
+  tools or restores review authorization.
+- Source suggestions are queued in Review → AI 修改 with editor diff previews.
+  Accept/reject each suggestion; accepted changes support persisted undo/reapply.
+  Native minimal editor transactions preserve collaboration and project history.
+  Conflicting source changes stop the operation for manual rechecking. The edit
+  ledger is separate from chats and survives chat deletion.
+- Translation renders math with the existing sanitized Markdown/KaTeX renderer.
+  Recognized TeX formulas are protected during translation and copied verbatim.
 
 ## Storage and deployment
 
@@ -59,9 +76,11 @@ Prefer merging Ayakaleaf's `server-pro` into the feature branch: it already
 integrates Overleaf changes. Merge Overleaf directly only after reviewing its
 relationship with Ayakaleaf's changes.
 
-The settings-tab module slot is additive. Review the small integration changes
+The settings-tab and review-panel module slots are additive. Source editor preview
+decorations/components register through the existing extension slots. Review the small integration changes
 in `settings.defaults.js`, `settings-modal-context.tsx`, the workbench controller,
 AI client, router/access hook and error-assistant router when merging upstream.
+The core review-panel wrapper keeps the native comment view and mini panel intact.
 Rebuild and validate against an official base image compatible with the selected
 upstream revision, rather than copying changed files into an old running image.
 

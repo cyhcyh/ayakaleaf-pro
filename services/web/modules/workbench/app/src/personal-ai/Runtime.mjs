@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import Settings from "@overleaf/settings";
 import { loadProfile, getConnection } from "./ProfileStore.mjs";
 import { credentials, headers } from "./Codex.mjs";
+import { getCapabilities } from "./Catalog.mjs";
+import { reasoningOptions } from "./ModelCapabilities.mjs";
 
 const context = new AsyncLocalStorage();
 export const currentConfig = () => context.getStore() || Settings.workbenchAi;
@@ -13,6 +15,8 @@ export async function resolveConfig(userId, feature = "chat") {
     : profile.bindings.chat;
   if (!binding?.connectionId) return Settings.workbenchAi;
   const connection = await getConnection(userId, binding.connectionId);
+  const capabilities = await getCapabilities(userId, connection, binding.model);
+  const controls = { capabilities, reasoningEffort: reasoningOptions(binding, capabilities) };
   if (connection.kind === "codex") {
     const tokens = await credentials(userId, connection.id);
     return {
@@ -24,6 +28,7 @@ export async function resolveConfig(userId, feature = "chat") {
       headers: headers(tokens),
       model: binding.model,
       imageModel: binding.model,
+      ...controls,
     };
   }
   return {
@@ -32,6 +37,7 @@ export async function resolveConfig(userId, feature = "chat") {
     ...connection,
     model: binding.model,
     imageModel: undefined,
+    ...controls,
   };
 }
 

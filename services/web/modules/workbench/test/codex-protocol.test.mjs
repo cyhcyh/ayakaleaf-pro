@@ -22,12 +22,13 @@ function events(output, text = '') {
 test('Codex streams text and replays tool results without stored response references', async () => {
   const calls = []
   let executed = false
-  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only' }, async (url, init) => {
+  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only', reasoningEffort: 'high' }, async (url, init) => {
     assert.equal(String(url), 'https://chatgpt.com/backend-api/codex/responses')
     const body = JSON.parse(init.body)
     calls.push(body)
     assert.equal(body.store, false)
     assert.equal(body.stream, true)
+    assert.equal(body.reasoning.effort, 'high')
     assert.ok(body.instructions.includes('Review only after consent'))
     assert.equal(body.input.some(item => ['system', 'developer'].includes(item.role)), false)
     if (calls.length === 1) return events({ type: 'function_call', id: 'fc_fixture', call_id: 'call_fixture', name: 'inspect', arguments: '{"path":"main.tex"}', status: 'completed' })

@@ -65,8 +65,14 @@ export function getProvider() {
       includeUsage: true,
     }
     const proxyFetch = _getProxyFetch()
-    if (proxyFetch) {
-      config.fetch = proxyFetch
+    if (proxyFetch || active.reasoningEffort) {
+      const transport = proxyFetch || fetch
+      config.fetch = async (url, init) => {
+        if (active.reasoningEffort && typeof init?.body === 'string') {
+          init = { ...init, body: JSON.stringify({ ...JSON.parse(init.body), reasoning_effort: active.reasoningEffort }) }
+        }
+        return await transport(url, init)
+      }
     }
     const provider = createOpenAICompatible(config)
     if (active === Settings.workbenchAi) _provider = provider
@@ -97,7 +103,10 @@ export function resolveModel(messages = []) {
 }
 
 export function getProviderOptions() {
-  return currentConfig()?.kind === 'codex' ? { openai: { store: false } } : undefined
+  const config = currentConfig()
+  return config?.kind === 'codex'
+    ? { openai: { store: false } }
+    : undefined
 }
 
 /** Maximum tool calls per user message, including automatic continuations. */

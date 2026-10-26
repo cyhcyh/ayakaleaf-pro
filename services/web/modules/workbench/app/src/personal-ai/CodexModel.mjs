@@ -20,6 +20,7 @@ export function codexModel(config, transport = fetch) {
         body.instructions = [body.instructions, ...instructions].filter(Boolean).join('\n\n')
           || 'You are the writing and research assistant in Ayakaleaf.'
         body.store = false
+        if (config.reasoningEffort) body.reasoning = { ...body.reasoning, effort: config.reasoningEffort }
         delete body.max_output_tokens
         init = { ...init, body: JSON.stringify(body) }
       }

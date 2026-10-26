@@ -4,6 +4,7 @@ param(
     [switch]$KeepBuilder
 )
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $workspaceRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $buildId = [Guid]::NewGuid().ToString('N').Substring(0, 10)
 $builderName = "ayakaleaf-build-$buildId"
@@ -26,16 +27,22 @@ try {
     }
     $fileList = Join-Path $outputRoot 'source-files.txt'
     [System.IO.File]::WriteAllLines($fileList, $sourceFiles, (New-Object System.Text.UTF8Encoding($false)))
-    $sourceArchive = Join-Path $outputRoot 'source.tar'
-    & tar.exe -cf $sourceArchive -T $fileList
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to archive source' }
+    # .NET emits UTF-8 ZIP names consistently, including Chinese documentation.
+    # Windows tar's --files-from uses the active ANSI code page on some hosts.
+    $sourceArchive = Join-Path $outputRoot 'source.zip'
+    $sourceZip = [System.IO.Compression.ZipFile]::Open($sourceArchive, 'Create')
+    try {
+        foreach ($relativePath in $sourceFiles) {
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($sourceZip, (Join-Path $workspaceRoot $relativePath), $relativePath, [System.IO.Compression.CompressionLevel]::Fastest) | Out-Null
+        }
+    } finally { $sourceZip.Dispose() }
     Invoke-Docker -DockerArguments @('create', '--name', $builderName, '--entrypoint', 'sleep', $BaseImage, 'infinity')
     Invoke-Docker -DockerArguments @('start', $builderName)
-    Invoke-Docker -DockerArguments @('cp', $sourceArchive, "${builderName}:/tmp/source.tar")
+    Invoke-Docker -DockerArguments @('cp', $sourceArchive, "${builderName}:/tmp/source.zip")
     $compileScript = @'
 set -eu
 mkdir -p /src
-tar xf /tmp/source.tar -C /src
+unzip -q /tmp/source.zip -d /src
 cp -a /overleaf/.yarn/cache /src/.yarn/cache
 cd /src
 CYPRESS_INSTALL_BINARY=0 yarn install
@@ -57,14 +64,15 @@ for archive in /src/.yarn/cache/*; do
 done
 tar rf /tmp/overlay.tar -C /tmp/new-cache .
 '@
-    Invoke-Docker -DockerArguments @('exec', $builderName, 'bash', '-lc', $compileScript)
+    # A file avoids Windows PowerShell 5.1 stripping quotes in multiline native arguments.
+    $compilePath = Join-Path $outputRoot 'compile.sh'
+    [System.IO.File]::WriteAllText($compilePath, $compileScript.Replace("`r`n", "`n"), (New-Object System.Text.UTF8Encoding($false)))
+    Invoke-Docker -DockerArguments @('cp', $compilePath, "${builderName}:/tmp/compile.sh")
+    Invoke-Docker -DockerArguments @('exec', $builderName, 'bash', '/tmp/compile.sh')
     $overlayArchive = Join-Path $outputRoot 'overlay.tar'
     Invoke-Docker -DockerArguments @('cp', "${builderName}:/tmp/overlay.tar", $overlayArchive)
-    $overlayRoot = Join-Path $outputRoot 'overlay'
-    New-Item -ItemType Directory -Path $overlayRoot -Force | Out-Null
-    & tar.exe -xf $overlayArchive -C $overlayRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to unpack runtime artifacts' }
-    [System.IO.File]::WriteAllLines((Join-Path $outputRoot '.dockerignore'), @('/source.tar', '/overlay.tar', '/source-files.txt'), (New-Object System.Text.UTF8Encoding($false)))
+    # Let Docker unpack Linux artifacts, preserving permissions, links and UTF-8 names.
+    [System.IO.File]::WriteAllLines((Join-Path $outputRoot '.dockerignore'), @('/source.zip', '/source-files.txt', '/compile.sh'), (New-Object System.Text.UTF8Encoding($false)))
     Invoke-Docker -DockerArguments @('build', '--build-arg', "BASE_IMAGE=$BaseImage", '-t', $ImageTag, '-f', (Join-Path $PSScriptRoot 'Dockerfile'), $outputRoot)
     Write-Output "Built $ImageTag"
 }

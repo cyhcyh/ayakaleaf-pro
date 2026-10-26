@@ -4,6 +4,7 @@ import MaterialIcon from "@/shared/components/material-icon";
 import { useEditorViewContext } from "@/features/ide-react/context/editor-view-context";
 import { api, type Profile } from "./api";
 import "./style.scss";
+import MathText from './math-text';
 
 type Selection = { text: string; x: number; y: number };
 type Translation = { translatedText: string; source: string };
@@ -277,12 +278,15 @@ export default function TranslationOverlay() {
                 {result?.source && result.source !== "auto"
                   ? result.source
                   : "自动检测"}
+                <button className="pa-source-toggle" aria-label={expanded ? '收起原文' : '展开原文'} title={expanded ? '收起原文' : '展开原文'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                  <MaterialIcon type={expanded ? 'expand_less' : 'expand_more'} />
+                </button>
               </div>
               <div
                 className={expanded ? undefined : "pa-source-clamped"}
                 data-testid="translation-original"
               >
-                {selection.text}
+                <MathText text={selection.text} />
               </div>
               <div className="pa-translation-controls">
                 <button
@@ -292,10 +296,6 @@ export default function TranslationOverlay() {
                   <MaterialIcon
                     type={copied === "source" ? "check" : "content_copy"}
                   />
-                </button>
-                <button onClick={() => setExpanded(!expanded)}>
-                  {expanded ? "收起原文" : "展开原文"}{" "}
-                  <span aria-hidden>{expanded ? "⌃" : "⌄"}</span>
                 </button>
               </div>
             </section>
@@ -317,7 +317,7 @@ export default function TranslationOverlay() {
                 </select>
               </div>
               <div className="pa-translated" role="status">
-                {busy ? "正在翻译…" : error || result?.translatedText}
+                {busy ? "正在翻译…" : error || (result && <MathText text={result.translatedText} />)}
               </div>
               {result && !busy && !error && (
                 <div className="pa-translation-controls">

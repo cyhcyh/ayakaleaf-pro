@@ -7,7 +7,10 @@ import {
   type Binding,
   type Connection,
   type Profile,
+  type ModelInfo,
 } from "./api";
+import { ModelPicker } from './model-controls';
+import { BindingFields, CompressionSettings } from './settings-fields';
 import "./style.scss";
 
 const featureNames = {
@@ -30,7 +33,7 @@ export function PersonalAiSettings() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [catalogs, setCatalogs] = useState<
-    Record<string, { id: string; name: string }[]>
+    Record<string, ModelInfo[]>
   >({});
   const [testModels, setTestModels] = useState<Record<string, string>>({});
   const [devices, setDevices] = useState<
@@ -72,6 +75,13 @@ export function PersonalAiSettings() {
     setProfile(saved);
     settingsChanged(saved);
     setNotice("已保存，设置已生效");
+    return saved;
+  };
+  const persistConnection = async (id: string) => {
+    if (!profile) return;
+    const saved = await api<Profile>('/connections/save', { revision: profile.revision, connection: profile.connections.find(c => c.id === id) });
+    setProfile(current => current && ({ ...current, revision: saved.revision,
+      connections: current.connections.map(c => c.id === id ? saved.connections.find(item => item.id === id)! : c) }));
     return saved;
   };
   const updateConnection = (id: string, values: Partial<Connection>) =>
@@ -131,11 +141,12 @@ export function PersonalAiSettings() {
         },
     );
   const models = async (id: string) => {
-    const result = await api<{ models: { id: string; name: string }[] }>(
+    const result = await api<{ models: ModelInfo[]; updatedAt: string }>(
       `/connections/${id}/models`,
       {},
     );
     setCatalogs((current) => ({ ...current, [id]: result.models }));
+    updateConnection(id, { catalog: result });
     if (result.models[0])
       setTestModels((current) => ({
         ...current,
@@ -229,6 +240,7 @@ export function PersonalAiSettings() {
             ["connections", "模型连接"],
             ["bindings", "功能分配"],
             ["translation", "划词翻译"],
+            ["compression", "上下文压缩"],
           ] as const
         ).map(([key, name]) => (
           <button
@@ -256,7 +268,7 @@ export function PersonalAiSettings() {
           <>
             <div className="pa-actions">
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-secondary btn-sm"
                 onClick={() => add("cloud")}
               >
                 ＋ OpenAI 兼容接口
@@ -268,7 +280,7 @@ export function PersonalAiSettings() {
                 ＋ Codex
               </button>
               <button
-                className="btn btn-link btn-sm"
+                className="btn btn-secondary btn-sm"
                 onClick={() => add("google")}
               >
                 ＋ Google Cloud
@@ -386,7 +398,7 @@ export function PersonalAiSettings() {
                         className="btn btn-secondary btn-sm"
                         onClick={() =>
                           execute(async () => {
-                            await save();
+                            await persistConnection(connection.id);
                             const device = await api(
                               `/connections/${connection.id}/codex/login`,
                               {},
@@ -440,46 +452,30 @@ export function PersonalAiSettings() {
                 )}
                 {connection.kind !== "google" && (
                   <div className="pa-model-test">
-                    <label className="pa-field">
-                      测试用模型
-                      <input
-                        className="form-control"
-                        list={`models-${connection.id}`}
-                        value={testModels[connection.id] || ""}
-                        placeholder="模型 ID，可手动填写"
-                        onChange={(event) =>
-                          setTestModels({
-                            ...testModels,
-                            [connection.id]: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <datalist id={`models-${connection.id}`}>
-                      {(catalogs[connection.id] || []).map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.name}
-                        </option>
-                      ))}
-                    </datalist>
-                    <div className="pa-actions">
+                    <div className="pa-field">
+                      <span>用于测试的模型</span>
+                      <ModelPicker label={`用于测试的模型 · ${connection.name}`} value={testModels[connection.id] || ""}
+                        models={catalogs[connection.id] || connection.catalog?.models || []}
+                        onChange={value => setTestModels(current => ({ ...current, [connection.id]: value }))} />
+                    </div>
+                    <div className="pa-actions pa-test-actions">
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() =>
                           execute(async () => {
-                            await save();
+                            await persistConnection(connection.id);
                             await models(connection.id);
                           })
                         }
                       >
-                        获取模型
+                        获取可用模型
                       </button>
                       <button
                         className="btn btn-secondary btn-sm"
                         disabled={!testModels[connection.id]}
                         onClick={() =>
                           execute(async () => {
-                            await save();
+                            await persistConnection(connection.id);
                             await api(`/connections/${connection.id}/test`, {
                               model: testModels[connection.id],
                             });
@@ -490,6 +486,7 @@ export function PersonalAiSettings() {
                         测试连接
                       </button>
                     </div>
+                    <p className="pa-muted mb-0">仅用于测试，不改变功能分配。</p>
                   </div>
                 )}
               </section>
@@ -498,65 +495,18 @@ export function PersonalAiSettings() {
         )}
         {tab === "bindings" && (
           <>
-            <p className="pa-muted">
-              为各功能独立选模型。留空的功能继承 AI 助手配置；AI
-              助手留空时使用管理员默认连接。
-            </p>
+            <p className="pa-muted">各功能可独立选择模型和思考参数；选择沿用时，将使用 AI 助手的完整配置。</p>
             {Object.entries(featureNames).map(([feature, name]) => {
               const key = feature as keyof Profile["bindings"];
-              const value = profile.bindings[key];
-              return (
-                <section className="pa-card" key={key}>
-                  <h4>{name}</h4>
-                  <div className="pa-binding">
-                    <label className="pa-field">
-                      连接
-                      <select
-                        className="form-select form-control"
-                        value={value.connectionId}
-                        onChange={(event) =>
-                          bind(key, {
-                            connectionId: event.target.value,
-                            model: "",
-                          })
-                        }
-                      >
-                        <option value="">
-                          {key === "chat" ? "管理员默认连接" : "继承 AI 助手"}
-                        </option>
-                        {textConnections.map((connection) => (
-                          <option value={connection.id} key={connection.id}>
-                            {connection.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="pa-field">
-                      模型
-                      <input
-                        className="form-control"
-                        disabled={!value.connectionId}
-                        list={`models-${key}`}
-                        value={value.model}
-                        placeholder="选择或填写模型 ID"
-                        onChange={(event) =>
-                          bind(key, { model: event.target.value })
-                        }
-                      />
-                    </label>
-                    <datalist id={`models-${key}`}>
-                      {(catalogs[value.connectionId] || []).map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.name}
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
-                </section>
-              );
+              return <section className="pa-card pa-feature-card" key={key}>
+                <h4>{name}</h4>
+                <div className="pa-binding"><BindingFields profile={profile} value={profile.bindings[key]}
+                  primary={key === 'chat'} onChange={changes => bind(key, changes)} /></div>
+              </section>;
             })}
           </>
         )}
+        {tab === "compression" && <CompressionSettings profile={profile} onProfile={setProfile} />}
         {tab === "translation" && (
           <section className="pa-card">
             <h4>划词翻译</h4>
