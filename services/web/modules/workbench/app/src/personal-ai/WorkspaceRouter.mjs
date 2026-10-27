@@ -4,6 +4,7 @@ import * as sessions from './Sessions.mjs';
 import * as edits from './Edits.mjs';
 import { stopReview } from './Review.mjs';
 import { workspaceIndexes } from './WorkspaceIndexes.mjs';
+import { messagesPage, messageOffsetSchema } from './SessionMessages.mjs';
 
 const uuid = z.string().uuid();
 export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
@@ -19,16 +20,17 @@ export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
   post('/sessions', async req => await sessions.createSession(user(req), await project(req)));
   get('/sessions/current', async req => {
     const projectId = await project(req);
-    const result = await sessions.currentSession(user(req), projectId);
+    const result = await sessions.currentSession(user(req), projectId, req.query.paged === 'true');
     await stopReview(user(req), projectId, result.id);
     return result;
   });
   get('/sessions/:id', async req => {
     const projectId = await project(req), id = uuid.parse(req.params.id);
-    const result = await sessions.loadSession(user(req), projectId, id);
+    const result = await sessions.loadSession(user(req), projectId, id, req.query.paged === 'true');
     await stopReview(user(req), projectId, id);
     return result;
   });
+  get('/sessions/:id/messages', async req => await messagesPage(user(req), await project(req), uuid.parse(req.params.id), messageOffsetSchema.parse(req.query.before)));
   post('/sessions/:id/save', async req => await sessions.saveSession(user(req), await project(req), uuid.parse(req.params.id), req.body));
   post('/sessions/:id/rename', async req => await sessions.renameSession(user(req), await project(req), uuid.parse(req.params.id), req.body.title));
   post('/sessions/delete', async req => await sessions.deleteSessions(user(req), await project(req), req.body.ids));

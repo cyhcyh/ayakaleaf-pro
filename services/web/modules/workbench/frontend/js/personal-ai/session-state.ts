@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
-import { api } from './api'
+import { api, type Binding } from './api'
 
 export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[] }
-export type SavedSession = { id: string; projectId: string; title: string; revision: number; messages: UIMessage[]; summary: Summary | null }
+export type MessagePage = { messages: UIMessage[]; messageOffset: number; olderBefore: number | null }
+export type SavedSession = MessagePage & { id: string; projectId: string; title: string; revision: number; summary: Summary | null; binding: Binding | null }
 export type SessionItem = { id: string; title: string; updatedAt: string; revision: number; snippet?: string }
 
-export function useSessionAutosave(initial: SavedSession | undefined, projectId: string, messages: UIMessage[], summary: Summary | null, streaming: boolean) {
-  const latest = useRef({ messages, summary })
-  latest.current = { messages, summary }
+export function useSessionAutosave(initial: SavedSession | undefined, projectId: string, messages: UIMessage[], summary: Summary | null, streaming: boolean, binding: Binding | null) {
+  const latest = useRef({ messages, summary, binding })
+  latest.current = { messages, summary, binding }
   const revision = useRef(initial?.revision || 0)
-  const snapshots = useRef(new Map(initial?.messages.map(message => [message.id, JSON.stringify(message)]) || []))
+  const snapshots = useRef(new Map(initial?.messages.map(message => [message.id, message]) || []))
   const savedSummary = useRef(JSON.stringify(initial?.summary || null))
+  const savedBinding = useRef(JSON.stringify(initial?.binding || null))
   const timer = useRef<ReturnType<typeof setTimeout>>()
   const queue = useRef<Promise<void>>(Promise.resolve())
   const alive = useRef(true)
@@ -23,10 +25,11 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
     const save = async () => {
       if (!initial) return
       const current = latest.current
-      const changed = current.messages.map((message, order) => ({ message, order, snapshot: JSON.stringify(message) }))
-        .filter(item => snapshots.current.get(item.message.id) !== item.snapshot)
+      const changed = current.messages.map((message, order) => ({ message, order: order + (initial.messageOffset || 0) }))
+        .filter(item => snapshots.current.get(item.message.id) !== item.message).map(item => ({ ...item, snapshot: JSON.stringify(item.message) }))
       const summaryText = JSON.stringify(current.summary)
-      if (!changed.length && savedSummary.current === summaryText) return
+      const bindingText = JSON.stringify(current.binding)
+      if (!changed.length && savedSummary.current === summaryText && savedBinding.current === bindingText) return
       if (alive.current) { setSaving(true); setError('') }
       try {
         // Incremental message writes keep long conversations below request and
@@ -40,13 +43,14 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
           batch.push(item); bytes += size
         }
         if (batch.length) batches.push(batch)
-        if (!batches.length && savedSummary.current !== summaryText) batches.push([])
+        if (!batches.length) batches.push([])
         for (const batch of batches) {
           const result = await api<{ revision: number }>(`/sessions/${initial.id}/save`, { projectId, revision: revision.current,
-            messages: batch.map(({ snapshot, ...item }) => item), summary: current.summary })
+            messages: batch.map(({ snapshot, ...item }) => item), summary: current.summary, binding: current.binding })
           revision.current = result.revision
-          batch.forEach(item => snapshots.current.set(item.message.id, item.snapshot))
+          batch.forEach(item => snapshots.current.set(item.message.id, item.message))
           savedSummary.current = summaryText
+          savedBinding.current = bindingText
         }
         window.dispatchEvent(new Event('personal-ai:sessions'))
       } catch (error) {
@@ -63,13 +67,13 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
   useEffect(() => {
     if (!initial || timer.current) return
     timer.current = setTimeout(() => { timer.current = undefined; flush().catch(() => {}) }, streaming ? 1500 : 300)
-  }, [messages, summary, streaming, initial?.id, flush])
+  }, [messages, summary, binding, streaming, initial?.id, flush])
   useEffect(() => {
     alive.current = true
     const unload = (event: BeforeUnloadEvent) => {
       if (!initial) return
-      const dirty = latest.current.messages.some(message => snapshots.current.get(message.id) !== JSON.stringify(message))
-        || savedSummary.current !== JSON.stringify(latest.current.summary)
+      const dirty = latest.current.messages.some(message => snapshots.current.get(message.id) !== message)
+        || savedSummary.current !== JSON.stringify(latest.current.summary) || savedBinding.current !== JSON.stringify(latest.current.binding)
       if (dirty) { flushRef.current().catch(() => {}); event.preventDefault(); event.returnValue = '' }
     }
     window.addEventListener('beforeunload', unload)

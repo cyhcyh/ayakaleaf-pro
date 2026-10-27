@@ -36,7 +36,7 @@ export default function DataSettings() {
       <select id="pa-history-scope" className="form-control form-select" value={scope} disabled={busy} onChange={event => setScope(event.target.value as typeof scope)}><option value="project">当前项目</option><option value="all">我的所有项目</option></select>
     </Setting>
     <Setting controlId="pa-clear-history" label="历史会话" description="清除对话和摘要，保留正文、评论、参考文件和 AI 修改记录。">
-      <div className="pa-data-action"><span>{count === null ? '正在读取…' : `${count} 个会话`}</span><button id="pa-clear-history" aria-label="清空历史会话" className="btn btn-secondary pa-danger-action" disabled={busy || !count} onClick={() => { setError(''); setConfirm(true) }}>清空历史会话</button></div>
+      <div className="pa-data-action"><span>{count === null ? '正在读取…' : `${count} 个会话`}</span><button id="pa-clear-history" aria-label="清空历史会话" className="btn btn-secondary btn-sm pa-danger-action" disabled={busy || !count} onClick={() => { setError(''); setConfirm(true) }}>清空</button></div>
     </Setting>
     {error && !confirm && <p className="pa-inline-error" role="alert">{error}</p>}
     {notice && <p className="pa-notice" role="status">{notice}</p>}

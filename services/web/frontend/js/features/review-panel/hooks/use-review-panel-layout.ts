@@ -33,7 +33,7 @@ export default function useReviewPanelLayout(): {
   }, [setRailIsOpen])
 
   const hasCommentOrChange = hasActiveRange(ranges, threads)
-  const showPanel = focusMode ? false : reviewPanelOpen || !!hasCommentOrChange
+  const showPanel = focusMode || (selectedRailTab === 'ai-modifications' && railIsOpen) ? false : reviewPanelOpen || !!hasCommentOrChange
   const mini = !reviewPanelOpen
   const showHeader = showPanel && !mini
 

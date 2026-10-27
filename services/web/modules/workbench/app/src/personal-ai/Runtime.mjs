@@ -4,13 +4,23 @@ import { loadProfile, getConnection } from "./ProfileStore.mjs";
 import { credentials, headers } from "./Codex.mjs";
 import { getCapabilities } from "./Catalog.mjs";
 import { reasoningOptions } from "./ModelCapabilities.mjs";
+import { selectionSchema } from './Pure.mjs';
 
 const context = new AsyncLocalStorage();
 export const currentConfig = () => context.getStore() || Settings.workbenchAi;
 
-export async function resolveConfig(userId, feature = "chat") {
+export async function validateSessionBinding(userId, value) {
+  const binding = selectionSchema.parse(value);
   const profile = await loadProfile(userId);
-  const binding = profile.bindings[feature]?.connectionId
+  const connection = profile.connections.find(item => item.id === binding.connectionId && item.kind !== 'google');
+  if (!connection || !binding.model) throw Object.assign(new Error('请选择自己的模型连接和模型'), { status: 400 });
+  reasoningOptions(binding, await getCapabilities(userId, connection, binding.model));
+  return binding;
+}
+
+export async function resolveConfig(userId, feature = "chat", override) {
+  const profile = await loadProfile(userId);
+  const binding = override ? await validateSessionBinding(userId, override) : profile.bindings[feature]?.connectionId
     ? profile.bindings[feature]
     : profile.bindings.chat;
   if (!binding?.connectionId) return Settings.workbenchAi;
@@ -41,9 +51,9 @@ export async function resolveConfig(userId, feature = "chat") {
   };
 }
 
-export async function isUserConfigured(userId, feature = "chat") {
+export async function isUserConfigured(userId, feature = "chat", override) {
   const profile = await loadProfile(userId);
-  const binding = profile.bindings[feature]?.connectionId
+  const binding = override ? await validateSessionBinding(userId, override) : profile.bindings[feature]?.connectionId
     ? profile.bindings[feature]
     : profile.bindings.chat;
   if (binding?.connectionId) {
@@ -62,8 +72,8 @@ export async function isUserConfigured(userId, feature = "chat") {
   );
 }
 
-export async function withUserAi(userId, feature, callback) {
-  return await context.run(await resolveConfig(userId, feature), callback);
+export async function withUserAi(userId, feature, callback, override) {
+  return await context.run(await resolveConfig(userId, feature, override), callback);
 }
 
 export async function withConnection(userId, connection, model, callback) {

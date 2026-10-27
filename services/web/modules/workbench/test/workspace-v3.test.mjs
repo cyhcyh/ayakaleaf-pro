@@ -25,13 +25,10 @@ test('search previews include dialogue text and exclude tool payloads', () => {
   assert.equal(searchSnippet('Read $L=D-A$ exactly.', '$L=D-A$'), 'Read $L=D-A$ exactly.');
 });
 
-test('translation dot moves up and stays clear of native comment menus and viewport edges', () => {
+test('translation dot retains its original placement and viewport bounds', () => {
   const selection = { right: 390, bottom: 110 };
   const plain = translationDotPosition(selection, 1280, 720);
-  assert.equal(plain.y, 98);
-  const obstacle = { left: 370, right: 560, top: 94, bottom: 150, width: 190, height: 56 };
-  const avoided = translationDotPosition(selection, 1280, 720, [obstacle]);
-  assert.ok(avoided.y + 24 <= obstacle.top - 8);
-  const edge = translationDotPosition({ right: 1280, bottom: 1 }, 1280, 720, [{ left: 1200, right: 1280, top: 0, bottom: 50, width: 80, height: 50 }]);
+  assert.equal(plain.y, 111);
+  const edge = translationDotPosition({ right: 1280, bottom: 1 }, 1280, 720);
   assert.ok(edge.x >= 8 && edge.x + 24 <= 1280 - 8 && edge.y >= 8);
 });

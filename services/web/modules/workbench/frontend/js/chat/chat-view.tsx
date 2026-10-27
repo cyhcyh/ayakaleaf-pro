@@ -25,17 +25,19 @@ import useAiAccess from '../hooks/use-ai-access'
 import { useProjectActions } from '../hooks/use-project-actions'
 import { TOOLS, type Respond } from '../agent/tools'
 import { AiUnavailableError, QuotaExceededError, ToolBudgetError, ToolRefusal } from '../errors'
-import MessageView, { CONTEXT_OPEN } from './message-view'
+import { CONTEXT_OPEN } from './message-view'
+import ConversationMessages from './conversation-messages'
 import Composer, { type Draft } from './composer'
 import StarterPrompts from './starter-prompts'
 import ConsentCard from './consent-card'
 import { AiOffNotice, ChatFailedNotice, ChatNotice, QuotaNotice } from './notices'
-import { faint, muted, plain, ruleAbove } from './themed'
+import { faint, plain } from './themed'
 import { useProjectContext } from '@/shared/context/project-context'
 import { ReviewChatContext, approve } from '../personal-ai/review-tools'
-import { api, openAiSettings } from '../personal-ai/api'
+import { api, openAiSettings, type Binding } from '../personal-ai/api'
+import SessionModelPicker from '../personal-ai/session-model-picker'
 import { useLayoutContext } from '@/shared/context/layout-context'
-import { useSessionAutosave, type SavedSession, type Summary } from '../personal-ai/session-state'
+import { useSessionAutosave, type SavedSession, type Summary, type MessagePage } from '../personal-ai/session-state'
 
 // The browser offers both searches; the server adds the configured ones
 const SEARCH_TOOLS = ['web_search', 'search_docs']
@@ -60,25 +62,6 @@ function contextBlock(path: string, selection: Selection[]) {
   return lines.join('\n')
 }
 
-/** Keeps the newest message in view unless the user has scrolled up. */
-function useFollowBottom(trigger: unknown) {
-  const box = useRef<HTMLDivElement>(null)
-  const following = useRef(true)
-  useEffect(() => {
-    const element = box.current
-    if (element && following.current) {
-      element.scrollTop = element.scrollHeight
-    }
-  }, [trigger])
-  const onScroll = useCallback(() => {
-    const element = box.current
-    if (element) {
-      following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 40
-    }
-  }, [])
-  return { box, onScroll }
-}
-
 export default function ChatView({ chatId, view, initial, registerFlush }: { chatId: string; view: EditorView; initial?: SavedSession; registerFlush?: (flush: () => Promise<void>) => (() => void) }) {
   const { projectId } = useProjectContext()
   const { setSettingsShown } = useLayoutContext()
@@ -94,7 +77,8 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
     setTokenResetDate,
   } = useEditorContext()
   const { hasGivenAiConsent } = useAiConsent()
-  const hasAccess = useAiAccess()
+  const defaultAccess = useAiAccess()
+  const permissionEnabled = useAiAccess('enabled')
   const aiOffHere = getMeta('ol-showAiFeaturesDisabled')
   const { signal } = useAbortController()
   const actions = useProjectActions()
@@ -105,6 +89,25 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
   const [quotaHit, setQuotaHit] = useState(false)
   const [summary, setSummary] = useState<Summary | null>(initial?.summary || null)
   const summaryRef = useRef<Summary | null>(initial?.summary || null)
+  const [binding, setBinding] = useState<Binding | null>(initial?.binding || null)
+  const hasAccess = defaultAccess || (permissionEnabled && Boolean(binding))
+  const bindingRef = useRef(binding)
+  bindingRef.current = binding
+  const [olderMessages, setOlderMessages] = useState<UIMessage[]>([])
+  const [olderBefore, setOlderBefore] = useState(initial?.olderBefore ?? null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [historyError, setHistoryError] = useState('')
+  const loadingPage = useRef(false)
+  const loadOlder = useCallback(async () => {
+    if (olderBefore === null || loadingPage.current) return
+    loadingPage.current = true; setLoadingOlder(true); setHistoryError('')
+    try {
+      const result = await api<MessagePage>(`/sessions/${chatId}/messages?projectId=${projectId}&before=${olderBefore}`, undefined, signal)
+      setOlderMessages(current => [...result.messages, ...current])
+      setOlderBefore(result.olderBefore)
+    } catch (error) { if (!signal.aborted) setHistoryError((error as Error).message); throw error }
+    finally { loadingPage.current = false; if (!signal.aborted) setLoadingOlder(false) }
+  }, [chatId, projectId, olderBefore, signal])
   // The open file the model was last told about
   const toldPath = useRef<string | null>(null)
   // Browser tools still running, and whether the user stopped the reply
@@ -160,7 +163,8 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
               reviewId: reviewId.current || undefined,
               trigger,
               messageId,
-              messages: messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
+              messages: initial ? messages : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
+              ...(initial && { sessionContext: true, messageOffset: initial.messageOffset || 0, binding: bindingRef.current }),
               summary: kept?.summary,
               compaction: kept || undefined,
               enabledTools: SEARCH_TOOLS,
@@ -226,6 +230,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
               actions: actionsRef.current,
               projectId,
               chatId,
+              toolCallId: toolCall.toolCallId,
               signal: controller.signal,
             })
           ),
@@ -252,7 +257,8 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       }
     },
   })
-  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted')
+  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding)
+  const displayedMessages = useMemo(() => [...olderMessages, ...messages], [olderMessages, messages])
 
   // A new chat must not keep running when the panel goes away
   const stopRef = useRef(stop)
@@ -344,7 +350,6 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
     [canChat, path, selection, sendMessage, setMessages, messages, projectId, chatId]
   )
 
-  const { box, onScroll } = useFollowBottom(messages)
   const selectionNote = selection.length
     ? `${path.split('/').pop()}: ${selection.map(r => (r.fromLine === r.toLine ? r.fromLine : `${r.fromLine}-${r.toLine}`)).join(', ')}`
     : undefined
@@ -363,20 +368,8 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       />
     )
   } else {
-    body = messages.map((message: UIMessage) => (
-      <div className="d-flex flex-column gap-2" key={message.id}>
-        <MessageView
-          message={message}
-          streaming={status === 'streaming' && message.id === messages.at(-1)?.id}
-          respond={respond}
-        />
-        {message.id === summary?.upToMessageId && (
-          <div className="small text-center pt-1" style={{ ...muted, ...ruleAbove }}>
-            以上早期对话已整理为摘要，完整记录仍保留在此会话。
-          </div>
-        )}
-      </div>
-    ))
+    body = <ConversationMessages messages={displayedMessages} streaming={status === 'streaming'} respond={respond} summary={summary}
+      hasOlder={olderBefore !== null} loadingOlder={loadingOlder} historyError={historyError} loadOlder={loadOlder} />
   }
 
   return (
@@ -384,9 +377,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
     {/* Match the editor panel's body text size. */}
     <div className="d-flex flex-column h-100" style={{ ...plain, fontSize: 'var(--font-size-02)' }}>
       <div
-        ref={box}
-        onScroll={onScroll}
-        className="flex-grow-1 overflow-auto p-2 d-flex flex-column gap-3"
+        className={`flex-grow-1 ${messages.length ? 'd-flex flex-column overflow-hidden' : 'overflow-auto p-2'}`}
         // A flex item is as tall as its content unless allowed to shrink
         style={{ minHeight: 0 }}
       >
@@ -399,16 +390,19 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
         ) : (
           !hasTokensLeft && tokenResetDate > now && <QuotaNotice resetsAt={tokenResetDate} />
         ))}
-      <div data-chat-input="" {...(canChat ? {} : ({ inert: '' } as any))} className={canChat ? undefined : 'opacity-50'}>
+      <div data-chat-input="">
         {problem && !quotaHit && (
           typeof problem === 'string' ? <ChatNotice type="error" text={problem} /> : <ChatFailedNotice />
         )}
         <Composer
+          disabled={!canChat}
           working={status === 'submitted' || status === 'streaming' || toolsRunning > 0}
           selectionNote={selectionNote}
           onSend={send}
           onStop={stopReply}
           onProblem={message => setProblem(message)}
+          modelPicker={<SessionModelPicker value={binding} onChange={setBinding} disabled={!permissionEnabled || status === 'submitted' || status === 'streaming' || toolsRunning > 0}
+            onManage={() => { setSettingsShown(true); openAiSettings() }} />}
         />
         {/* One line, or a break after the first sentence */}
         <p

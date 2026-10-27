@@ -237,7 +237,7 @@ export const RailLayout = () => {
   }, [railTabs, selectedTab, openTab, isOpen])
 
   const isReviewPanelOpen =
-    selectedTab === 'review-panel' && isOpen && !isHistoryView
+    ['review-panel', 'ai-modifications'].includes(selectedTab) && isOpen && !isHistoryView
 
   const { tabsInRail, tabsInOverflow, tabWrapperRef } =
     useRailOverflow(railTabs)

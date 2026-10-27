@@ -4,6 +4,10 @@ import Mongoose from '../../../../../app/src/infrastructure/Mongoose.mjs';
 import { collection } from './ProfileStore.mjs';
 import { projectWrite } from './WorkspaceLifecycle.mjs';
 import { messageText, searchSnippet } from '../../../shared/session-search.mjs';
+import { restoredMessage } from '../../../shared/session-context.mjs';
+import { messagesPage } from './SessionMessages.mjs';
+import { validateSessionBinding } from './Runtime.mjs';
+import { selectionSchema } from './Pure.mjs';
 
 const message = z.object({
   order: z.number().int().min(0).max(1000000),
@@ -14,6 +18,7 @@ export const saveSessionSchema = z.object({
   revision: z.number().int().min(0),
   messages: z.array(message).max(500),
   summary: z.object({ summary: z.string().max(500000), upToMessageId: z.string().max(150), protectedFirstIds: z.array(z.string()).optional() }).nullable().optional(),
+  binding: selectionSchema.nullable().optional(),
 });
 const missing = () => Object.assign(new Error('会话不存在或已被删除'), { status: 404 });
 const conflict = () => Object.assign(new Error('会话已在其他页面更新，请重新打开会话后继续'), { status: 409 });
@@ -55,29 +60,26 @@ export async function createSession(userId, projectId) {
     await (await collection('Sessions')).insertOne(row, { session });
     await (await collection('ActiveSessions')).updateOne({ _id: `${userId}:${projectId}` }, { $set: { sessionId: row._id, userId: String(userId), projectId } }, { upsert: true, session });
   });
-  return { id: row._id, projectId, title: row.title, revision: 0, messages: [], summary: null };
+  return { id: row._id, projectId, title: row.title, revision: 0, messages: [], messageOffset: 0, olderBefore: null, summary: null, binding: null };
 }
 
-export async function loadSession(userId, projectId, id) {
+export async function loadSession(userId, projectId, id, paged = false) {
   const row = await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) });
   if (!row) throw missing();
   await projectWrite(projectId, async session => {
     if (!await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) }, { session })) throw missing();
     await (await collection('ActiveSessions')).updateOne({ _id: `${userId}:${projectId}` }, { $set: { sessionId: id, userId: String(userId), projectId } }, { upsert: true, session });
   });
-  const messages = await (await collection('Messages')).find({ sessionId: id, userId: String(userId), projectId }).sort({ order: 1, _id: 1 }).toArray();
-  // Loading never resumes interrupted tools or carries a review authorization.
-  const restored = messages.map(({ message }) => ({ ...message, parts: message.parts.map(part => {
-    if ((part.type?.startsWith('tool-') || part.type === 'dynamic-tool') && !['output-available', 'output-error', 'output-denied'].includes(part.state)) {
-      return { ...part, state: 'output-error', errorText: '上次会话在此处中断，恢复记录未执行该操作。需要时请重新发起。' };
-    }
-    return part;
-  }) }));
-  return { id, projectId, title: row.title, revision: row.revision, messages: restored, summary: row.summary };
+  const page = paged ? await messagesPage(userId, projectId, id) : {
+    messages: (await (await collection('Messages')).find({ sessionId: id, userId: String(userId), projectId }).sort({ order: 1, _id: 1 }).toArray()).map(row => restoredMessage(row.message)),
+    messageOffset: 0, olderBefore: null,
+  };
+  return { id, projectId, title: row.title, revision: row.revision, ...page, summary: row.summary, binding: row.binding || null };
 }
 
 export async function saveSession(userId, projectId, id, body) {
   const input = saveSessionSchema.parse(body);
+  if (input.binding) input.binding = await validateSessionBinding(userId, input.binding);
   const store = await collection('Sessions');
   const messages = await collection('Messages');
   return await projectWrite(projectId, async transaction => {
@@ -94,17 +96,18 @@ export async function saveSession(userId, projectId, id, body) {
       await store.updateOne({ _id: id, revision: input.revision }, { $set: {
         updatedAt: new Date(), title, ...(firstUser && { named: true }), ...(input.summary !== undefined && { summary: input.summary }),
         ...(input.messages.length && { hasContent: true }),
+        ...(input.binding !== undefined && { binding: input.binding }),
       }, $inc: { revision: 1 } }, { session: transaction });
       return { revision: input.revision + 1, title };
   });
 }
 
-export async function currentSession(userId, projectId) {
+export async function currentSession(userId, projectId, paged = false) {
   const active = await (await collection('ActiveSessions')).findOne({ _id: `${userId}:${projectId}` });
   const sessions = await collection('Sessions');
   const row = active && await sessions.findOne({ _id: active.sessionId, ...scope(userId, projectId) })
     || await sessions.findOne(scope(userId, projectId), { sort: { updatedAt: -1 } });
-  return row ? await loadSession(userId, projectId, row._id) : await createSession(userId, projectId);
+  return row ? await loadSession(userId, projectId, row._id, paged) : await createSession(userId, projectId);
 }
 
 export async function renameSession(userId, projectId, id, title) {

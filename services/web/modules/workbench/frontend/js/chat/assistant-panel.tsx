@@ -62,17 +62,17 @@ export default function AssistantPanel() {
   }, [])
   const beforeChange = useCallback(async () => { await flush.current() }, [])
   const load = useCallback(async () => {
-    const result = await api<SavedSession>(`/sessions/current?projectId=${projectId}`)
+    const result = await api<SavedSession>(`/sessions/current?projectId=${projectId}&paged=true`)
     setSession(result); setError('')
   }, [projectId])
   useEffect(() => {
     let active = true
-    api<SavedSession>(`/sessions/current?projectId=${projectId}`).then(result => { if (active) setSession(result) }).catch(error => { if (active) setError(error.message) })
+    api<SavedSession>(`/sessions/current?projectId=${projectId}&paged=true`).then(result => { if (active) setSession(result) }).catch(error => { if (active) setError(error.message) })
     return () => { active = false }
   }, [projectId])
   const selectSession = async (id: string) => {
     await beforeChange()
-    const result = await api<SavedSession>(`/sessions/${id}?projectId=${projectId}`)
+    const result = await api<SavedSession>(`/sessions/${id}?projectId=${projectId}&paged=true`)
     setSession(result); setEpoch(value => value + 1)
   }
   const newSession = async (skipFlush = false) => {

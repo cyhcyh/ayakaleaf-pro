@@ -5,34 +5,26 @@ import type { EditRecord } from './edits-store'
 import { sourceOnly } from '@/features/source-editor/extensions/visual/visual'
 
 export const setPendingEdits = StateEffect.define<EditRecord[]>()
-class EditPreview extends WidgetType {
+export const setFocusedEdit = StateEffect.define<string | null>()
+class EditMarker extends WidgetType {
   constructor(readonly edit: EditRecord) { super() }
-  eq(other: EditPreview) { return other.edit.id === this.edit.id && other.edit.input.newText === this.edit.input.newText && Boolean(other.edit.operation) === Boolean(this.edit.operation) }
+  eq(other: EditMarker) { return other.edit.id === this.edit.id }
   toDOM() {
-    const root = document.createElement('div')
-    root.className = 'pa-inline-edit'
+    const root = document.createElement('button')
+    root.type = 'button'
+    root.className = 'pa-inline-edit-marker'
     root.contentEditable = 'false'
-    const header = document.createElement('div')
-    const label = document.createElement('span')
-    label.textContent = 'AI 修改预览 · 尚未应用'
-    header.append(label)
-    for (const [action, text, title] of [['accept', '✓', '接受此处修改'], ['reject', '×', '拒绝此处修改'], ['locate', '查看', '在 AI 修改面板查看']] as const) {
-      const button = document.createElement('button')
-      button.type = 'button'; button.textContent = text; button.title = title; button.setAttribute('aria-label', title)
-      button.disabled = Boolean(this.edit.operation)
-      button.onmousedown = event => event.preventDefault()
-      button.onclick = () => window.dispatchEvent(new CustomEvent('personal-ai:edit-action', { detail: { id: this.edit.id, action } }))
-      header.append(button)
-    }
-    const code = document.createElement('pre')
-    code.textContent = this.edit.input.newText ? this.edit.input.newText.slice(0, 3000) : '（删除此处内容）'
-    root.append(header, code)
+    root.textContent = 'AI'
+    root.title = '查看此处 AI 修改'
+    root.setAttribute('aria-label', '查看此处 AI 修改')
+    root.onmousedown = event => event.preventDefault()
+    root.onclick = () => window.dispatchEvent(new CustomEvent('personal-ai:edit-action', { detail: { id: this.edit.id, action: 'focus' } }))
     return root
   }
   ignoreEvent() { return true }
 }
 
-function decorations(state: EditorState, items: EditRecord[]) {
+function decorations(state: EditorState, items: EditRecord[], focusedId: string | null) {
   const ranges = []
   const content = state.doc.toString()
   let occupiedUntil = -1
@@ -42,23 +34,29 @@ function decorations(state: EditorState, items: EditRecord[]) {
   for (const { item, at } of located) {
     if (at < occupiedUntil) continue
     const end = at + item.input.oldText.length
-    if (end > at) ranges.push(Decoration.mark({ class: 'pa-inline-removed' }).range(at, end))
-    const position = state.doc.lineAt(end).to
-    ranges.push(Decoration.widget({ widget: new EditPreview(item), block: true, side: 1 }).range(position))
+    if (end > at) ranges.push(Decoration.mark({ class: `pa-inline-change ${item.id === focusedId ? 'pa-inline-change-focused' : ''}`, attributes: { 'data-pa-edit-id': item.id, title: '查看此处 AI 修改' } }).range(at, end))
+    else ranges.push(Decoration.widget({ widget: new EditMarker(item), side: 1 }).range(at))
     occupiedUntil = end
   }
   return Decoration.set(ranges, true)
 }
 
-export const pendingEditsField = StateField.define<{ items: EditRecord[]; decorations: DecorationSet }>({
-  create: () => ({ items: [], decorations: Decoration.none }),
+export const pendingEditsField = StateField.define<{ items: EditRecord[]; decorations: DecorationSet; focusedId: string | null }>({
+  create: () => ({ items: [], decorations: Decoration.none, focusedId: null }),
   update(value, transaction) {
     let items = value.items
+    let focusedId = value.focusedId
     let changed = transaction.docChanged
     for (const effect of transaction.effects) if (effect.is(setPendingEdits)) { items = effect.value; changed = true }
-    return changed ? { items, decorations: decorations(transaction.state, items) } : value
+    for (const effect of transaction.effects) if (effect.is(setFocusedEdit)) { focusedId = effect.value; changed = true }
+    return changed ? { items, focusedId, decorations: decorations(transaction.state, items, focusedId) } : value
   },
   provide: field => EditorView.decorations.from(field, value => value.decorations),
 })
 
-export const extension = (options: Record<string, any>) => sourceOnly(options.showVisual, pendingEditsField)
+export const extension = (options: Record<string, any>) => [sourceOnly(options.showVisual, pendingEditsField), EditorView.domEventHandlers({ mouseup(event, view) {
+  if (!view.state.selection.main.empty) return false
+  const id = event.target instanceof Element ? event.target.closest('[data-pa-edit-id]')?.getAttribute('data-pa-edit-id') : null
+  if (id) window.dispatchEvent(new CustomEvent('personal-ai:edit-action', { detail: { id, action: 'focus' } }))
+  return false
+} })]

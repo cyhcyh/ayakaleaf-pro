@@ -31,7 +31,9 @@ project history and collaboration continue to use the upstream implementations.
 - History lives per user/project. The header button before the settings gear opens
   search, switching, rename and batch deletion. Restoring never replays interrupted
   tools or restores review authorization.
-- Source suggestions are queued in the independent AI 修改 rail panel with editor diff previews.
+- Source suggestions appear in an independent AI 修改 pane at the native review gutter.
+  It uses the native comment width and positioning helper, with source anchors and
+  expandable diffs. Separate rail entries switch between AI edits and native review.
   Accept/reject each suggestion; accepted changes support persisted undo/reapply.
   Native minimal editor transactions preserve collaboration and project history.
   Conflicting source changes stop the operation for manual rechecking. The edit
@@ -80,8 +82,8 @@ The settings-tab and rail-entry module slots are additive. Source editor preview
 decorations/components register through the existing extension slots. Review the small integration changes
 in `settings.defaults.js`, `settings-modal-context.tsx`, the workbench controller,
 AI client, router/access hook and error-assistant router when merging upstream.
-The native review panel is restored without a wrapper. The rail key union and
-default width include the independent AI edit pane. Keep these small seams when
+The native review panel is restored without a wrapper. The rail key union, native
+rail visibility condition and review-layout hook include the independent AI edit pane. Keep these small seams when
 merging. Project data cleanup attaches to the existing `projectExpired` hook,
 without changing upstream trash/restore or retention behavior.
 
@@ -95,6 +97,17 @@ A content-free project marker serializes writes with expiry and rejects late
 requests. Failed file removal keeps the reference metadata for retry.
 Unknown model capacities use 256,000 tokens; unknown summary output limits use
 8,192 tokens, still bounded by the configured target and actual model limits.
+Paged session reads return the latest 20 complete turns and an absolute message
+offset. Earlier display pages never enter the autosave buffer. The existing
+TanStack virtualizer limits mounted messages. Server-side context reconstruction
+merges the stored history, protected summary head and live tool results by message
+ID, independently of display paging. Legacy unpaged reads remain available.
+Each session can persist a connection/model/thinking override. Only that user's
+connections and supported parameters are accepted. A new session inherits the
+feature defaults, and admin AI access checks remain in effect.
+The translation dot retains its original coordinates and hover behavior, with a
+stacking level above native selection menus. The popover uses its measured height
+for viewport placement and scrolls its body while keeping header controls visible.
 Rebuild and validate against an official base image compatible with the selected
 upstream revision, rather than copying changed files into an old running image.
 

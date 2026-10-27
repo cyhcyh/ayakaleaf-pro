@@ -2,7 +2,7 @@
  * Where the user writes: a growing text box, images by picker, paste or drop,
  * a note of the selected lines that go along, and send or stop.
  */
-import { forwardRef, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { FileUIPart } from 'ai'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
@@ -35,8 +35,10 @@ const Composer = forwardRef<
     onSend: (draft: Draft) => void | Promise<void>
     onStop: () => void
     onProblem: (message: string | false) => void
+    modelPicker?: ReactNode
+    disabled?: boolean
   }
->(function Composer({ working, selectionNote, onSend, onStop, onProblem }, ref) {
+>(function Composer({ working, selectionNote, onSend, onStop, onProblem, modelPicker, disabled = false }, ref) {
   const { t } = useTranslation()
   const { projectId } = useProjectContext()
   const [uploading, setUploading] = useState(false)
@@ -49,6 +51,7 @@ const Composer = forwardRef<
   useEffect(() => () => previews.forEach(url => URL.revokeObjectURL(url)), [previews])
 
   const attach = (files: File[]) => {
+    if (disabled) return
     onProblem(false)
     if (files.some(file => !file.type.startsWith('image/') && !['application/pdf', 'text/plain', 'text/markdown'].includes(file.type) && !/\.(txt|md)$/i.test(file.name))) {
       onProblem('支持图片、PDF、TXT 和 Markdown 参考资料。')
@@ -64,7 +67,7 @@ const Composer = forwardRef<
   }
 
   const send = async () => {
-    if (working || uploading || !text.trim()) return
+    if (disabled || working || uploading || !text.trim()) return
     setUploading(true)
     try {
     const references = []
@@ -154,6 +157,7 @@ const Composer = forwardRef<
         </div>
       )}
       <textarea
+        disabled={disabled}
         ref={ref}
         className="form-control border-0 shadow-none p-1"
         style={{ ...plain, resize: 'none', fontSize: 'var(--font-size-02)', background: 'transparent' }}
@@ -173,6 +177,7 @@ const Composer = forwardRef<
           accept="image/*,application/pdf,text/plain,text/markdown,.txt,.md"
           multiple
           hidden
+          disabled={disabled}
           aria-label="附加图片或参考资料"
           onChange={event => {
             attach(Array.from(event.target.files ?? []))
@@ -185,10 +190,12 @@ const Composer = forwardRef<
             variant="ghost"
             style={{ ...flatGhost, ...plain }}
             accessibilityLabel={t('attach_image_or_pdf')}
+            disabled={disabled}
             onClick={() => picker.current?.click()}
           />
         </OLTooltip>
         <span className="flex-grow-1" />
+        {modelPicker}
         {working ? (
           <OLIconButton icon="stop_circle" variant="ghost" style={{ ...flatGhost, ...plain }} accessibilityLabel={t('stop')} onClick={onStop} />
         ) : (
@@ -197,7 +204,7 @@ const Composer = forwardRef<
             variant="ghost"
             style={{ ...flatGhost, ...plain }}
             accessibilityLabel={t('send')}
-            disabled={!text.trim() || uploading}
+            disabled={disabled || !text.trim() || uploading}
             onClick={send}
           />
         )}

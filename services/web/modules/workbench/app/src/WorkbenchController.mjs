@@ -252,7 +252,7 @@ export default {
   getAccess: expressify(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     const access = await getAiAccess(SessionManager.getLoggedInUserId(req.session))
-    res.json({ allowed: access.chat, errorAssistant: access.errorAssistant })
+    res.json({ allowed: access.chat, errorAssistant: access.errorAssistant, enabled: access.enabled })
   }),
   chat,
 }

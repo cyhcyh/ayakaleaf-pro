@@ -47,7 +47,9 @@ function output(messages) {
     }
     return { text: `已读取参考资料：${latestText.slice(0, 180)}` }
   }
-  if (messages.some(message => message.role === 'system' && String(message.content).includes('Translate'))) return { text: '超图的谱性质与其度分布和连通性有关。这是一段用于验证界面的测试译文。' }
+  if (messages.some(message => message.role === 'system' && String(message.content).includes('Translate'))) return { text: userText?.includes('[TEST:LONG_TRANSLATION]')
+    ? '这是用于检查长译文滚动的测试内容。应先明确图的顶点集合与边集，再说明识别操作如何保留已有边。\n\n'.repeat(25) + (userText.match(/ZXQMATHTOKEN.*?QXZ/g) || []).join(' ')
+    : '超图的谱性质与其度分布和连通性有关。这是一段用于验证界面的测试译文。' }
   return { text: 'OK' }
 }
 
@@ -63,7 +65,8 @@ http.createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
     const body = JSON.parse(Buffer.concat(chunks).toString())
-    calls.push({ model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name) })
+    calls.push({ model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name),
+      historyMarkers: JSON.stringify(body.messages).match(/\[HISTORY:\d+\]/g) || [] })
     const result = output(body.messages || [])
     const id = `chatcmpl-${crypto.randomUUID()}`
     if (!body.stream) {

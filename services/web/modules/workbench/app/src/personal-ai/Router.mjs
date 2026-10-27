@@ -160,12 +160,17 @@ export async function chatRuntime(req, res, next) {
   try {
     const projectId = req.body.projectId;
     if (projectId) await projectAccess(req, projectId);
+    if (req.body.sessionContext) {
+      if (!projectId) throw new Error('会话缺少项目');
+      const { prepareSessionContext } = await import('./SessionMessages.mjs');
+      Object.assign(req.body, await prepareSessionContext(user(req), projectId, req.body));
+    }
     let feature = "chat";
     if (req.body.reviewId) {
       await checkReview(user(req), projectId, req.body.id, req.body.reviewId);
       feature = "review";
     }
-    await withUserAi(user(req), feature, next);
+    await withUserAi(user(req), feature, next, req.body.sessionContext ? req.body.binding : undefined);
   } catch (error) {
     res.status(error.status || 400).json({ error: error.message });
   }

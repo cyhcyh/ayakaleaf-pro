@@ -11,6 +11,8 @@ import EditProposal, { type EditPart } from '../chat/edit-proposal'
 import SourceLinks from '../chat/source-links'
 import { boxed } from '../chat/themed'
 import { REVIEW_TOOLS } from '../personal-ai/review-tools'
+import { api } from '../personal-ai/api'
+import { putEdit, type EditRecord } from '../personal-ai/edits-store'
 
 export type ToolOutput =
   | { tool: string; toolCallId: string; output: unknown }
@@ -21,6 +23,7 @@ export type Respond = (output: ToolOutput) => void
 export type ToolRun = {
   projectId: string
   chatId: string
+  toolCallId: string
   view: EditorView
   // Project path of the document the view shows
   openPath: string
@@ -113,6 +116,11 @@ export const TOOLS: Record<string, ToolSpec> = {
 
   propose_edit: {
     label: ({ startLine, endLine }) => `Edit line ${range(startLine, endLine)}`,
+    async run(input, { projectId, chatId, toolCallId, signal }) {
+      const record = await api<EditRecord>('/edits', { projectId, chatId, toolCallId, input }, signal)
+      putEdit(projectId, record)
+      return { editId: record.id, state: record.state, queued: true, message: '建议已加入 AI 修改，用户接受后才会应用。' }
+    },
     body: (part: EditPart, respond) => <EditProposal part={part} respond={respond} />,
   },
 

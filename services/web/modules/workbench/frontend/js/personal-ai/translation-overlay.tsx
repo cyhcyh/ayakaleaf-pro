@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MaterialIcon from "@/shared/components/material-icon";
 import { useEditorViewContext } from "@/features/ide-react/context/editor-view-context";
 import { api, type Profile } from "./api";
 import "./style.scss";
 import MathText from './math-text';
-import { translationDotPosition } from '../../../shared/selection-position.mjs';
+import { translationDotPosition, translationPopupPosition } from '../../../shared/selection-position.mjs';
 
 type Selection = { text: string; x: number; y: number };
 type Translation = { translatedText: string; source: string };
@@ -29,6 +29,7 @@ export default function TranslationOverlay() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState("");
+  const [position, setPosition] = useState({ left: 12, top: 12, maxHeight: 620 });
   const popup = useRef<HTMLDivElement>(null);
   const dot = useRef<HTMLButtonElement>(null);
   const hover = useRef<ReturnType<typeof setTimeout>>();
@@ -150,20 +151,16 @@ export default function TranslationOverlay() {
     };
   }, [settings?.translation.enabled, view, hide, pinned]);
 
-  useEffect(() => {
-    if (!selection || open) return;
-    // Native selection menus mount after pointerup. Observe their layout without
-    // changing their behavior, then move only the translation dot if needed.
-    const adjust = () => {
-      const obstacles = Array.from(document.querySelectorAll('.editor-floating-menu, .review-tooltip-menu'))
-        .map(element => element.getBoundingClientRect());
-      const point = translationDotPosition({ right: selection.x + 6, bottom: selection.y + 12 }, window.innerWidth, window.innerHeight, obstacles);
-      if (point.x !== selection.x || point.y !== selection.y) setSelection(current => current && ({ ...current, ...point }));
+  useLayoutEffect(() => {
+    if (!selection || !open || !popup.current) return;
+    const place = () => {
+      const next = translationPopupPosition(selection, window.innerWidth, window.innerHeight, popup.current!.getBoundingClientRect().height);
+      setPosition(current => current.top === next.top && current.left === next.left && current.maxHeight === next.maxHeight ? current : next);
     };
-    const frame = requestAnimationFrame(adjust);
-    const observer = new MutationObserver(adjust);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(popup.current);
+    return () => observer.disconnect();
   }, [selection, open]);
 
   useEffect(() => {
@@ -219,11 +216,6 @@ export default function TranslationOverlay() {
     }
   };
   if (!selection || !settings?.translation.enabled) return null;
-  const top = Math.min(
-    selection.y + 24,
-    Math.max(12, window.innerHeight - Math.min(470, window.innerHeight * 0.7)),
-  );
-  const left = Math.max(12, Math.min(selection.x, window.innerWidth - 382));
   return createPortal(
     <>
       <button
@@ -251,7 +243,7 @@ export default function TranslationOverlay() {
           className="pa-translation"
           role="dialog"
           aria-label="划词翻译"
-          style={{ left, top }}
+          style={position}
           onMouseEnter={keep}
           onMouseLeave={leave}
         >

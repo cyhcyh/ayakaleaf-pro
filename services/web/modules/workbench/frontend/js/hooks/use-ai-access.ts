@@ -3,7 +3,7 @@ import { getJSON } from '@/infrastructure/fetch-json'
 import useInstanceFeatures from '@modules/instance-features/frontend/js/use-instance-features'
 
 // Share the permission request across chat and compile-log components.
-type AiAccess = { chat: boolean; errorAssistant: boolean }
+type AiAccess = { chat: boolean; errorAssistant: boolean; enabled: boolean }
 let access: Promise<AiAccess> | undefined
 if (typeof window !== 'undefined') {
   window.addEventListener('personal-ai:settings', () => {
@@ -21,13 +21,14 @@ export default function useAiAccess(feature: keyof AiAccess = 'chat') {
     let active = true
     const refresh = () => {
     access ??= getJSON('/workbench/access')
-      .then((data: { allowed: boolean; errorAssistant: boolean }) => ({
+      .then((data: { allowed: boolean; errorAssistant: boolean; enabled: boolean }) => ({
         chat: data.allowed === true,
         errorAssistant: data.errorAssistant === true,
+        enabled: data.enabled === true,
       }))
       .catch(() => {
         access = undefined
-        return { chat: false, errorAssistant: false }
+        return { chat: false, errorAssistant: false, enabled: false }
       })
     access.then(value => {
       if (active) setAllowed(value[feature])
