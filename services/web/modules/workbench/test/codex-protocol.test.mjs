@@ -9,7 +9,7 @@ function events(output, text = '') {
   const frames = [
     { type: 'response.created', response: { ...response, status: 'in_progress', output: [] } },
     { type: 'response.output_item.added', output_index: 0, item: { ...output, ...(output.type === 'function_call' ? { arguments: '' } : { content: [] }) } },
-    ...(text ? [{ type: 'response.output_text.delta', item_id: output.id, output_index: 0, content_index: 0, delta: text }] : [
+    ...(text ? (Array.isArray(text) ? text : [text]).map(delta => ({ type: 'response.output_text.delta', item_id: output.id, output_index: 0, content_index: 0, delta })) : [
       { type: 'response.function_call_arguments.delta', item_id: output.id, output_index: 0, delta: output.arguments },
       { type: 'response.function_call_arguments.done', item_id: output.id, output_index: 0, arguments: output.arguments },
     ]),
@@ -48,3 +48,13 @@ test('Codex streams text and replays tool results without stored response refere
   assert.equal(executed, true)
   assert.equal(calls.length, 2)
 })
+
+test('Codex translation delivers successive text chunks including complete formula text', async () => {
+  const pieces = ['这是', '译文 ', '$L=', 'D-A$'];
+  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only' }, async () =>
+    events({ type: 'message', id: 'msg_translation', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: pieces.join(''), annotations: [] }] }, pieces))('gpt-5.4');
+  const response = streamText({ model, system: 'Translate the text', prompt: 'Graph Laplacian' });
+  const received = [];
+  for await (const text of response.textStream) received.push(text);
+  assert.deepEqual(received, pieces);
+});

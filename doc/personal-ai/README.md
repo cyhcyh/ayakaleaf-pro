@@ -15,6 +15,11 @@ project history and collaboration continue to use the upstream implementations.
   original/translation popover. Only the original inside the popover is clamped
   to two lines; expanding does not send another translation request.
 - Google keyless, MyMemory, optional Google Cloud and configured LLM translation.
+  LLM/Codex translations stream through an authenticated SSE endpoint. The JSON
+  endpoint remains available. Complete formula tokens are restored before display,
+  cancellation reaches the provider, and partial results survive upstream errors.
+  The popover header stays anchored as results resize. Valid selections released
+  outside the source editor or PDF preview still produce a translation dot.
 - The assistant can discover uploaded PDF/text references, read project files,
   search public references and extract webpage or linked-PDF text.
 - A review starts with a consent tool inside the conversation. Its explicit
@@ -32,8 +37,12 @@ project history and collaboration continue to use the upstream implementations.
   search, switching, rename and batch deletion. Restoring never replays interrupted
   tools or restores review authorization.
 - Source suggestions appear in an independent AI 修改 pane at the native review gutter.
-  It uses the native comment width and positioning helper, with source anchors and
+  It matches the native comment width and anchored layout, with source anchors and
   expandable diffs. Separate rail entries switch between AI edits and native review.
+  Hover uses the native source highlight. Locating a visible suggestion preserves
+  its status filter, and live line numbers reflect changes in the current document.
+  Card layout and scrolling remain local to the extension, without changing the
+  upstream review panel's selection or positioning logic.
   Accept/reject each suggestion; accepted changes support persisted undo/reapply.
   Native minimal editor transactions preserve collaboration and project history.
   Conflicting source changes stop the operation for manual rechecking. The edit

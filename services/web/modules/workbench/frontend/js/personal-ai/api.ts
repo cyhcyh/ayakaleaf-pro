@@ -29,12 +29,12 @@ export type Profile = {
   };
 };
 
-export async function api<T = any>(
+export function apiResponse(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
-): Promise<T> {
-  const response = await fetch(`/personal-ai${path}`, {
+): Promise<Response> {
+  return fetch(`/personal-ai${path}`, {
     method: body === undefined ? "GET" : "POST",
     credentials: "same-origin",
     cache: "no-store",
@@ -45,6 +45,10 @@ export async function api<T = any>(
     },
     ...(body !== undefined && { body: JSON.stringify(body) }),
   });
+}
+
+export async function api<T = any>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await apiResponse(path, body, signal);
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error || `请求失败（HTTP ${response.status}）`);

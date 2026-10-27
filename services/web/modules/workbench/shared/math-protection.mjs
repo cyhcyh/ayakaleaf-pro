@@ -9,7 +9,20 @@ export function protectMath(text, nonce) {
     formulas.push({ token, formula });
     return token;
   });
-  return { text: protectedText, restore(translated) {
+  return { text: protectedText, restorePartial(translated) {
+    let result = translated;
+    for (const { token, formula } of formulas) result = result.replaceAll(token, () => formula);
+    if (!formulas.length) return result;
+    // A network chunk may end anywhere inside a formula token. Hold that tail
+    // until the complete token can be replaced with its original formula.
+    const marker = 'ZXQMATHTOKEN';
+    const pending = result.indexOf(marker);
+    if (pending !== -1) return result.slice(0, pending);
+    for (let length = Math.min(marker.length - 1, result.length); length > 0; length--) {
+      if (result.endsWith(marker.slice(0, length))) return result.slice(0, -length);
+    }
+    return result;
+  }, restore(translated) {
     let result = translated;
     for (const { token, formula } of formulas) {
       if (!result.includes(token)) throw new Error('翻译服务改动了数学公式标记，请切换翻译服务重试');

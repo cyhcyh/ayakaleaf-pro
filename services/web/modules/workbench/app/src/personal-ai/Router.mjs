@@ -6,6 +6,7 @@ import AuthorizationManager from "../../../../../app/src/Features/Authorization/
 import { publicProfile, saveProfile, saveConnection, getConnection } from "./ProfileStore.mjs";
 import * as codex from "./Codex.mjs";
 import { translate } from "./Translation.mjs";
+import { sendTranslationStream } from './TranslationStream.mjs';
 import { upload } from "./References.mjs";
 import { approveReview, checkReview, stopReview } from "./Review.mjs";
 import { withUserAi, withConnection } from "./Runtime.mjs";
@@ -17,6 +18,12 @@ import { getCapabilities } from "./Catalog.mjs";
 
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
 const projectSchema = z.string().regex(/^[a-f0-9]{24}$/i);
+const translationSchema = z.object({
+  text: z.string().min(1).max(10000),
+  provider: z.enum(['google-free', 'mymemory', 'google', 'llm']).optional(),
+  target: z.string().optional(),
+  source: z.string().optional(),
+});
 const user = (req) => String(SessionManager.getLoggedInUserId(req.session));
 
 async function projectAccess(req, projectId, write = false) {
@@ -83,20 +90,16 @@ export function applyPersonalAiRouter(router) {
     });
   }
   post("/translate", async (req, res) => {
-    const input = z
-      .object({
-        text: z.string().min(1).max(10000),
-        provider: z
-          .enum(["google-free", "mymemory", "google", "llm"])
-          .optional(),
-        target: z.string().optional(),
-        source: z.string().optional(),
-      })
-      .parse(req.body);
+    const input = translationSchema.parse(req.body);
     const controller = new AbortController();
     req.on("aborted", () => controller.abort());
     res.once("close", () => controller.abort());
     return await translate(user(req), input, controller.signal);
+  });
+  router.post('/personal-ai/translate/stream', login, async (req, res) => {
+    const input = translationSchema.safeParse(req.body);
+    if (!input.success) return res.status(400).json({ error: '提交的翻译格式不正确' });
+    await sendTranslationStream(req, res, (signal, onText) => translate(user(req), input.data, signal, onText));
   });
   post("/references", async (req) => {
     await projectAccess(req, req.body.projectId);

@@ -5,10 +5,10 @@ import { useEditorViewContext } from "@/features/ide-react/context/editor-view-c
 import { api, type Profile } from "./api";
 import "./style.scss";
 import MathText from './math-text';
+import { translateSelection, type Translation } from './translation-client';
 import { translationDotPosition, translationPopupPosition } from '../../../shared/selection-position.mjs';
 
 type Selection = { text: string; x: number; y: number };
-type Translation = { translatedText: string; source: string };
 const services = {
   "google-free": "Google 翻译",
   mymemory: "MyMemory · 免费",
@@ -28,6 +28,7 @@ export default function TranslationOverlay() {
   const [result, setResult] = useState<Translation | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [copied, setCopied] = useState("");
   const [position, setPosition] = useState({ left: 12, top: 12, maxHeight: 620 });
   const popup = useRef<HTMLDivElement>(null);
@@ -36,6 +37,10 @@ export default function TranslationOverlay() {
   const close = useRef<ReturnType<typeof setTimeout>>();
   const request = useRef<AbortController | null>(null);
   const cache = useRef(new Map<string, Translation>());
+  const selectionFrame = useRef(0);
+  const selectionOrigin = useRef<Element | null>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,6 +71,7 @@ export default function TranslationOverlay() {
     clearTimeout(hover.current);
     clearTimeout(close.current);
     request.current?.abort();
+    cancelAnimationFrame(selectionFrame.current);
     setOpen(false);
     setPinned(false);
     setSelection(null);
@@ -77,13 +83,7 @@ export default function TranslationOverlay() {
       hide();
       return;
     }
-    const select = (event: Event) => {
-      if (!(event.target instanceof Element) ||
-          !event.target.closest(".cm-content, .textLayer")) return;
-      if (
-        popup.current?.contains(event.target as Node) ||
-        dot.current?.contains(event.target as Node)
-      ) return;
+    const capture = (origin: Element) => {
       const selected = window.getSelection();
       if (!selected?.rangeCount || selected.isCollapsed) return;
       const parent =
@@ -93,6 +93,10 @@ export default function TranslationOverlay() {
       if (!parent || popup.current?.contains(parent)) return;
       const area = parent.closest(".cm-content, .textLayer");
       if (!area) return;
+      const focus = selected.focusNode instanceof Element ? selected.focusNode : selected.focusNode?.parentElement;
+      const endArea = focus?.closest('.cm-content, .textLayer');
+      if (area !== origin && !(area.matches('.textLayer') && origin.matches('.textLayer') && area.closest('.pdfViewer') === origin.closest('.pdfViewer'))) return;
+      if (endArea !== area && !(endArea?.matches('.textLayer') && area.matches('.textLayer') && endArea.closest('.pdfViewer') === area.closest('.pdfViewer'))) return;
       let text = selected.toString().trim();
       if (area.matches(".cm-content") && view) {
         const range = view.state.selection.main;
@@ -121,12 +125,28 @@ export default function TranslationOverlay() {
       setError("");
       setCopied("");
     };
+    const select = (event: Event) => {
+      if (popup.current?.contains(event.target as Node) || dot.current?.contains(event.target as Node)) return;
+      let origin: Element | null;
+      if (event instanceof KeyboardEvent) {
+        if (!['Shift', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key) && !(event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey))) return;
+        origin = event.target instanceof Element ? event.target.closest('.cm-content, .textLayer') : null;
+      } else {
+        origin = selectionOrigin.current;
+        selectionOrigin.current = null;
+      }
+      if (!origin) return;
+      cancelAnimationFrame(selectionFrame.current);
+      // CodeMirror finishes its mouse selection on mouseup, after pointerup.
+      selectionFrame.current = requestAnimationFrame(() => capture(origin));
+    };
     const outside = (event: PointerEvent) => {
       if (
         popup.current?.contains(event.target as Node) ||
         dot.current?.contains(event.target as Node)
       )
         return;
+      selectionOrigin.current = event.target instanceof Element ? event.target.closest('.cm-content, .textLayer') : null;
       hide();
     };
     const escape = (event: KeyboardEvent) => {
@@ -153,14 +173,10 @@ export default function TranslationOverlay() {
 
   useLayoutEffect(() => {
     if (!selection || !open || !popup.current) return;
-    const place = () => {
-      const next = translationPopupPosition(selection, window.innerWidth, window.innerHeight, popup.current!.getBoundingClientRect().height);
-      setPosition(current => current.top === next.top && current.left === next.left && current.maxHeight === next.maxHeight ? current : next);
-    };
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(popup.current);
-    return () => observer.disconnect();
+    const next = translationPopupPosition(selection, window.innerWidth, window.innerHeight, popup.current.getBoundingClientRect().height);
+    // Anchor the header once. Growing or shrinking results use the space below
+    // it, rather than moving the service menu out from under the pointer.
+    setPosition({ ...next, maxHeight: Math.min(next.maxHeight, window.innerHeight - next.top - 12) });
   }, [selection, open]);
 
   useEffect(() => {
@@ -173,11 +189,14 @@ export default function TranslationOverlay() {
     setError("");
     setResult(saved || null);
     setBusy(!saved);
+    follow.current = true;
     if (!saved)
-      api<Translation>(
-        "/translate",
+      translateSelection(
         { text: selection.text, provider, target },
         controller.signal,
+        text => {
+          if (!controller.signal.aborted) setResult(current => controller.signal.aborted ? current : ({ source: 'auto', translatedText: (current?.translatedText || '') + text }));
+        },
       )
         .then((value) => {
           if (controller.signal.aborted) return;
@@ -192,13 +211,18 @@ export default function TranslationOverlay() {
           if (!controller.signal.aborted) setBusy(false);
         });
     return () => controller.abort();
-  }, [open, selection, provider, target]);
+  }, [open, selection, provider, target, retry]);
+
+  useLayoutEffect(() => {
+    if (follow.current && body.current) body.current.scrollTop = body.current.scrollHeight;
+  }, [result]);
 
   useEffect(
     () => () => {
       clearTimeout(hover.current);
       clearTimeout(close.current);
       request.current?.abort();
+      cancelAnimationFrame(selectionFrame.current);
     },
     [],
   );
@@ -246,6 +270,8 @@ export default function TranslationOverlay() {
           style={position}
           onMouseEnter={keep}
           onMouseLeave={leave}
+          onPointerDownCapture={keep}
+          onFocusCapture={keep}
         >
           <header>
             <MaterialIcon type="translate" />
@@ -253,6 +279,7 @@ export default function TranslationOverlay() {
               aria-label="翻译服务"
               value={provider}
               onChange={(event) => {
+                keep();
                 setCopied("");
                 setProvider(event.target.value);
               }}
@@ -279,7 +306,10 @@ export default function TranslationOverlay() {
               <MaterialIcon type="close" />
             </button>
           </header>
-          <div className="pa-translation-body">
+          <div ref={body} className="pa-translation-body" onScroll={event => {
+            const element = event.currentTarget;
+            follow.current = element.scrollHeight - element.clientHeight - element.scrollTop < 24;
+          }}>
             <section className="pa-translation-block">
               <div className="pa-translation-label">
                 原文 ·{" "}
@@ -314,7 +344,7 @@ export default function TranslationOverlay() {
                   className="pa-translation-language"
                   aria-label="目标语言"
                   value={target}
-                  onChange={(event) => setTarget(event.target.value)}
+                  onChange={(event) => { keep(); setTarget(event.target.value); }}
                 >
                   <option value="zh-CN">简体中文</option>
                   <option value="en">English</option>
@@ -325,9 +355,11 @@ export default function TranslationOverlay() {
                 </select>
               </div>
               <div className="pa-translated" role="status">
-                {busy ? "正在翻译…" : error || (result && <MathText text={result.translatedText} />)}
+                {result?.translatedText ? <MathText text={result.translatedText} /> : !error && '正在翻译…'}
               </div>
-              {result && !busy && !error && (
+              {busy && result?.translatedText && <div className="pa-translation-progress">正在翻译…</div>}
+              {error && <div className="pa-translation-error" role="alert">{error}<button className="pa-text-action" onClick={() => { keep(); setRetry(value => value + 1); }}>重试</button></div>}
+              {result && !busy && (
                 <div className="pa-translation-controls">
                   <button
                     aria-label="复制译文"

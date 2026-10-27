@@ -129,6 +129,7 @@ export const RailLayout = () => {
         hide: !features.trackChangesVisible,
         disabled: view !== 'editor',
       },
+      ...moduleRailEntries.filter(entry => entry.key === 'ai-modifications'),
       {
         key: 'chat',
         icon: 'forum',
@@ -139,7 +140,7 @@ export const RailLayout = () => {
           !getMeta('ol-capabilities')?.includes('chat') ||
           isRestrictedTokenMember,
       },
-      ...moduleRailEntries,
+      ...moduleRailEntries.filter(entry => entry.key !== 'ai-modifications'),
     ],
     [
       t,

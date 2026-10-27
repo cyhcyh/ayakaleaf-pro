@@ -79,7 +79,7 @@ export function useModelInfo(profile: Profile, value: Binding) {
   return info
 }
 
-export function ThinkingControls({ profile, value, onChange, flat = false }: { profile: Profile; value: Binding; onChange: (value: Partial<Binding>) => void; flat?: boolean }) {
+export function ThinkingControls({ profile, value, onChange, flat = false, showNote = true }: { profile: Profile; value: Binding; onChange: (value: Partial<Binding>) => void; flat?: boolean; showNote?: boolean }) {
   const modeId = useId(), effortId = useId()
   const info = useModelInfo(profile, value)
   const inherited = !value.connectionId
@@ -94,6 +94,6 @@ export function ThinkingControls({ profile, value, onChange, flat = false }: { p
   return <>
     {flat ? <><Setting controlId={modeId} label="思考模式" description={undefined}>{modeControl}</Setting><Setting controlId={effortId} label="推理强度" description={undefined}>{effortControl}</Setting></>
       : <><div className="pa-field"><label htmlFor={modeId}>思考模式</label>{modeControl}</div><div className="pa-field"><label htmlFor={effortId}>推理强度</label>{effortControl}</div></>}
-    {!flat && value.model && info?.source === 'unknown' && <p className="pa-muted pa-control-note">未获取到思考参数，使用模型默认值。</p>}
+    {showNote && !flat && value.model && info?.source === 'unknown' && <p className="pa-muted pa-control-note">未获取到思考参数，使用模型默认值。</p>}
   </>
 }

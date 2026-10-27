@@ -49,7 +49,7 @@ function output(messages) {
   }
   if (messages.some(message => message.role === 'system' && String(message.content).includes('Translate'))) return { text: userText?.includes('[TEST:LONG_TRANSLATION]')
     ? '这是用于检查长译文滚动的测试内容。应先明确图的顶点集合与边集，再说明识别操作如何保留已有边。\n\n'.repeat(25) + (userText.match(/ZXQMATHTOKEN.*?QXZ/g) || []).join(' ')
-    : '超图的谱性质与其度分布和连通性有关。这是一段用于验证界面的测试译文。' }
+    : '超图的谱性质与其度分布和连通性有关。这是一段用于验证界面的测试译文。' + (userText?.match(/ZXQMATHTOKEN.*?QXZ/g) || []).join(' ') }
   return { text: 'OK' }
 }
 
@@ -65,8 +65,11 @@ http.createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
     const body = JSON.parse(Buffer.concat(chunks).toString())
-    calls.push({ model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name),
-      historyMarkers: JSON.stringify(body.messages).match(/\[HISTORY:\d+\]/g) || [] })
+    const prompt = JSON.stringify(body.messages || [])
+    const record = { model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name),
+      scenario: prompt.match(/\[TEST:(STREAM_TRANSLATION|STREAM_ERROR|LONG_TRANSLATION)\]/)?.[1],
+      historyMarkers: JSON.stringify(body.messages).match(/\[HISTORY:\d+\]/g) || [] }
+    calls.push(record)
     const result = output(body.messages || [])
     const id = `chatcmpl-${crypto.randomUUID()}`
     if (!body.stream) {
@@ -78,9 +81,21 @@ http.createServer(async (req, res) => {
     }
     res.setHeader('Content-Type', 'text/event-stream')
     const chunk = (delta, finish = null) => res.write(`data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created: Math.floor(Date.now()/1000), model: body.model, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`)
-    chunk({ role: 'assistant', content: result.text || '' })
+    if (record.scenario) {
+      chunk({ role: 'assistant', content: '' })
+      const text = [...(result.text || '')]
+      for (let at = 0; at < text.length; at += 16) {
+        await new Promise(resolve => setTimeout(resolve, 80))
+        if (res.destroyed) { record.cancelled = true; return }
+        chunk({ content: text.slice(at, at + 16).join('') })
+        if (record.scenario === 'STREAM_ERROR' && at >= 16) {
+          res.write(`data: ${JSON.stringify({ error: { message: '模拟翻译服务暂时不可用', type: 'server_error', code: 'fixture' } })}\n\n`)
+          res.end(); return
+        }
+      }
+    } else chunk({ role: 'assistant', content: result.text || '' })
     if (result.tool) chunk({ tool_calls: [{ index: 0, id: `call_${crypto.randomUUID().replaceAll('-', '')}`, type: 'function', function: { name: result.tool, arguments: JSON.stringify(result.input) } }] })
     chunk({}, result.tool ? 'tool_calls' : 'stop')
-    res.write('data: [DONE]\n\n'); res.end()
+    res.write('data: [DONE]\n\n'); res.end(); record.completed = true
   } catch { res.writeHead(500).end('Invalid fixture request') }
 }).listen(39001, '0.0.0.0', () => process.stdout.write('Local AI fixture ready on 39001\n'))

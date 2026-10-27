@@ -54,8 +54,7 @@ export default function SessionModelPicker({ value, onChange, disabled, onManage
         </select></div>
         <div className="pa-field"><label htmlFor="pa-session-model">模型</label><ModelPicker controlId="pa-session-model" label="本会话模型" value={draft.model} models={connection?.catalog?.models || []} disabled={!draft.connectionId}
           onChange={model => setDraft({ ...draft, model, thinking: 'auto', reasoningEffort: 'auto' })} /></div>
-        <ThinkingControls profile={profile} value={draft} onChange={change => setDraft({ ...draft, ...change })} />
-        <p className="pa-muted">仅用于当前会话。</p>
+        <ThinkingControls profile={profile} value={draft} showNote={false} onChange={change => setDraft({ ...draft, ...change })} />
         <div className="pa-session-model-actions"><button className="pa-text-action" onClick={() => { onChange(null); setOpen(false) }}>沿用默认</button><button className="btn btn-primary btn-sm" disabled={!draft.connectionId || !draft.model.trim()} onClick={() => { onChange(draft); setOpen(false) }}>完成</button></div>
       </> : <p className={error ? 'pa-inline-error' : 'pa-muted'}>{error || '正在读取模型连接…'}</p>}
       <footer><button className="pa-text-action" onClick={() => { setOpen(false); onManage() }}>管理模型连接</button></footer>
