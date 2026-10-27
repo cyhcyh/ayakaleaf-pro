@@ -1193,7 +1193,7 @@ function _finaliseRequest(projectId, options, project, docs, files) {
         editorId: options.editorId,
         compiler: project.compiler,
         timeout: options.timeout,
-        imageName: project.imageName,
+        imageName: project.imageName || Settings.currentImageName,
         draft: Boolean(options.draft),
         // enable for premium compiles only
         png2pdf: Boolean(options.png2pdf) && hasPremiumCompiles,

@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
 import { api, type Binding } from './api'
@@ -38,7 +39,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
         let batch: typeof changed = [], bytes = 0
         for (const item of changed) {
           const size = new TextEncoder().encode(item.snapshot).byteLength
-          if (size > 9 * 1024 * 1024) throw new Error('单条消息内容过大，请减少本条图片或工具输出后重试')
+          if (size > 9 * 1024 * 1024) throw new Error(ui("单条消息内容过大，请减少本条图片或工具输出后重试"))
           if (batch.length && (bytes + size > 9 * 1024 * 1024 || batch.length >= 100)) { batches.push(batch); batch = []; bytes = 0 }
           batch.push(item); bytes += size
         }

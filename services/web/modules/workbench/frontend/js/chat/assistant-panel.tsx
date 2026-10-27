@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * The assistant's panel: a header with new chat, dock side and close, and
  * the chat below it. A new chat is a fresh ChatView under a new id.
@@ -106,7 +107,7 @@ export default function AssistantPanel() {
         actions={
           <>
             <HistoryPicker projectId={projectId} currentId={session?.id} beforeChange={beforeChange} onSelect={selectSession} onNew={newSession} />
-            <HeaderButton id="assistant-model-settings" label="AI 与翻译设置" icon="settings" onClick={() => { setSettingsShown(true); openAiSettings() }} />
+            <HeaderButton id="assistant-model-settings" label={ui("AI 与翻译设置")} icon="settings" onClick={() => { setSettingsShown(true); openAiSettings() }} />
             <HeaderButton
               id="assistant-new-chat"
               label={t('start_new_chat')}
@@ -125,8 +126,8 @@ export default function AssistantPanel() {
         onClose={close}
       />
       <div className="flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
-        {error && <div className="pa-save-error" role="alert">{error}<button className="pa-text-action" onClick={() => load().catch(error => setError(error.message))}>重试加载</button></div>}
-        {session ? <ChatView chatId={session.id} initial={session} registerFlush={registerFlush} view={view} key={`${session.id}:${epoch}`} /> : !error && <div className="pa-muted p-3" role="status">正在加载会话…</div>}
+        {error && <div className="pa-save-error" role="alert">{error}<button className="pa-text-action" onClick={() => load().catch(error => setError(error.message))}>{ui("重试加载")}</button></div>}
+        {session ? <ChatView chatId={session.id} initial={session} registerFlush={registerFlush} view={view} key={`${session.id}:${epoch}`} /> : !error && <div className="pa-muted p-3" role="status">{ui("正在加载会话…")}</div>}
       </div>
     </div>
   )

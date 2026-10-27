@@ -1,6 +1,7 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
+import ReferenceIntegrationCard from './reference-integration-card'
 import { useTranslation } from 'react-i18next'
 import MendeleyLogo from '@/shared/svgs/mendeley-logo'
-import IntegrationCard from '@/features/integrations-panel/integration-card'
 import useInstanceFeatures from '@modules/instance-features/frontend/js/use-instance-features'
 
 /**
@@ -14,17 +15,14 @@ const MendeleyIntegrationCard = () => {
   const { t } = useTranslation()
   const { mendeley } = useInstanceFeatures()
 
-  if (!mendeley) {
-    return null
-  }
+  if (!mendeley) { return <UnavailableCard title="Mendeley" description={t('cite_directly_or_import_references')} icon={<MendeleyLogo size={32} />} /> }
 
   return (
-    <IntegrationCard
+    <ReferenceIntegrationCard
       title={t('mendeley')}
       description={t('cite_directly_or_import_references')}
       icon={<MendeleyLogo size={32} />}
-      showPaywallBadge={false}
-      onClick={() => window.location.assign('/user/settings#references')}
+      provider="mendeley"
     />
   )
 }

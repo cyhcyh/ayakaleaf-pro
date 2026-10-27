@@ -1,0 +1,11 @@
+extends ../../../../app/views/layout-react
+block entrypointVar
+	- entrypoint = 'modules/tpr-webmodule/pages/oauth-result'
+block vars
+	- const suppressNavbar = true
+	- const suppressFooter = true
+block append meta
+	meta(name='ayaka-oauth-provider' content=provider)
+	meta(name='ayaka-oauth-ok' content=ok ? 'true' : 'false')
+block content
+	p.text-center.mt-5= translate('ayaka_authorization_complete')

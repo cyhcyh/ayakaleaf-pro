@@ -7,17 +7,9 @@ async function readImagesInUse() {
   }
   const images = await db.projects.distinct('imageName')
 
-  if (!images || images.length === 0 || images.includes(null)) {
-    console.error(`'project.imageName' is not set for some projects`)
-    console.error(
-      `Set SKIP_TEX_LIVE_CHECK=true in config/variables.env, restart the instance and run 'bin/run-script scripts/backfill_project_image_name.mjs' to initialise TexLive image in existing projects.`
-    )
-    console.error(
-      `After running the script, remove SKIP_TEX_LIVE_CHECK from config/variables.env and restart the instance.`
-    )
-    process.exit(1)
-  }
-  return images
+  // Legacy Basic installations have no per-project image. Their compile
+  // requests use the configured default without rewriting project records.
+  return (images || []).filter(image => image != null && image !== '')
 }
 
 function checkIsServerPro() {

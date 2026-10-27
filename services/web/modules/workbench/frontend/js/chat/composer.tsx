@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * Where the user writes: a growing text box, images by picker, paste or drop,
  * a note of the selected lines that go along, and send or stop.
@@ -54,13 +55,13 @@ const Composer = forwardRef<
     if (disabled) return
     onProblem(false)
     if (files.some(file => !file.type.startsWith('image/') && !['application/pdf', 'text/plain', 'text/markdown'].includes(file.type) && !/\.(txt|md)$/i.test(file.name))) {
-      onProblem('支持图片、PDF、TXT 和 Markdown 参考资料。')
+      onProblem(ui("支持图片、PDF、TXT 和 Markdown 参考资料。"))
     } else if (files.some(file => file.size > (file.type.startsWith('image/') ? MAX_IMAGE_BYTES : 8 * 1024 * 1024))) {
-      onProblem('图片需小于 2 MB，参考资料需小于 8 MB。')
+      onProblem(ui("图片需小于 2 MB，参考资料需小于 8 MB。"))
     } else if (images.length + files.length > 10) {
-      onProblem('每条消息最多附加 10 个文件。')
+      onProblem(ui("每条消息最多附加 10 个文件。"))
     } else if ([...images, ...files].filter(file => file.type.startsWith('image/')).reduce((size, file) => size + file.size, 0) > 6 * 1024 * 1024) {
-      onProblem('单条消息中的图片总大小需小于 6 MB，较大参考资料请用 PDF 上传。')
+      onProblem(ui("单条消息中的图片总大小需小于 6 MB，较大参考资料请用 PDF 上传。"))
     } else {
       setImages(current => [...current, ...files])
     }
@@ -178,7 +179,7 @@ const Composer = forwardRef<
           multiple
           hidden
           disabled={disabled}
-          aria-label="附加图片或参考资料"
+          aria-label={ui("附加图片或参考资料")}
           onChange={event => {
             attach(Array.from(event.target.files ?? []))
             event.target.value = ''
@@ -208,7 +209,7 @@ const Composer = forwardRef<
             onClick={send}
           />
         )}
-        {uploading && <span role="status" className="small ms-2">正在上传参考资料…</span>}
+        {uploading && <span role="status" className="small ms-2">{ui("正在上传参考资料…")}</span>}
       </div>
     </div>
   )

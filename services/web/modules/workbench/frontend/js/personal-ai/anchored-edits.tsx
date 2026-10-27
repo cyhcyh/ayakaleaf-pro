@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import RailPanelHeader from '@/features/ide-react/components/rail/rail-panel-header'
@@ -144,22 +145,22 @@ function OpenEdits() {
     onResize={() => { revealId.current = item.id; reposition() }} position={at}
     style={at === undefined ? undefined : { position: 'absolute', visibility: 'hidden' }} />
   }
-  const header = <div className="review-panel-header"><RailPanelHeader title="AI 修改" actions={<span className="pa-edit-count">{pending} 项待确认</span>} /></div>
+  const header = <div className="review-panel-header"><RailPanelHeader title={ui("AI 修改")} actions={<span className="pa-edit-count">{pending}{ui(" 项待确认")}</span>} /></div>
   return <>
     {tabsEnabled && headerSlot && createPortal(header, headerSlot)}
-    {createPortal(<div className={`pa-edits-anchored ${overview ? 'pa-edits-overview' : ''}`} style={style} role="region" aria-label="AI 修改面板">
+    {createPortal(<div className={`pa-edits-anchored ${overview ? 'pa-edits-overview' : ''}`} style={style} role="region" aria-label={ui("AI 修改面板")}>
       <div ref={inner} className="pa-edits-anchor-inner">
         {(!tabsEnabled || !headerSlot) && header}
-        <div className="pa-edits-anchor-toolbar"><div className="pa-edits-filters" role="group" aria-label="筛选 AI 修改">
-          {([['all', '全部'], ['pending', '待确认'], ['done', '已处理']] as const).map(([value, name]) => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{name}</button>)}
+        <div className="pa-edits-anchor-toolbar"><div className="pa-edits-filters" role="group" aria-label={ui("筛选 AI 修改")}>
+          {([['all', ui("全部")], ['pending', ui("待确认")], ['done', ui("已处理")]] as const).map(([value, name]) => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{name}</button>)}
         </div></div>
-        {state.error && <div className="pa-anchored-error" role="alert">{state.error}<button className="pa-text-action" onClick={() => refreshEdits(projectId).catch(() => {})}>刷新记录</button></div>}
-        {overview ? <div className="pa-edits-overview-items">{items.map(item => card(item))}{!items.length && <p className="pa-muted p-3">暂无修改建议。</p>}</div>
+        {state.error && <div className="pa-anchored-error" role="alert">{state.error}<button className="pa-text-action" onClick={() => refreshEdits(projectId).catch(() => {})}>{ui("刷新记录")}</button></div>}
+        {overview ? <div className="pa-edits-overview-items">{items.map(item => card(item))}{!items.length && <p className="pa-muted p-3">{ui("暂无修改建议。")}</p>}</div>
           : <div ref={entries} className="pa-edits-anchor-entries">
             {located.map(({ item, at }) => card(item, at))}
-            {!located.length && <div className="pa-edits-empty"><p>{state.loading ? '正在读取修改…' : '当前文件没有可定位的修改'}</p><button className="pa-text-action" onClick={() => setOverview(true)}>查看全部文件</button></div>}
+            {!located.length && <div className="pa-edits-empty"><p>{state.loading ? ui("正在读取修改…") : ui("当前文件没有可定位的修改")}</p><button className="pa-text-action" onClick={() => setOverview(true)}>{ui("查看全部文件")}</button></div>}
           </div>}
-        <div className="pa-edits-anchor-footer" role="group" aria-label="修改范围"><button aria-pressed={!overview} onClick={() => setOverview(false)}>当前文件</button><button aria-pressed={overview} onClick={() => setOverview(true)}>全部文件</button></div>
+        <div className="pa-edits-anchor-footer" role="group" aria-label={ui("修改范围")}><button aria-pressed={!overview} onClick={() => setOverview(false)}>{ui("当前文件")}</button><button aria-pressed={overview} onClick={() => setOverview(true)}>{ui("全部文件")}</button></div>
       </div>
     </div>, view.scrollDOM)}
   </>

@@ -5,6 +5,8 @@
 
 <h4 align="center">集成全部 Pro 功能的 Overleaf Community Edition 增强版 <br/>（开源、免费使用、可自托管）。</h4>
 
+此分支的部署说明：[简体中文](DEPLOYMENT-ZH.md) · [English](DEPLOYMENT-EN.md)
+
 <p align="center">
   <a href="https://ayakaleaf-pro.ayaka.space">文档</a> •
   <a href="https://github.com/ayaka-notes/ayakaleaf-pro-playground">Playground</a> •

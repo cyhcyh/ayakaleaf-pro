@@ -1,3 +1,4 @@
+import { oauthResult } from './OAuthResult.mjs'
 import logger from '@overleaf/logger'
 import SessionManager from '../../../../app/src/Features/Authentication/SessionManager.mjs'
 import ZoteroApiClient from './ZoteroApiClient.mjs'
@@ -39,6 +40,7 @@ async function getGroups(req, res) {
  * redirect the user to Zotero's authorization page.
  */
 async function oauth(req, res) {
+  req.session.zoteroOAuthPopup = req.query.popup === '1'
   const userId = SessionManager.getLoggedInUserId(req.session)
   try {
     const { token, secret } = await ZoteroApiClient.getOAuthRequestToken()
@@ -46,7 +48,7 @@ async function oauth(req, res) {
     res.redirect(ZoteroApiClient.getOAuthAuthorizeUrl(token).toString())
   } catch (err) {
     logger.err({ err, userId }, 'error starting Zotero OAuth flow')
-    res.redirect('/user/settings?oauth-error=zotero#references')
+    oauthResult(req, res, 'zotero', false)
   }
 }
 
@@ -62,7 +64,7 @@ async function oauthCallback(req, res) {
   delete req.session.zoteroOAuth
 
   if (!stored || !oauthToken || !verifier || stored.token !== oauthToken) {
-    return res.redirect('/user/settings?oauth-error=zotero#references')
+    return oauthResult(req, res, 'zotero', false)
   }
 
   try {
@@ -73,10 +75,10 @@ async function oauthCallback(req, res) {
         verifier
       )
     await ZoteroApiClient.storeCredentials(userId, apiKey, zoteroUserId)
-    res.redirect('/user/settings?oauth-complete=zotero#references')
+    oauthResult(req, res, 'zotero', true)
   } catch (err) {
     logger.err({ err, userId }, 'error completing Zotero OAuth flow')
-    res.redirect('/user/settings?oauth-error=zotero#references')
+    oauthResult(req, res, 'zotero', false)
   }
 }
 

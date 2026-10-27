@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * What the browser-side tools can do with the project: list, read and create
  * documents, compile and read the log, switch the engine, and look at the PDF.
@@ -212,10 +213,10 @@ export function useProjectActions(): ProjectActions {
     await openDoc(file as any)
     signal.throwIfAborted()
     const document = openDocs.peekDocument(file._id)
-    if (!document || typeof document.getSnapshot() !== 'string') throw new ToolRefusal('文档尚未加载，请稍后重新定位评论。')
+    if (!document || typeof document.getSnapshot() !== 'string') throw new ToolRefusal(ui("文档尚未加载，请稍后重新定位评论。"))
     findUniqueQuote(document.getSnapshot()!, quote)
     const threadId = RangesTracker.generateId()
-    await postJSON(`/project/${projectId}/thread/${threadId}/messages`, { body: { content: `[AI 审阅]\n${content}` }, signal })
+    await postJSON(`/project/${projectId}/thread/${threadId}/messages`, { body: { content: ui("[AI 审阅]\n{0}", [content]) }, signal })
     // Resolve the quote again after the request, because collaborators may edit.
     const position = findUniqueQuote(document.getSnapshot()!, quote)
     document.submitOp({ c: quote, p: position, t: threadId } as any)

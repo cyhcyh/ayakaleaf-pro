@@ -2,6 +2,7 @@ import type { DefaultNavbarMetadata } from '@/shared/components/types/default-na
 import NavDropdownMenu from '@/shared/components/navbar/nav-dropdown-menu'
 import NavDropdownLinkItem from '@/shared/components/navbar/nav-dropdown-link-item'
 import { useSendProjectListMB } from '@/features/project-list/components/project-list-events'
+import { ui } from '@modules/site-settings/frontend/js/ui'
 
 export default function AdminMenu({
   canDisplayAdminMenu,
@@ -24,7 +25,7 @@ export default function AdminMenu({
   const sendProjectListMB = useSendProjectListMB()
   return (
     <NavDropdownMenu
-      title="Admin"
+      title={ui('管理')}
       className="subdued"
       onToggle={nextShow => {
         if (nextShow) {
@@ -37,15 +38,16 @@ export default function AdminMenu({
     >
       {canDisplayAdminMenu ? (
         <>
-          <NavDropdownLinkItem href="/admin">Manage Site</NavDropdownLinkItem>
+          <NavDropdownLinkItem href="/admin">{ui('站点管理')}</NavDropdownLinkItem>
           <NavDropdownLinkItem href="/admin/user">
-            Manage Users
+            {ui('用户管理')}
           </NavDropdownLinkItem>
+          <NavDropdownLinkItem href="/admin/integrations">{ui('集成配置')}</NavDropdownLinkItem>
         </>
       ) : null}
       {canDisplayProjectUrlLookup ? (
         <NavDropdownLinkItem href="/admin/project">
-          Project/Object Lookup
+          {ui('项目管理')}
         </NavDropdownLinkItem>
       ) : null}
       {canDisplayAdminRedirect && adminUrl ? (

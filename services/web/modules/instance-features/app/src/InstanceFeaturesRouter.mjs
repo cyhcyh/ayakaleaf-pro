@@ -1,6 +1,8 @@
 import Settings from '@overleaf/settings'
 import Features from '../../../../app/src/infrastructure/Features.mjs'
 import AuthenticationController from '../../../../app/src/Features/Authentication/AuthenticationController.mjs'
+import AuthorizationManager from '../../../../app/src/Features/Authorization/AuthorizationManager.mjs'
+import SessionManager from '../../../../app/src/Features/Authentication/SessionManager.mjs'
 
 // Reports instance features independently of user permissions.
 // (Need login to avoid abuse)
@@ -21,8 +23,12 @@ export default {
     webRouter.get(
       '/system/features',
       AuthenticationController.requireLogin(),
-      (req, res) => {
+      async (req, res, next) => {
+        let canConfigure
+        try { canConfigure = await AuthorizationManager.promises.isUserSiteAdmin(SessionManager.getLoggedInUserId(req.session)) } catch (error) { return next(error) }
         res.json({
+          canConfigure,
+          gitBridge: Features.hasFeature('git-bridge'),
           ai: true,
           githubSync: Features.hasFeature('github-sync'),
           gitlabSync: Boolean(Settings.gitlabSync),

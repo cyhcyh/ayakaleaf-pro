@@ -1,3 +1,4 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DropboxLogo from '@/shared/svgs/dropbox-logo'
@@ -10,9 +11,7 @@ const DropboxCard = () => {
   const { dropbox } = useInstanceFeatures()
   const [showModal, setShowModal] = useState(false)
 
-  if (!dropbox) {
-    return null
-  }
+  if (!dropbox) { return <UnavailableCard title="Dropbox" description={t('sync_all_projects_with_dropbox')} icon={<DropboxLogo size={32} />} /> }
 
   return (
     <>

@@ -1,3 +1,4 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import {
@@ -205,9 +206,7 @@ function McpIntegrationCard() {
   const { project } = useProjectContext()
 
   // The MCP server is only there next to git-bridge
-  if (!getMeta('ol-gitBridgeEnabled')) {
-    return null
-  }
+  if (!getMeta('ol-gitBridgeEnabled')) { return <UnavailableCard title={t('mcp_server')} description={t('mcp_server_description')} icon={<McpLogo size={32} />} service /> }
 
   return (
     <>

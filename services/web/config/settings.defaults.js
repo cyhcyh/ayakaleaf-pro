@@ -1320,6 +1320,7 @@ module.exports = {
     'authentication/saml',
     'authentication/oidc',
     'admin-tools',
+    'site-settings',
     'user-activate',
     'sandboxed-compiles',
     'symbol-palette',

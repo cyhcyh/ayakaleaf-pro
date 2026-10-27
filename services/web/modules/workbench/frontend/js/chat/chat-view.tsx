@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * The conversation: sends messages to /workbench/chat with the editor
  * context, runs the browser tools the model calls, keeps the server's
@@ -179,7 +180,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
           if (response.status === 429) throw new QuotaExceededError()
           if (!response.ok) {
             const detail = await response.json().catch(() => ({}))
-            throw new Error(detail.error || `AI 请求失败（HTTP ${response.status}）`)
+            throw new Error(detail.error || ui("AI 请求失败（HTTP {0}）", [response.status]))
           }
           return response
         },
@@ -312,7 +313,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       setProblem(false)
       stopped.current = false
       const pending = messages.at(-1)?.parts.find((part: any) => part.type === 'tool-request_review' && part.state === 'input-available') as any
-      let approval: unknown = { approved: false, reason: '用户尚未确认，继续讨论要求。' }
+      let approval: unknown = { approved: false, reason: ui("用户尚未确认，继续讨论要求。") }
       if (pending && /^(同意|确认|可以|开始|好的|好|同意审阅|开始审阅|同意审阅并添加评论|可以开始|按这个范围开始|yes|approve|go ahead|start)[。.!！\s]*$/i.test(draft.text.trim())) {
         try {
           const result = await approve(pending.input, projectId, chatId)
@@ -356,7 +357,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
 
   let body
   if (!hasAccess && messages.length === 0) {
-    body = <div className="pa-empty m-3"><h4>连接你的 AI 助手</h4><p>在个人设置中添加模型服务或登录 Codex，即可对话、阅读参考资料和审阅论文。</p><button className="btn btn-primary btn-sm" onClick={() => { setSettingsShown(true); openAiSettings() }}>配置模型连接</button></div>
+    body = <div className="pa-empty m-3"><h4>{ui("连接你的 AI 助手")}</h4><p>{ui("在个人设置中添加模型服务或登录 Codex，即可对话、阅读参考资料和审阅论文。")}</p><button className="btn btn-primary btn-sm" onClick={() => { setSettingsShown(true); openAiSettings() }}>{ui("配置模型连接")}</button></div>
   } else if (hasAccess && !hasGivenAiConsent && messages.length === 0) {
     body = <ConsentCard />
   } else if (messages.length === 0) {
@@ -409,11 +410,11 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
           className="d-flex flex-wrap justify-content-center mb-2"
           style={{ ...faint, fontSize: 'var(--font-size-01)', columnGap: '0.5ch' }}
         >
-          <span className="text-nowrap">请核对回答和修改建议。</span>
+          <span className="text-nowrap">{ui("请核对回答和修改建议。")}</span>
         </p>
       </div>
-      {persistence.error && <div className="pa-save-error" role="alert">会话尚未保存：{persistence.error}<button className="pa-text-action" onClick={() => persistence.flush().catch(() => {})}>重试保存</button></div>}
-      {persistence.saving && <small className="pa-muted text-center pb-1" role="status">正在保存会话…</small>}
+      {persistence.error && <div className="pa-save-error" role="alert">{ui("会话尚未保存：")}{persistence.error}<button className="pa-text-action" onClick={() => persistence.flush().catch(() => {})}>{ui("重试保存")}</button></div>}
+      {persistence.saving && <small className="pa-muted text-center pb-1" role="status">{ui("正在保存会话…")}</small>}
     </div>
     </ReviewChatContext.Provider>
   )

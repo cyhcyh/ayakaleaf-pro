@@ -216,7 +216,7 @@ async function syncTeX(
     fromV1TemplateId: 1,
   })
   const limits = await _getProjectCompileLimits(project)
-  const { imageName } = project
+  const imageName = project.imageName || Settings.currentImageName
   return await ClsiManager.promises.syncTeX(projectId, userId, {
     direction,
     limits,

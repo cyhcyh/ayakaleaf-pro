@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useEffect, useRef, useState } from "react";
 import MaterialIcon from "@/shared/components/material-icon";
 import type { SettingsTab } from "@/features/ide-settings/context/types";
@@ -15,16 +16,16 @@ import DataSettings from './data-settings';
 import "./style.scss";
 
 const featureNames = {
-  chat: "AI 助手",
-  fix: "编译错误修复",
-  review: "论文审阅",
-  translation: "大模型翻译",
+  chat: ui("AI 助手"),
+  fix: ui("编译错误修复"),
+  review: ui("论文审阅"),
+  translation: ui("大模型翻译"),
 };
 const providerNames: Record<string, string> = {
-  "google-free": "Google 翻译 · 免 Key",
-  mymemory: "MyMemory · 免费",
-  llm: "大语言模型 / Codex",
-  google: "Google Cloud · 官方 API",
+  "google-free": ui("Google 翻译 · 免 Key"),
+  mymemory: ui("MyMemory · 免费"),
+  llm: ui("大语言模型 / Codex"),
+  google: ui("Google Cloud · 官方 API"),
 };
 
 export function PersonalAiSettings() {
@@ -75,7 +76,7 @@ export function PersonalAiSettings() {
     const saved = await api<Profile>("/settings", profile);
     setProfile(saved);
     settingsChanged(saved);
-    setNotice("已保存，设置已生效");
+    setNotice(ui("已保存，设置已生效"));
     return saved;
   };
   const persistConnection = async (id: string) => {
@@ -107,10 +108,10 @@ export function PersonalAiSettings() {
               kind,
               name:
                 kind === "codex"
-                  ? "我的 Codex"
+                  ? ui("我的 Codex")
                   : kind === "google"
                     ? "Google Cloud"
-                    : "我的模型服务",
+                    : ui("我的模型服务"),
               baseURL: "",
             },
           ],
@@ -153,7 +154,7 @@ export function PersonalAiSettings() {
         ...current,
         [id]: current[id] || result.models[0].id,
       }));
-    setNotice(`已获取 ${result.models.length} 个模型，也可以手动填写模型 ID`);
+    setNotice(ui("已获取 {0} 个模型，也可以手动填写模型 ID", [result.models.length]));
   };
 
   useEffect(() => {
@@ -171,7 +172,7 @@ export function PersonalAiSettings() {
                 delete next[id];
                 return next;
               });
-              setError("设备码已过期，请重新登录 Codex");
+              setError(ui("设备码已过期，请重新登录 Codex"));
               continue;
             }
             const result = await api(`/connections/${id}/codex/poll`, {});
@@ -183,7 +184,7 @@ export function PersonalAiSettings() {
                 return next;
               });
               updateConnection(id, { authStatus: "ready" });
-              setNotice("Codex 授权成功，可以获取模型并进行功能分配");
+              setNotice(ui("Codex 授权成功，可以获取模型并进行功能分配"));
               try {
                 await models(id);
               } catch (error) {
@@ -208,7 +209,7 @@ export function PersonalAiSettings() {
   if (!profile)
     return (
       <div className="pa-settings" role="status">
-        {error || "正在读取你的模型设置…"}
+        {error || ui("正在读取你的模型设置…")}
       </div>
     );
   const bind = (
@@ -230,19 +231,19 @@ export function PersonalAiSettings() {
     <div className="pa-settings">
       <div className="pa-heading">
         <div>
-          <h3>AI 与翻译</h3>
-          <p>设置模型连接、翻译和对话记录。</p>
+          <h3>{ui("AI 与翻译")}</h3>
+          <p>{ui("设置模型连接、翻译和对话记录。")}</p>
         </div>
         <MaterialIcon type="auto_awesome" />
       </div>
-      <div className="pa-tabs" role="tablist" aria-label="AI 与翻译设置">
+      <div className="pa-tabs" role="tablist" aria-label={ui("AI 与翻译设置")}>
         {(
           [
-            ["connections", "模型连接"],
-            ["bindings", "功能分配"],
-            ["translation", "划词翻译"],
-            ["compression", "上下文压缩"],
-            ["data", "数据管理"],
+            ["connections", ui("模型连接")],
+            ["bindings", ui("功能分配")],
+            ["translation", ui("划词翻译")],
+            ["compression", ui("上下文压缩")],
+            ["data", ui("数据管理")],
           ] as const
         ).map(([key, name]) => (
           <button
@@ -272,9 +273,7 @@ export function PersonalAiSettings() {
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => add("cloud")}
-              >
-                ＋ OpenAI 兼容接口
-              </button>
+              >{ui(" ＋ OpenAI 兼容接口 ")}</button>
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => add("codex")}
@@ -291,10 +290,8 @@ export function PersonalAiSettings() {
             {!profile.connections.length && (
               <div className="pa-empty">
                 <MaterialIcon type="hub" />
-                <h4>添加你的第一个模型连接</h4>
-                <p>
-                  使用 API Key 连接模型服务，或通过 ChatGPT 账号授权 Codex。
-                </p>
+                <h4>{ui("添加你的第一个模型连接")}</h4>
+                <p>{ui(" 使用 API Key 连接模型服务，或通过 ChatGPT 账号授权 Codex。 ")}</p>
               </div>
             )}
             {profile.connections.map((connection) => (
@@ -302,33 +299,29 @@ export function PersonalAiSettings() {
                 <div className="pa-card-title">
                   <strong>
                     {connection.kind === "cloud"
-                      ? "OpenAI 兼容接口"
+                      ? ui("OpenAI 兼容接口")
                       : connection.kind === "codex"
                         ? "Codex"
-                        : "Google Cloud 翻译"}
+                        : ui("Google Cloud 翻译")}
                   </strong>
                   <span
                     className={`pa-status ${connection.authStatus === "ready" || connection.hasKey ? "ready" : ""}`}
                   >
                     {connection.kind === "codex"
                       ? connection.authStatus === "ready"
-                        ? "已授权"
-                        : "未登录"
+                        ? ui("已授权")
+                        : ui("未登录")
                       : connection.hasKey
-                        ? "已保存密钥"
-                        : "待配置"}
+                        ? ui("已保存密钥")
+                        : ui("待配置")}
                   </span>
                   <button
                     className="btn btn-link btn-sm ms-auto"
-                    aria-label={`移除 ${connection.name}`}
+                    aria-label={ui("移除 {0}", [connection.name])}
                     onClick={() => remove(connection.id)}
-                  >
-                    移除
-                  </button>
+                  >{ui(" 移除 ")}</button>
                 </div>
-                <label className="pa-field">
-                  连接名称
-                  <input
+                <label className="pa-field">{ui(" 连接名称 ")}<input
                     className="form-control"
                     value={connection.name}
                     onChange={(event) =>
@@ -363,8 +356,8 @@ export function PersonalAiSettings() {
                         autoComplete="new-password"
                         placeholder={
                           connection.hasKey
-                            ? "已保存，留空保持现有密钥"
-                            : "输入此服务的 API Key"
+                            ? ui("已保存，留空保持现有密钥")
+                            : ui("输入此服务的 API Key")
                         }
                         value={connection.apiKey || ""}
                         onChange={(event) =>
@@ -385,16 +378,12 @@ export function PersonalAiSettings() {
                               clearKey: event.target.checked,
                             })
                           }
-                        />{" "}
-                        清除已保存的密钥
-                      </label>
+                        />{" "}{ui(" 清除已保存的密钥 ")}</label>
                     )}
                   </>
                 ) : (
                   <>
-                    <p className="pa-muted">
-                      使用自己的 ChatGPT 账号授权，凭据仅保存在服务端。
-                    </p>
+                    <p className="pa-muted">{ui(" 使用自己的 ChatGPT 账号授权，凭据仅保存在服务端。 ")}</p>
                     <div className="pa-actions">
                       <button
                         className="btn btn-secondary btn-sm"
@@ -413,8 +402,8 @@ export function PersonalAiSettings() {
                         }
                       >
                         {connection.authStatus === "ready"
-                          ? "重新授权 Codex"
-                          : "登录 Codex"}
+                          ? ui("重新授权 Codex")
+                          : ui("登录 Codex")}
                       </button>
                       {connection.authStatus === "ready" && (
                         <button
@@ -431,23 +420,19 @@ export function PersonalAiSettings() {
                               settingsChanged(profile);
                             })
                           }
-                        >
-                          退出授权
-                        </button>
+                        >{ui(" 退出授权 ")}</button>
                       )}
                     </div>
                     {devices[connection.id] && (
                       <div className="pa-device">
-                        <span>在授权页面输入设备码</span>
+                        <span>{ui("在授权页面输入设备码")}</span>
                         <strong>{devices[connection.id].userCode}</strong>
                         <a
                           href={devices[connection.id].verificationURL}
                           target="_blank"
                           rel="noreferrer"
-                        >
-                          打开 ChatGPT 授权页面 ↗
-                        </a>
-                        <small>完成授权后，这里会自动更新。</small>
+                        >{ui(" 打开 ChatGPT 授权页面 ↗ ")}</a>
+                        <small>{ui("完成授权后，这里会自动更新。")}</small>
                       </div>
                     )}
                   </>
@@ -455,8 +440,8 @@ export function PersonalAiSettings() {
                 {connection.kind !== "google" && (
                   <div className="pa-model-test">
                     <div className="pa-field">
-                      <span>用于测试的模型</span>
-                      <ModelPicker label={`用于测试的模型 · ${connection.name}`} value={testModels[connection.id] || ""}
+                      <span>{ui("用于测试的模型")}</span>
+                      <ModelPicker label={ui("用于测试的模型 · {0}", [connection.name])} value={testModels[connection.id] || ""}
                         models={catalogs[connection.id] || connection.catalog?.models || []}
                         onChange={value => setTestModels(current => ({ ...current, [connection.id]: value }))} />
                     </div>
@@ -469,9 +454,7 @@ export function PersonalAiSettings() {
                             await models(connection.id);
                           })
                         }
-                      >
-                        获取可用模型
-                      </button>
+                      >{ui(" 获取可用模型 ")}</button>
                       <button
                         className="btn btn-secondary btn-sm"
                         disabled={!testModels[connection.id]}
@@ -481,14 +464,12 @@ export function PersonalAiSettings() {
                             await api(`/connections/${connection.id}/test`, {
                               model: testModels[connection.id],
                             });
-                            setNotice("测试成功，模型已返回回复");
+                            setNotice(ui("测试成功，模型已返回回复"));
                           })
                         }
-                      >
-                        测试连接
-                      </button>
+                      >{ui(" 测试连接 ")}</button>
                     </div>
-                    <p className="pa-muted mb-0">仅用于测试，不改变功能分配。</p>
+                    <p className="pa-muted mb-0">{ui("仅用于测试，不改变功能分配。")}</p>
                   </div>
                 )}
               </section>
@@ -497,7 +478,7 @@ export function PersonalAiSettings() {
         )}
         {tab === "bindings" && (
           <>
-            <p className="pa-muted">可分别设置模型和思考参数，也可沿用 AI 助手的配置。</p>
+            <p className="pa-muted">{ui("可分别设置模型和思考参数，也可沿用 AI 助手的配置。")}</p>
             {Object.entries(featureNames).map(([feature, name]) => {
               const key = feature as keyof Profile["bindings"];
               return <section className="pa-card pa-feature-card" key={key}>
@@ -512,7 +493,7 @@ export function PersonalAiSettings() {
         {tab === 'data' && <DataSettings />}
         {tab === "translation" && (
           <section className="pa-card">
-            <h4>划词翻译</h4>
+            <h4>{ui("划词翻译")}</h4>
             <label className="pa-checkbox">
               <input
                 type="checkbox"
@@ -526,12 +507,8 @@ export function PersonalAiSettings() {
                     },
                   })
                 }
-              />{" "}
-              在 PDF 预览和 LaTeX 编辑区启用
-            </label>
-            <label className="pa-field">
-              默认翻译服务
-              <select
+              />{" "}{ui(" 在 PDF 预览和 LaTeX 编辑区启用 ")}</label>
+            <label className="pa-field">{ui(" 默认翻译服务 ")}<select
                 className="form-select form-control"
                 value={profile.translation.provider}
                 onChange={(event) =>
@@ -551,9 +528,7 @@ export function PersonalAiSettings() {
                 ))}
               </select>
             </label>
-            <label className="pa-field">
-              默认目标语言
-              <select
+            <label className="pa-field">{ui(" 默认目标语言 ")}<select
                 className="form-select form-control"
                 value={profile.translation.target}
                 onChange={(event) =>
@@ -566,18 +541,16 @@ export function PersonalAiSettings() {
                   })
                 }
               >
-                <option value="zh-CN">简体中文</option>
+                <option value="zh-CN">{ui("简体中文")}</option>
                 <option value="en">English</option>
-                <option value="ja">日本語</option>
+                <option value="ja">{ui("日本語")}</option>
                 <option value="ko">한국어</option>
                 <option value="de">Deutsch</option>
                 <option value="fr">Français</option>
               </select>
             </label>
             {profile.translation.provider === "google" && (
-              <label className="pa-field">
-                Google Cloud 连接
-                <select
+              <label className="pa-field">{ui(" Google Cloud 连接 ")}<select
                   className="form-select form-control"
                   value={profile.translation.googleConnectionId}
                   onChange={(event) =>
@@ -590,7 +563,7 @@ export function PersonalAiSettings() {
                     })
                   }
                 >
-                  <option value="">请选择已添加的 Google Cloud 连接</option>
+                  <option value="">{ui("请选择已添加的 Google Cloud 连接")}</option>
                   {profile.connections
                     .filter((connection) => connection.kind === "google")
                     .map((connection) => (
@@ -601,13 +574,11 @@ export function PersonalAiSettings() {
                 </select>
               </label>
             )}
-            <p className="pa-muted">
-              Google 翻译无需密钥，MyMemory 有免费额度。大模型翻译使用“功能分配”中的模型。
-            </p>
+            <p className="pa-muted">{ui(" Google 翻译无需密钥，MyMemory 有免费额度。大模型翻译使用“功能分配”中的模型。 ")}</p>
           </section>
         )}
         {tab !== 'data' && <div className="pa-footer">
-          <span className="pa-muted">设置仅属于当前账号</span>
+          <span className="pa-muted">{ui("设置仅属于当前账号")}</span>
           <button
             className="btn btn-primary"
             onClick={() =>
@@ -616,7 +587,7 @@ export function PersonalAiSettings() {
               })
             }
           >
-            {busy ? "正在保存…" : "保存设置"}
+            {busy ? ui("正在保存…") : ui("保存设置")}
           </button>
         </div>}
       </fieldset>
@@ -626,7 +597,7 @@ export function PersonalAiSettings() {
 
 export default {
   key: "personal-ai",
-  title: "AI 与翻译",
+  title: ui("AI 与翻译"),
   icon: "settings",
   sections: [
     {

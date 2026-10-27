@@ -70,8 +70,6 @@ export const RailLayout = () => {
     useRailContext()
   const { features } = useProjectContext()
   const { isRestrictedTokenMember } = useEditorContext()
-  const gitBridgeEnabled = getMeta('ol-gitBridgeEnabled')
-  const { isOverleaf } = getMeta('ol-ExposedSettings')
 
   const { view, setSettingsShown, focusMode } = useLayoutContext()
 
@@ -119,7 +117,6 @@ export const RailLayout = () => {
         icon: 'integration_instructions',
         title: t('integrations'),
         component: <IntegrationsPanel />,
-        hide: !isOverleaf && !gitBridgeEnabled,
       },
       {
         key: 'review-panel',
@@ -147,8 +144,6 @@ export const RailLayout = () => {
       features.trackChangesVisible,
       view,
       isRestrictedTokenMember,
-      isOverleaf,
-      gitBridgeEnabled,
     ]
   )
 

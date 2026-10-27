@@ -32,5 +32,10 @@
   "x_successfully_linked_description": "谢谢，您已成功建立了您的__provider__账户与 __appName__ 的关联。您现在可以导出您的 __appName__ 项目到__provider__，或者从您的__provider__存储困导入项目。",
   "x_sync_description": "通过与 __provider__ 同步，你可以将您的__appName__项目关联到__provider__的存储库，从 __appName__ 创建新的提交，并与线下或者__provider__中的提交合并。",
   "x_sync_error": "抱歉，与我们的 __provider__ 服务连接出错。请稍后重试。",
-  "x_sync_repository_not_found_description": "链接的存储库已被删除，或者您不再有权访问它。您还可以取消存储库与此项目的链接。"
+  "x_sync_repository_not_found_description": "链接的存储库已被删除，或者您不再有权访问它。您还可以取消存储库与此项目的链接。",
+  "ayaka_integrations_configuration": "集成配置",
+  "ayaka_authorization_complete": "授权流程已结束，可以关闭此窗口。",
+  "ayaka_admin": "管理",
+  "ayaka_manage_users": "用户管理",
+  "ayaka_manage_projects": "项目管理"
 }

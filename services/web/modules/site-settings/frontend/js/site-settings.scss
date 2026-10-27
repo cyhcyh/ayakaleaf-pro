@@ -1,0 +1,38 @@
+.ayaka-admin {
+  color: var(--content-primary);
+  background: var(--bg-primary);
+  min-height: 100vh;
+  .ayaka-admin-header, .ayaka-admin-nav, .ayaka-admin-content { max-width: 960px; margin: auto; padding: 20px 24px; }
+  .ayaka-admin-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-divider-themed); }
+  .ayaka-admin-back { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+  .ayaka-admin-nav { display: flex; gap: 24px; padding-top: 0; padding-bottom: 0; border-bottom: 1px solid var(--border-divider-themed); overflow-x: auto; }
+  .ayaka-admin-nav a { padding: 16px 0 12px; text-decoration: none; white-space: nowrap; color: inherit; border-bottom: 3px solid transparent; }
+  .ayaka-admin-nav a[aria-current] { color: var(--content-positive, #1b8148); border-color: currentcolor; }
+  h1 { font-size: 24px; margin: 8px 0 12px; }
+  .ayaka-admin-intro { color: var(--content-secondary); line-height: 1.6; }
+  .ayaka-admin-pending { display: flex; gap: 10px; padding: 12px 14px; margin: 20px 0; border: 1px solid var(--border-divider-themed); border-radius: 6px; background: var(--bg-secondary); }
+  .ayaka-admin-provider { margin: 24px 0; border: 1px solid var(--border-divider-themed); border-radius: 8px; overflow: hidden; }
+  .ayaka-admin-provider > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-divider-themed); }
+  .ayaka-admin-provider > header > div { display: flex; align-items: center; gap: 12px; }
+  h2 { font-size: 18px; margin: 0; }
+  .ayaka-admin-toggle, .ayaka-admin-clear { display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 0; }
+  input[type='checkbox'] { accent-color: #168442; }
+  .ayaka-admin-fields { padding: 20px; display: grid; gap: 18px; }
+  .ayaka-admin-fields > label { display: grid; gap: 7px; font-weight: normal; margin: 0; }
+  .form-control { width: 100%; min-width: 0; }
+  .ayaka-admin-clear { color: var(--content-secondary); font-size: 13px; margin-top: 4px; }
+  .ayaka-admin-copy { display: flex; gap: 8px; }
+  .ayaka-admin-copy button { flex: none; display: grid; place-items: center; }
+  footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 20px 20px; }
+  footer a { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+  footer .btn { min-width: 100px; }
+}
+.ayaka-integration-status { display: inline-block; color: var(--content-secondary); font-size: 12px; font-weight: normal; white-space: nowrap; }
+.ayaka-integration-status.ready { color: var(--content-positive, #168442); }
+.ayaka-integration-header { flex-wrap: wrap; gap: 4px 8px; }
+.ayaka-integration-unavailable p { line-height: 1.6; }
+@media (max-width: 575px) {
+  .ayaka-admin .ayaka-admin-content, .ayaka-admin .ayaka-admin-header, .ayaka-admin .ayaka-admin-nav { padding-left: 16px; padding-right: 16px; }
+  .ayaka-admin .ayaka-admin-provider > header { padding: 16px; }
+  .ayaka-admin .ayaka-admin-fields { padding: 16px; }
+}

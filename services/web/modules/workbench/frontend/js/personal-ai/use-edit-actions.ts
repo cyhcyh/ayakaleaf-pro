@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useRef } from 'react'
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -26,7 +27,7 @@ export function useEditActions() {
   live.current = { currentDocument, view }
   const open = async (record: EditRecord) => {
     const found = findEntityByPath(record.input.path)
-    if (!found || found.type !== 'doc') throw new Error('原项目文件不存在，请检查文件路径')
+    if (!found || found.type !== 'doc') throw new Error(ui("原项目文件不存在，请检查文件路径"))
     await openDoc(found.entity as any)
     const until = Date.now() + 5000
     while (Date.now() < until) {
@@ -34,7 +35,7 @@ export function useEditActions() {
       if (state.view && state.currentDocument?.doc_id === found.entity._id && state.currentDocument.cm6?.view === state.view) return state.view
       await new Promise(resolve => setTimeout(resolve, 40))
     }
-    throw new Error('编辑器尚未加载该文件，请稍后重试')
+    throw new Error(ui("编辑器尚未加载该文件，请稍后重试"))
   }
   const locate = async (id: string) => {
     const record = await ensureEdit(projectId, id)
@@ -47,7 +48,7 @@ export function useEditActions() {
     editor.focus()
   }
   const act = async (id: string, action: 'accept' | 'reject' | 'undo' | 'reapply' | 'reconcile') => {
-    if (!permissions.write) throw new Error('当前项目权限不允许修改正文')
+    if (!permissions.write) throw new Error(ui("当前项目权限不允许修改正文"))
     if (editSnapshot(projectId).busy.includes(id)) return
     updateEdits(projectId, { busy: [...editSnapshot(projectId).busy, id], error: '' })
     let operation: EditRecord['operation'] = null
@@ -74,7 +75,7 @@ export function useEditActions() {
       operation = prepared.operation
       putEdit(projectId, prepared)
       const now = editor.state.doc.toString()
-      if (!anchorMatches(now, anchor, 'before')) throw new Error('等待确认期间该处正文发生变化，已停止修改，请重新核对')
+      if (!anchorMatches(now, anchor, 'before')) throw new Error(ui("等待确认期间该处正文发生变化，已停止修改，请重新核对"))
       const at = now.indexOf(anchor.prefix + before + anchor.suffix) + anchor.prefix.length
       const changes = []
       let cursor = at

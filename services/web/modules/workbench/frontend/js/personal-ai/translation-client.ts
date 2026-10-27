@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { api, apiResponse } from './api'
 import { translationFrames } from '../../../shared/translation-stream.mjs'
 
@@ -7,20 +8,20 @@ export async function translateSelection(input: { text: string; provider: string
   const response = await apiResponse('/translate/stream', input, signal)
   if (!response.ok) {
     const result = await response.json()
-    throw new Error(result.error || `请求失败（HTTP ${response.status}）`)
+    throw new Error(result.error ? ui(result.error) : ui("请求失败（HTTP {0}）", [response.status]))
   }
-  if (!response.body) throw new Error('翻译连接未返回数据，请重试')
+  if (!response.body) throw new Error(ui("翻译连接未返回数据，请重试"))
   const reader = response.body.getReader(), decoder = new TextDecoder(), frames = translationFrames()
   try {
     while (true) {
       const { value, done } = await reader.read()
       for (const frame of frames(decoder.decode(value, { stream: !done }))) {
         signal.throwIfAborted()
-        if (frame.type === 'error') throw new Error(frame.error)
+        if (frame.type === 'error') throw new Error(ui(frame.error))
         if (frame.type === 'delta') onText(frame.text)
         if (frame.type === 'done') return frame.result
       }
-      if (done) throw new Error('翻译连接已断开，请重试')
+      if (done) throw new Error(ui("翻译连接已断开，请重试"))
     }
   } finally {
     await reader.cancel().catch(() => {})

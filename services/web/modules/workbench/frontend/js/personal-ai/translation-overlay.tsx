@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MaterialIcon from "@/shared/components/material-icon";
@@ -10,9 +11,9 @@ import { translationDotPosition, translationPopupPosition } from '../../../share
 
 type Selection = { text: string; x: number; y: number };
 const services = {
-  "google-free": "Google 翻译",
-  mymemory: "MyMemory · 免费",
-  llm: "大语言模型 / Codex",
+  "google-free": ui("Google 翻译"),
+  mymemory: ui("MyMemory · 免费"),
+  llm: ui("大语言模型 / Codex"),
   google: "Google Cloud",
 };
 
@@ -236,7 +237,7 @@ export default function TranslationOverlay() {
       await navigator.clipboard.writeText(text);
       setCopied(part);
     } catch {
-      setError("复制未完成，请手动选中内容复制");
+      setError(ui("复制未完成，请手动选中内容复制"));
     }
   };
   if (!selection || !settings?.translation.enabled) return null;
@@ -246,7 +247,7 @@ export default function TranslationOverlay() {
         ref={dot}
         className="pa-selection-dot"
         style={{ left: selection.x, top: selection.y }}
-        aria-label="翻译所选文字"
+        aria-label={ui("翻译所选文字")}
         aria-expanded={open}
         onPointerDown={(event) => event.preventDefault()}
         onMouseEnter={() => {
@@ -266,7 +267,7 @@ export default function TranslationOverlay() {
           ref={popup}
           className="pa-translation"
           role="dialog"
-          aria-label="划词翻译"
+          aria-label={ui("划词翻译")}
           style={position}
           onMouseEnter={keep}
           onMouseLeave={leave}
@@ -276,7 +277,7 @@ export default function TranslationOverlay() {
           <header>
             <MaterialIcon type="translate" />
             <select
-              aria-label="翻译服务"
+              aria-label={ui("翻译服务")}
               value={provider}
               onChange={(event) => {
                 keep();
@@ -289,20 +290,20 @@ export default function TranslationOverlay() {
                   {key === "llm" &&
                   (settings.bindings.translation.model ||
                     settings.bindings.chat.model)
-                    ? `大模型 · ${settings.bindings.translation.model || settings.bindings.chat.model}`
+                    ? ui("大模型 · {0}", [settings.bindings.translation.model || settings.bindings.chat.model])
                     : label}
                 </option>
               ))}
             </select>
             <span className="flex-grow-1" />
             <button
-              aria-label={pinned ? "取消固定译文" : "固定译文"}
+              aria-label={pinned ? ui("取消固定译文") : ui("固定译文")}
               aria-pressed={pinned}
               onClick={() => setPinned(!pinned)}
             >
               <MaterialIcon type="push_pin" />
             </button>
-            <button aria-label="关闭翻译" onClick={hide}>
+            <button aria-label={ui("关闭翻译")} onClick={hide}>
               <MaterialIcon type="close" />
             </button>
           </header>
@@ -311,12 +312,11 @@ export default function TranslationOverlay() {
             follow.current = element.scrollHeight - element.clientHeight - element.scrollTop < 24;
           }}>
             <section className="pa-translation-block">
-              <div className="pa-translation-label">
-                原文 ·{" "}
+              <div className="pa-translation-label">{ui(" 原文 ·")}{" "}
                 {result?.source && result.source !== "auto"
                   ? result.source
-                  : "自动检测"}
-                <button className="pa-source-toggle" aria-label={expanded ? '收起原文' : '展开原文'} title={expanded ? '收起原文' : '展开原文'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                  : ui("自动检测")}
+                <button className="pa-source-toggle" aria-label={expanded ? ui("收起原文") : ui("展开原文")} title={expanded ? ui("收起原文") : ui("展开原文")} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
                   <MaterialIcon type={expanded ? 'expand_less' : 'expand_more'} />
                 </button>
               </div>
@@ -328,7 +328,7 @@ export default function TranslationOverlay() {
               </div>
               <div className="pa-translation-controls">
                 <button
-                  aria-label="复制原文"
+                  aria-label={ui("复制原文")}
                   onClick={() => copy(selection.text, "source")}
                 >
                   <MaterialIcon
@@ -338,31 +338,30 @@ export default function TranslationOverlay() {
               </div>
             </section>
             <section className="pa-translation-block">
-              <div className="pa-translation-label">
-                译文 ·{" "}
+              <div className="pa-translation-label">{ui(" 译文 ·")}{" "}
                 <select
                   className="pa-translation-language"
-                  aria-label="目标语言"
+                  aria-label={ui("目标语言")}
                   value={target}
                   onChange={(event) => { keep(); setTarget(event.target.value); }}
                 >
-                  <option value="zh-CN">简体中文</option>
+                  <option value="zh-CN">{ui("简体中文")}</option>
                   <option value="en">English</option>
-                  <option value="ja">日本語</option>
+                  <option value="ja">{ui("日本語")}</option>
                   <option value="ko">한국어</option>
                   <option value="de">Deutsch</option>
                   <option value="fr">Français</option>
                 </select>
               </div>
               <div className="pa-translated" role="status">
-                {result?.translatedText ? <MathText text={result.translatedText} /> : !error && '正在翻译…'}
+                {result?.translatedText ? <MathText text={result.translatedText} /> : !error && ui("正在翻译…")}
               </div>
-              {busy && result?.translatedText && <div className="pa-translation-progress">正在翻译…</div>}
-              {error && <div className="pa-translation-error" role="alert">{error}<button className="pa-text-action" onClick={() => { keep(); setRetry(value => value + 1); }}>重试</button></div>}
+              {busy && result?.translatedText && <div className="pa-translation-progress">{ui("正在翻译…")}</div>}
+              {error && <div className="pa-translation-error" role="alert">{error}<button className="pa-text-action" onClick={() => { keep(); setRetry(value => value + 1); }}>{ui("重试")}</button></div>}
               {result && !busy && (
                 <div className="pa-translation-controls">
                   <button
-                    aria-label="复制译文"
+                    aria-label={ui("复制译文")}
                     onClick={() => copy(result.translatedText, "translation")}
                   >
                     <MaterialIcon

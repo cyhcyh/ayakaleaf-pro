@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { getJSON } from '@/infrastructure/fetch-json'
 
 export type InstanceFeatures = {
+  loaded: boolean
+  canConfigure: boolean
+  gitBridge: boolean
   ai: boolean
   githubSync: boolean
   gitlabSync: boolean
@@ -12,6 +15,9 @@ export type InstanceFeatures = {
 }
 
 const DISABLED: InstanceFeatures = {
+  loaded: false,
+  canConfigure: false,
+  gitBridge: false,
   ai: false,
   githubSync: false,
   gitlabSync: false,
@@ -37,6 +43,9 @@ function loadInstanceFeatures(): Promise<InstanceFeatures> {
     inflight = getJSON('/system/features')
       .then((data: Partial<InstanceFeatures>) => {
         cache = {
+          loaded: true,
+          canConfigure: Boolean(data?.canConfigure),
+          gitBridge: Boolean(data?.gitBridge),
           ai: Boolean(data?.ai),
           githubSync: Boolean(data?.githubSync),
           gitlabSync: Boolean(data?.gitlabSync),

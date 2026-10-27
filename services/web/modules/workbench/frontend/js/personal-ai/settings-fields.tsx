@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useId, type ReactNode } from 'react'
 import Setting from '@/features/ide-settings/components/setting'
 import ToggleSetting from '@/features/ide-settings/components/toggle-setting'
@@ -13,17 +14,17 @@ export function BindingFields({ profile, value, onChange, primary = false, flat 
   const connection = connections.find(c => c.id === effective.connectionId)
   const connectionId = useId(), modelId = useId()
   const inherited = !value.connectionId && !primary
-    ? connection ? `${connection.name} · ${effective.model} · ${effortNames[effective.reasoningEffort || 'auto']}` : profile.siteDefault ? `站点预设 · ${profile.siteDefault.model}` : '请先配置 AI 助手。'
+    ? connection ? `${connection.name} · ${effective.model} · ${effortNames[effective.reasoningEffort || 'auto']}` : profile.siteDefault ? ui("站点预设 · {0}", [profile.siteDefault.model]) : ui("请先配置 AI 助手。")
     : undefined
   const field = (id: string, label: string, control: ReactNode, description?: string) => flat
     ? <Setting controlId={id} label={label} description={description}>{control}</Setting>
     : <div className="pa-field"><label htmlFor={id}>{label}</label>{control}</div>
   return <>
-    {field(connectionId, '连接', <select id={connectionId} className="form-select form-control" value={value.connectionId} onChange={event => onChange({ connectionId: event.target.value, model: '', thinking: 'auto', reasoningEffort: 'auto' })}>
-      <option value="">{primary ? profile.siteDefault ? `使用站点预设 · ${profile.siteDefault.model}` : '请选择连接' : '沿用 AI 助手'}</option>
+    {field(connectionId, ui("连接"), <select id={connectionId} className="form-select form-control" value={value.connectionId} onChange={event => onChange({ connectionId: event.target.value, model: '', thinking: 'auto', reasoningEffort: 'auto' })}>
+      <option value="">{primary ? profile.siteDefault ? ui("使用站点预设 · {0}", [profile.siteDefault.model]) : ui("请选择连接") : ui("沿用 AI 助手")}</option>
       {connections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
     </select>, flat ? inherited : undefined)}
-    {field(modelId, flat ? '压缩模型' : '模型', <ModelPicker controlId={modelId} label={flat ? '压缩模型' : '功能模型'} value={effective.model || profile.siteDefault?.model || ''} models={connection?.catalog?.models || []}
+    {field(modelId, flat ? ui("压缩模型") : ui("模型"), <ModelPicker controlId={modelId} label={flat ? ui("压缩模型") : ui("功能模型")} value={effective.model || profile.siteDefault?.model || ''} models={connection?.catalog?.models || []}
       disabled={!value.connectionId} onChange={model => onChange({ model, thinking: 'auto', reasoningEffort: 'auto' })} />)}
     <ThinkingControls profile={profile} value={value.connectionId ? value : { ...effective, connectionId: '' }} onChange={onChange} flat={flat} />
     {!flat && inherited && <p className="pa-muted pa-control-note">{inherited}</p>}
@@ -32,10 +33,10 @@ export function BindingFields({ profile, value, onChange, primary = false, flat 
 
 function BudgetSetting({ label, value, actual, reported, max, onChange }: { label: string; value: number; actual: number; reported?: number; max: number; onChange: (value: number) => void }) {
   const id = useId()
-  const source = value ? '手动设置' : reported ? '模型数据' : '默认值'
-  return <Setting controlId={id} label={label} description={`${source} · tokens${value && value > actual ? `，实际不超过 ${actual.toLocaleString()}` : ''}`}>
+  const source = value ? ui("手动设置") : reported ? ui("模型数据") : ui("默认值")
+  return <Setting controlId={id} label={label} description={`${source} · tokens${value && value > actual ? ui("，实际不超过 {0}", [actual.toLocaleString()]) : ''}`}>
     <div className="pa-budget-control"><input id={id} className="form-control" type="number" aria-label={label} min={0} max={max} step={1} value={value || actual} onChange={event => onChange(Number(event.target.value))} />
-      {value > 0 && <button type="button" className="pa-text-action" onClick={() => onChange(0)}>自动</button>}
+      {value > 0 && <button type="button" className="pa-text-action" onClick={() => onChange(0)}>{ui("自动")}</button>}
     </div>
   </Setting>
 }
@@ -53,16 +54,16 @@ export function CompressionSettings({ profile, onProfile }: { profile: Profile; 
       value={percent ? Math.round(Number(policy[key]) * 100) : Number(policy[key])} onChange={event => set({ [key]: Number(event.target.value) / (percent ? 100 : 1) })} />{percent && <span>%</span>}</div>
   </Setting>
   return <div className="pa-native-settings">
-    <ToggleSetting id="pa-auto-compression" label="自动压缩" description="整理较早的对话，完整记录仍可查看。" checked={policy.enabled} onChange={enabled => set({ enabled })} />
+    <ToggleSetting id="pa-auto-compression" label={ui("自动压缩")} description={ui("整理较早的对话，完整记录仍可查看。")} checked={policy.enabled} onChange={enabled => set({ enabled })} />
     <BindingFields profile={profile} value={profile.bindings.compression} flat onChange={changes => onProfile({ ...profile, bindings: { ...profile.bindings, compression: { ...profile.bindings.compression, ...changes } } })} />
-    {number('threshold', '触发阈值', 10, 95, '达到上下文预算的此比例时压缩。', true)}
-    {number('targetRatio', '摘要目标比例', 1, 80, '摘要占上下文容量的目标比例。', true)}
-    <details className="pa-advanced"><summary>高级设置</summary>
-      <BudgetSetting label="助手上下文容量" value={policy.contextWindow} actual={window} reported={chat?.contextWindow} max={2000000} onChange={contextWindow => set({ contextWindow })} />
-      <BudgetSetting label="压缩模型上下文容量" value={policy.summaryContextWindow} actual={summaryWindow} reported={summary?.contextWindow} max={2000000} onChange={summaryContextWindow => set({ summaryContextWindow })} />
-      <BudgetSetting label="摘要长度上限" value={policy.summaryMaxTokens} actual={output} reported={summary?.outputLimit} max={100000} onChange={summaryMaxTokens => set({ summaryMaxTokens })} />
-      {number('protectLast', '保留最近消息', 1, 500, '按完整轮次保留对话和工具结果。')}
-      {number('protectFirst', '保留开头消息', 0, 100)}
+    {number('threshold', ui("触发阈值"), 10, 95, ui("达到上下文预算的此比例时压缩。"), true)}
+    {number('targetRatio', ui("摘要目标比例"), 1, 80, ui("摘要占上下文容量的目标比例。"), true)}
+    <details className="pa-advanced"><summary>{ui("高级设置")}</summary>
+      <BudgetSetting label={ui("助手上下文容量")} value={policy.contextWindow} actual={window} reported={chat?.contextWindow} max={2000000} onChange={contextWindow => set({ contextWindow })} />
+      <BudgetSetting label={ui("压缩模型上下文容量")} value={policy.summaryContextWindow} actual={summaryWindow} reported={summary?.contextWindow} max={2000000} onChange={summaryContextWindow => set({ summaryContextWindow })} />
+      <BudgetSetting label={ui("摘要长度上限")} value={policy.summaryMaxTokens} actual={output} reported={summary?.outputLimit} max={100000} onChange={summaryMaxTokens => set({ summaryMaxTokens })} />
+      {number('protectLast', ui("保留最近消息"), 1, 500, ui("按完整轮次保留对话和工具结果。"))}
+      {number('protectFirst', ui("保留开头消息"), 0, 100)}
     </details>
   </div>
 }

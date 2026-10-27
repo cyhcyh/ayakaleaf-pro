@@ -1,3 +1,5 @@
+import { authorizeReference } from '../reference-authorization'
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useState } from 'react'
 import { postJSON } from '@/infrastructure/fetch-json'
@@ -51,7 +53,7 @@ function ZoteroWidgetInner() {
   }, [oauthResult])
 
   const handleLink = useCallback(() => {
-    window.location.assign('/user/zotero/oauth')
+    setProcessing(true); setError(''); authorizeReference('zotero').then(ok => { if (ok) setIsLinked(true); else setError(ui('授权未完成，可以重试。')) }).catch(error => setError(ui(error.message))).finally(() => setProcessing(false))
   }, [])
 
   const handleUnlink = useCallback(async () => {
@@ -113,7 +115,7 @@ function ZoteroWidgetInner() {
             {t('unlink')}
           </OLButton>
         ) : (
-          <OLButton variant="secondary" onClick={handleLink}>
+          <OLButton variant="secondary" onClick={handleLink} disabled={processing}>
             {t('link_to_zotero')}
           </OLButton>
         )}

@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { createContext, useContext, useState } from "react";
 import type { ToolSpec } from "../agent/tools";
 import { api } from "./api";
@@ -47,14 +48,11 @@ function ReviewConsent({ part, respond }: { part: any; respond: any }) {
   };
   return (
     <div className="pa-review-consent">
-      <strong>是否开始本轮论文审阅？</strong>
-      <p className="mt-2 mb-2">
-        范围：{part.input.scope === "*" ? "当前项目的论文" : part.input.scope}
+      <strong>{ui("是否开始本轮论文审阅？")}</strong>
+      <p className="mt-2 mb-2">{ui(" 范围：")}{part.input.scope === "*" ? ui("当前项目的论文") : part.input.scope}
       </p>
       <p>{part.input.focus}</p>
-      <p className="pa-muted">
-        同意后，具体意见会逐条写入原生审阅面板。你可以随时停止。
-      </p>
+      <p className="pa-muted">{ui(" 同意后，具体意见会逐条写入原生审阅面板。你可以随时停止。 ")}</p>
       {error && <p role="alert">{error}</p>}
       <div className="pa-actions mb-0">
         <button
@@ -62,7 +60,7 @@ function ReviewConsent({ part, respond }: { part: any; respond: any }) {
           disabled={busy}
           onClick={accept}
         >
-          {busy ? "正在确认…" : "同意审阅并添加评论"}
+          {busy ? ui("正在确认…") : ui("同意审阅并添加评论")}
         </button>
         <button
           className="btn btn-secondary btn-sm"
@@ -71,12 +69,10 @@ function ReviewConsent({ part, respond }: { part: any; respond: any }) {
             respond({
               tool: "request_review",
               toolCallId: part.toolCallId,
-              output: { approved: false, reason: "用户未同意审阅。" },
+              output: { approved: false, reason: ui("用户未同意审阅。") },
             })
           }
-        >
-          暂不审阅
-        </button>
+        >{ui(" 暂不审阅 ")}</button>
       </div>
     </div>
   );
@@ -84,11 +80,11 @@ function ReviewConsent({ part, respond }: { part: any; respond: any }) {
 
 export const REVIEW_TOOLS: Record<string, ToolSpec> = {
   request_review: {
-    label: () => "确认本轮审阅范围与评论",
+    label: () => ui("确认本轮审阅范围与评论"),
     body: (part, respond) => <ReviewConsent part={part} respond={respond} />,
   },
   add_review_comment: {
-    label: ({ path }) => `添加审阅评论 · ${path}`,
+    label: ({ path }) => ui("添加审阅评论 · {0}", [path]),
     async run(input, { projectId, chatId, actions, signal }) {
       await api(
         "/reviews/check",
@@ -105,15 +101,15 @@ export const REVIEW_TOOLS: Record<string, ToolSpec> = {
     },
   },
   list_review_comments: {
-    label: () => "阅读已有评论",
+    label: () => ui("阅读已有评论"),
     run: async (_input, { projectId, signal }) =>
       await api("/reviews/comments", { projectId }, signal),
   },
-  list_references: { label: () => "查找项目文件与参考资料" },
+  list_references: { label: () => ui("查找项目文件与参考资料") },
   read_reference: {
     label: ({ projectPath, id, page }) =>
-      `阅读参考资料 · ${projectPath || id}${page ? ` · 第 ${page} 页起` : ""}`,
+      ui("阅读参考资料 · {0}{1}", [projectPath || id, page ? ui(" · 第 {0} 页起", [page]) : ""]),
   },
-  read_webpage: { label: ({ url }) => `阅读网页 · ${url}` },
-  search_references: { label: ({ query }) => `检索参考资料 · ${query}` },
+  read_webpage: { label: ({ url }) => ui("阅读网页 · {0}", [url]) },
+  search_references: { label: ({ query }) => ui("检索参考资料 · {0}", [query]) },
 };

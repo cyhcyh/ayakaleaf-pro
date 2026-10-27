@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * The tools of the chat agent as the browser sees them: a label for the
  * card, how to run the ones the browser runs, and what to show in the card.
@@ -119,7 +120,7 @@ export const TOOLS: Record<string, ToolSpec> = {
     async run(input, { projectId, chatId, toolCallId, signal }) {
       const record = await api<EditRecord>('/edits', { projectId, chatId, toolCallId, input }, signal)
       putEdit(projectId, record)
-      return { editId: record.id, state: record.state, queued: true, message: '建议已加入 AI 修改，用户接受后才会应用。' }
+      return { editId: record.id, state: record.state, queued: true, message: ui("建议已加入 AI 修改，用户接受后才会应用。") }
     },
     body: (part: EditPart, respond) => <EditProposal part={part} respond={respond} />,
   },

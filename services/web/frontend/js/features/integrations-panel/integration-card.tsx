@@ -9,6 +9,7 @@ export default function IntegrationCard({
   description,
   icon,
   showPaywallBadge,
+  status,
 }: {
   href?: string
   onClick?: () => void
@@ -16,6 +17,7 @@ export default function IntegrationCard({
   description: string
   icon: React.ReactNode
   showPaywallBadge: boolean
+  status?: string
 }) {
   const { t } = useTranslation()
 
@@ -23,7 +25,7 @@ export default function IntegrationCard({
     <div className="integrations-panel-card-contents">
       <div className="integrations-panel-card-icon">{icon}</div>
       <div className="integrations-panel-card-inner">
-        <div className="integrations-panel-card-header">
+        <div className={`integrations-panel-card-header${status ? ' ayaka-integration-header' : ''}`}>
           <div className="integrations-panel-card-title" translate="no">
             {title}
           </div>
@@ -36,6 +38,7 @@ export default function IntegrationCard({
               {t('premium')}
             </OLBadge>
           )}
+          {status && <span className="ayaka-integration-status">{status}</span>}
         </div>
         <p className="integrations-panel-card-description">{description}</p>
       </div>

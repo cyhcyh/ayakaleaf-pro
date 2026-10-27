@@ -1,3 +1,5 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
+import getMeta from '@/utils/meta'
 
 import { Trans, useTranslation } from 'react-i18next'
 import { useState } from 'react'
@@ -110,6 +112,7 @@ function GitBridgeSyncCard() {
 
     const [showGitBridgeSyncModal, setShowGitBridgeSyncModal] = useState(false)
     const { project, tags: projectTags } = useProjectContext()
+    if (!getMeta('ol-gitBridgeEnabled')) return <UnavailableCard title={t('git_integration')} description={t('git_clone_this_project')} icon={<GitLogoOrange size={32} />} service />
 
     return (
         <>

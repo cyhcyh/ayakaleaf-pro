@@ -15,6 +15,7 @@ import { buildCommentTools } from "../../../../mcp-server/app/src/CommentTools.m
 import { updateCatalog } from "./Catalog.mjs";
 import { applyWorkspaceRoutes } from "./WorkspaceRouter.mjs";
 import { getCapabilities } from "./Catalog.mjs";
+import { localize } from '../../../../site-settings/shared/localize.mjs';
 
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
 const projectSchema = z.string().regex(/^[a-f0-9]{24}$/i);
@@ -44,7 +45,7 @@ const handler = (run) => async (req, res) => {
   } catch (error) {
     res.status(error.status || 400).json({
       error:
-        error instanceof z.ZodError ? "提交的配置格式不正确" : error.message,
+        localize(error instanceof z.ZodError ? "提交的配置格式不正确" : error.message, req.language),
     });
   }
 };

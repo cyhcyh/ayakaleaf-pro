@@ -1,6 +1,7 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
+import ReferenceIntegrationCard from './reference-integration-card'
 import { useTranslation } from 'react-i18next'
 import ZoteroLogo from '@/shared/svgs/zotero-logo'
-import IntegrationCard from '@/features/integrations-panel/integration-card'
 import useInstanceFeatures from '@modules/instance-features/frontend/js/use-instance-features'
 
 /**
@@ -14,17 +15,14 @@ const ZoteroIntegrationCard = () => {
   const { t } = useTranslation()
   const { zotero } = useInstanceFeatures()
 
-  if (!zotero) {
-    return null
-  }
+  if (!zotero) { return <UnavailableCard title="Zotero" description={t('cite_directly_or_import_references')} icon={<ZoteroLogo size={32} />} /> }
 
   return (
-    <IntegrationCard
+    <ReferenceIntegrationCard
       title={t('zotero')}
       description={t('cite_directly_or_import_references')}
       icon={<ZoteroLogo size={32} />}
-      showPaywallBadge={false}
-      onClick={() => window.location.assign('/user/settings#references')}
+      provider="zotero"
     />
   )
 }

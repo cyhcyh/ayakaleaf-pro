@@ -42,7 +42,7 @@ export default function ImageNameSetting() {
       disabled={!write}
       options={options}
       onChange={changeImageName}
-      value={imageName}
+      value={imageName || options[0]?.value}
       translateOptions="no"
     />
   )

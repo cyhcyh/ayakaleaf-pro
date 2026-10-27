@@ -71,6 +71,7 @@ export const UserSchema = new Schema(
       enrolledAt: { type: Date },
     },
     isAdmin: { type: Boolean, default: false },
+    uiLanguage: { type: String, enum: ['en', 'zh-CN'] },
     adminRoles: { type: Array },
     signUpDate: {
       type: Date,

@@ -9,3 +9,5 @@ RUN cp /overleaf/server-ce/config/production.json /overleaf/services/history-v1/
     && cp /overleaf/server-ce/config/custom-environment-variables.json /overleaf/services/history-v1/config/custom-environment-variables.json
 LABEL org.opencontainers.image.source="https://github.com/cyhcyh/ayakaleaf-pro" \
       space.ayaka.extensions="personal-ai,selection-translation,review-tools"
+RUN chmod +x /overleaf/deploy/runtime/entrypoint.sh
+ENTRYPOINT ["/overleaf/deploy/runtime/entrypoint.sh"]

@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
@@ -48,41 +49,41 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
   }
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next })
   return <>
-    <OLTooltip id="assistant-history" description="历史会话" overlayProps={{ placement: 'bottom' }}>
-    <OLIconButton ref={button} className="rail-panel-header-button-subdued" size="sm" icon="history" accessibilityLabel="历史会话" aria-expanded={open} aria-haspopup="dialog" onClick={() => {
+    <OLTooltip id="assistant-history" description={ui("历史会话")} overlayProps={{ placement: 'bottom' }}>
+    <OLIconButton ref={button} className="rail-panel-header-button-subdued" size="sm" icon="history" accessibilityLabel={ui("历史会话")} aria-expanded={open} aria-haspopup="dialog" onClick={() => {
       if (!open) { const rect = button.current!.getBoundingClientRect(); setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 388)), top: rect.bottom + 6 }); setError(''); setDeleting(false); setRename(null) }
       setOpen(!open)
     }} /></OLTooltip>
-    {open && createPortal(<div ref={menu} className="pa-history-menu" role="dialog" aria-label="历史会话" style={position}>
-      <header><div><strong>历史会话</strong><small>当前项目</small></div><button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => execute(async () => { await onNew(); setOpen(false) })}>＋ 新建会话</button></header>
-      <div className="pa-history-search"><input autoFocus className="form-control" aria-label="搜索会话" placeholder="搜索标题或对话内容" value={query} onChange={event => setQuery(event.target.value)} />
-        <button className="btn btn-secondary btn-sm" aria-pressed={batch} onClick={() => { setBatch(!batch); setSelected(new Set()); setDeleting(false) }}>批量管理</button></div>
+    {open && createPortal(<div ref={menu} className="pa-history-menu" role="dialog" aria-label={ui("历史会话")} style={position}>
+      <header><div><strong>{ui("历史会话")}</strong><small>{ui("当前项目")}</small></div><button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => execute(async () => { await onNew(); setOpen(false) })}>{ui("＋ 新建会话")}</button></header>
+      <div className="pa-history-search"><input autoFocus className="form-control" aria-label={ui("搜索会话")} placeholder={ui("搜索标题或对话内容")} value={query} onChange={event => setQuery(event.target.value)} />
+        <button className="btn btn-secondary btn-sm" aria-pressed={batch} onClick={() => { setBatch(!batch); setSelected(new Set()); setDeleting(false) }}>{ui("批量管理")}</button></div>
       {error && <p className="pa-inline-error" role="alert">{error}</p>}
       {rename && <form className="pa-history-rename" onSubmit={event => { event.preventDefault(); execute(async () => {
         if (rename.id === currentId) await beforeChange(); await api(`/sessions/${rename.id}/rename`, { projectId, title: rename.title });
         if (rename.id === currentId) await onSelect(rename.id)
         setRename(null); await load()
-      }) }}><label>会话名称<input className="form-control" value={rename.title} maxLength={100} onChange={event => setRename({ ...rename, title: event.target.value })} /></label>
-        <div className="pa-actions"><button className="btn btn-primary btn-sm" disabled={busy || !rename.title.trim()}>保存名称</button><button type="button" className="btn btn-secondary btn-sm" onClick={() => setRename(null)}>取消</button></div></form>}
+      }) }}><label>{ui("会话名称")}<input className="form-control" value={rename.title} maxLength={100} onChange={event => setRename({ ...rename, title: event.target.value })} /></label>
+        <div className="pa-actions"><button className="btn btn-primary btn-sm" disabled={busy || !rename.title.trim()}>{ui("保存名称")}</button><button type="button" className="btn btn-secondary btn-sm" onClick={() => setRename(null)}>{ui("取消")}</button></div></form>}
       <div className="pa-history-list">
-        {!items.length && <p className="pa-muted m-3">{query ? '没有匹配的会话' : '暂无历史会话'}</p>}
+        {!items.length && <p className="pa-muted m-3">{query ? ui("没有匹配的会话") : ui("暂无历史会话")}</p>}
         {items.map(item => <div key={item.id} className={`pa-history-item ${item.id === currentId || selected.has(item.id) ? 'selected' : ''}`}>
-          {batch && <input type="checkbox" aria-label={`选择会话 ${item.title}`} checked={selected.has(item.id)} onChange={() => toggle(item.id)} />}
+          {batch && <input type="checkbox" aria-label={ui("选择会话 {0}", [item.title])} checked={selected.has(item.id)} onChange={() => toggle(item.id)} />}
           <button className="pa-history-select" disabled={busy} onClick={() => batch ? toggle(item.id) : execute(async () => { if (item.id !== currentId) await onSelect(item.id); setOpen(false) })}>
             <span>{item.title}</span>{item.snippet && <span className="pa-history-snippet">{item.snippet}</span>}<small>{new Date(item.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></button>
-          {!batch && <details className="pa-session-actions"><summary aria-label={`管理会话 ${item.title}`}>⋮</summary><div>
-            <button onClick={() => setRename({ id: item.id, title: item.title })}>重命名</button><button onClick={() => { setSelected(new Set([item.id])); setDeleting(true) }}>删除</button>
+          {!batch && <details className="pa-session-actions"><summary aria-label={ui("管理会话 {0}", [item.title])}>⋮</summary><div>
+            <button onClick={() => setRename({ id: item.id, title: item.title })}>{ui("重命名")}</button><button onClick={() => { setSelected(new Set([item.id])); setDeleting(true) }}>{ui("删除")}</button>
           </div></details>}
         </div>)}
-        {cursor && <button className="pa-text-action d-block mx-auto my-2" disabled={busy} onClick={() => execute(() => load(cursor))}>加载更多会话</button>}
+        {cursor && <button className="pa-text-action d-block mx-auto my-2" disabled={busy} onClick={() => execute(() => load(cursor))}>{ui("加载更多会话")}</button>}
       </div>
-      {deleting ? <footer className="pa-history-confirm"><p>删除所选 {selected.size} 个会话？项目正文、评论和 AI 修改记录会保留。</p><div className="pa-actions">
+      {deleting ? <footer className="pa-history-confirm"><p>{ui("删除所选 ")}{selected.size}{ui(" 个会话？项目正文、评论和 AI 修改记录会保留。")}</p><div className="pa-actions">
         <button className="btn btn-danger btn-sm" disabled={busy || !selected.size} onClick={() => execute(async () => {
           if (currentId && selected.has(currentId)) await beforeChange(); await api('/sessions/delete', { projectId, ids: [...selected] });
           if (currentId && selected.has(currentId)) await onNew(true)
           setSelected(new Set()); setDeleting(false); await load()
-        })}>确认删除 {selected.size} 项</button><button className="btn btn-secondary btn-sm" onClick={() => setDeleting(false)}>取消</button></div></footer>
-        : batch && <footer><span>已选 {selected.size} 项</span><button className="pa-text-action" onClick={() => setSelected(selected.size === items.length ? new Set() : new Set(items.map(item => item.id)))}>{selected.size === items.length ? '取消选择' : '全选已显示'}</button><button className="btn btn-outline-danger btn-sm" disabled={!selected.size || selected.size > 100 || busy} onClick={() => setDeleting(true)}>删除所选</button></footer>}
+        })}>{ui("确认删除 ")}{selected.size}{ui(" 项")}</button><button className="btn btn-secondary btn-sm" onClick={() => setDeleting(false)}>{ui("取消")}</button></div></footer>
+        : batch && <footer><span>{ui("已选 ")}{selected.size}{ui(" 项")}</span><button className="pa-text-action" onClick={() => setSelected(selected.size === items.length ? new Set() : new Set(items.map(item => item.id)))}>{selected.size === items.length ? ui("取消选择") : ui("全选已显示")}</button><button className="btn btn-outline-danger btn-sm" disabled={!selected.size || selected.size > 100 || busy} onClick={() => setDeleting(true)}>{ui("删除所选")}</button></footer>}
     </div>, document.body)}
   </>
 }

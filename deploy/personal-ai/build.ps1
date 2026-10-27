@@ -45,17 +45,17 @@ mkdir -p /src
 unzip -q /tmp/source.zip -d /src
 cp -a /overleaf/.yarn/cache /src/.yarn/cache
 cd /src
-CYPRESS_INSTALL_BINARY=0 yarn install
+YARN_NPM_REGISTRY_SERVER=https://registry.npmjs.org npm_config_nodedir=/usr CYPRESS_INSTALL_BINARY=0 yarn install
 export NODE_OPTIONS="--require /src/.pnp.cjs --import /src/.pnp.register.mjs"
 cd services/web
 yarn run lezer-latex:generate
-node --test modules/workbench/test/*.test.mjs
+node --test modules/workbench/test/*.test.mjs modules/site-settings/test/*.test.mjs
 yarn run precompile-pug
 node ../../deploy/personal-ai/prepare-locales.mjs
 yarn run extract-translations
 yarn run webpack:production
 cd /src
-yarn workspaces focus --all --production
+YARN_NPM_REGISTRY_SERVER=https://registry.npmjs.org npm_config_nodedir=/usr yarn workspaces focus --all --production
 tar --exclude='./.yarn/cache' --exclude='./.local' --exclude='./.env' --exclude='./.git' -cf /tmp/overlay.tar -C /src .
 mkdir -p /tmp/new-cache/.yarn/cache
 for archive in /src/.yarn/cache/*; do

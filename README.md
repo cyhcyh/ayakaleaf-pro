@@ -5,6 +5,8 @@
 
 <h4 align="center">Overleaf Community Edition enhanced with all Pro features <br/>(open source, free to use, self-hostable).</h4>
 
+Deployment for this fork: [English](doc/DEPLOYMENT-EN.md) · [简体中文](doc/DEPLOYMENT-ZH.md)
+
 <p align="center">
   <a href="https://ayakaleaf-pro.ayaka.space">Documents</a> •
   <a href="https://github.com/ayaka-notes/ayakaleaf-pro-playground">Playground</a> •

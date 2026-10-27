@@ -1,3 +1,4 @@
+import { oauthResult } from './OAuthResult.mjs'
 import crypto from 'node:crypto'
 import logger from '@overleaf/logger'
 import SessionManager from '../../../../app/src/Features/Authentication/SessionManager.mjs'
@@ -44,6 +45,7 @@ async function getGroups(req, res) {
  * the session and redirect the user to Mendeley's authorization page.
  */
 async function oauth(req, res) {
+  req.session.mendeleyOAuthPopup = req.query.popup === '1'
   const userId = SessionManager.getLoggedInUserId(req.session)
   try {
     const state = crypto.randomBytes(16).toString('hex')
@@ -51,7 +53,7 @@ async function oauth(req, res) {
     res.redirect(MendeleyApiClient.getOAuthAuthorizeUrl(state).toString())
   } catch (err) {
     logger.err({ err, userId }, 'error starting Mendeley OAuth flow')
-    res.redirect('/user/settings?oauth-error=mendeley#references')
+    oauthResult(req, res, 'mendeley', false)
   }
 }
 
@@ -67,16 +69,16 @@ async function oauthCallback(req, res) {
   delete req.session.mendeleyOAuthState
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    return res.redirect('/user/settings?oauth-error=mendeley#references')
+    return oauthResult(req, res, 'mendeley', false)
   }
 
   try {
     const tokens = await MendeleyApiClient.exchangeCodeForToken(code)
     await MendeleyApiClient.storeCredentials(userId, tokens)
-    res.redirect('/user/settings?oauth-complete=mendeley#references')
+    oauthResult(req, res, 'mendeley', true)
   } catch (err) {
     logger.err({ err, userId }, 'error completing Mendeley OAuth flow')
-    res.redirect('/user/settings?oauth-error=mendeley#references')
+    oauthResult(req, res, 'mendeley', false)
   }
 }
 

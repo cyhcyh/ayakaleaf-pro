@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { UIMessage } from 'ai'
@@ -45,7 +46,7 @@ export default function ConversationMessages({ messages, streaming, respond, sum
     const frame = requestAnimationFrame(() => virtual.scrollToIndex(messages.length - 1, { align: 'end' }))
     return () => cancelAnimationFrame(frame)
   }, [messages, total])
-  return <div ref={box} className="pa-conversation-scroll" aria-label="会话消息" onScroll={() => {
+  return <div ref={box} className="pa-conversation-scroll" aria-label={ui("会话消息")} onScroll={() => {
     const element = box.current!
     if (pendingAnchor.current) return
     following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 60
@@ -53,14 +54,14 @@ export default function ConversationMessages({ messages, streaming, respond, sum
   }}>
     <div className="pa-conversation-space" style={{ height: total }}>
       <div className="pa-conversation-history">
-        {historyError ? <button className="pa-text-action" onClick={() => older().catch(() => {})}>读取失败，重试</button>
-          : hasOlder ? <button className="pa-text-action" disabled={loadingOlder} onClick={() => older().catch(() => {})}>{loadingOlder ? '正在读取…' : '加载更早消息'}</button> : <span>已到会话开头</span>}
+        {historyError ? <button className="pa-text-action" onClick={() => older().catch(() => {})}>{ui("读取失败，重试")}</button>
+          : hasOlder ? <button className="pa-text-action" disabled={loadingOlder} onClick={() => older().catch(() => {})}>{loadingOlder ? ui("正在读取…") : ui("加载更早消息")}</button> : <span>{ui("已到会话开头")}</span>}
       </div>
       {virtual.getVirtualItems().map(item => {
         const message = messages[item.index]
         return <div key={item.key} ref={virtual.measureElement} data-index={item.index} data-message-id={message.id} className="pa-conversation-message" style={{ transform: `translateY(${item.start}px)` }}>
           <MessageView message={message} streaming={streaming && item.index === messages.length - 1} respond={respond} />
-          {message.id === summary?.upToMessageId && <p className="pa-compaction-marker">以上对话已整理为摘要，完整记录仍可查看。</p>}
+          {message.id === summary?.upToMessageId && <p className="pa-compaction-marker">{ui("以上对话已整理为摘要，完整记录仍可查看。")}</p>}
         </div>
       })}
     </div>

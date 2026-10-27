@@ -32,5 +32,10 @@
   "x_successfully_linked_description": "Thanks, we’ve successfully linked your __provider__ account to __appName__. You can now export your __appName__ projects to __provider__, or import projects from your __provider__ repositories.",
   "x_sync_description": "With __provider__ Sync you can link your __appName__ projects to __provider__ repositories, create new commits from __appName__, and merge commits from __provider__.",
   "x_sync_error": "Sorry, there was a problem checking our __provider__ service. Please try again in a few moments.",
-  "x_sync_repository_not_found_description": "The linked repository has either been removed, or you no longer have access to it. You can unlink the repository from this project and set up sync with a new repository."
+  "x_sync_repository_not_found_description": "The linked repository has either been removed, or you no longer have access to it. You can unlink the repository from this project and set up sync with a new repository.",
+  "ayaka_integrations_configuration": "Integration settings",
+  "ayaka_authorization_complete": "Authorization finished. You can close this window.",
+  "ayaka_admin": "Admin",
+  "ayaka_manage_users": "Users",
+  "ayaka_manage_projects": "Projects"
 }

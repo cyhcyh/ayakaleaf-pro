@@ -1,3 +1,4 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjectContext } from '@/shared/context/project-context'
@@ -15,9 +16,7 @@ const GitLabSyncCard = () => {
   const { projectId, name } = useProjectContext()
   const [modalStatus, setModalStatus] = useState<GitSyncModalStatus>('loading')
 
-  if (!gitlabSync) {
-    return null
-  }
+  if (!gitlabSync) { return <UnavailableCard title="GitLab" description={t('sync_with_a_x_repository', { provider: 'GitLab' })} icon={<GitlabLogo size={32} />} /> }
 
   return (
     <>

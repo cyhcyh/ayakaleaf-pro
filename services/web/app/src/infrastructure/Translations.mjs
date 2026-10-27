@@ -4,6 +4,7 @@ import { URL } from 'node:url'
 import pug from 'pug-runtime'
 import logger from '@overleaf/logger'
 import SafeHTMLSubstitution from '../Features/Helpers/SafeHTMLSubstitution.mjs'
+import { preferredLanguage } from '../../../modules/site-settings/app/src/language.mjs'
 import cs from '../../../locales/cs.json' with { type: 'json' }
 import da from '../../../locales/da.json' with { type: 'json' }
 import de from '../../../locales/de.json' with { type: 'json' }
@@ -66,6 +67,9 @@ if (!availableLanguageCodes.includes(fallbackLanguageCode)) {
   // always load the fallback locale
   availableLanguageCodes.push(fallbackLanguageCode)
 }
+for (const language of ['en', 'zh-CN']) {
+  if (!availableLanguageCodes.includes(language)) availableLanguageCodes.push(language)
+}
 
 const resources = Object.fromEntries(
   Object.entries(locales)
@@ -106,9 +110,11 @@ i18n
     logger.error({ err }, 'failed to initialize i18next library')
   })
 
-function setLangBasedOnDomainMiddleware(req, res, next) {
+async function setLangBasedOnDomainMiddleware(req, res, next) {
   // Determine language from subdomain
-  const lang = availableHosts.get(req.headers.host) ?? fallbackLanguageCode
+  let preferred
+  try { preferred = await preferredLanguage(req) } catch (error) { return next(error) }
+  const lang = preferred || availableHosts.get(req.headers.host) || fallbackLanguageCode
 
   req.i18n = {
     language: lang,

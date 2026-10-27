@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useEffect, useState } from 'react'
 import Setting from '@/features/ide-settings/components/setting'
 import { useProjectContext } from '@/shared/context/project-context'
@@ -28,22 +29,22 @@ export default function DataSettings() {
       await prepareHistoryClear({ projectId, scope })
       await api('/history/clear', { projectId, scope })
       historyCleared({ projectId, scope })
-      setConfirm(false); setCount(0); setNotice('历史会话已清空。')
+      setConfirm(false); setCount(0); setNotice(ui("历史会话已清空。"))
     } catch (error) { setError((error as Error).message) } finally { setBusy(false) }
   }
   return <div className="pa-native-settings">
-    <Setting controlId="pa-history-scope" label="清除范围" description="只清除你自己的历史会话。">
-      <select id="pa-history-scope" className="form-control form-select" value={scope} disabled={busy} onChange={event => setScope(event.target.value as typeof scope)}><option value="project">当前项目</option><option value="all">我的所有项目</option></select>
+    <Setting controlId="pa-history-scope" label={ui("清除范围")} description={ui("只清除你自己的历史会话。")}>
+      <select id="pa-history-scope" className="form-control form-select" value={scope} disabled={busy} onChange={event => setScope(event.target.value as typeof scope)}><option value="project">{ui("当前项目")}</option><option value="all">{ui("我的所有项目")}</option></select>
     </Setting>
-    <Setting controlId="pa-clear-history" label="历史会话" description="清除对话和摘要，保留正文、评论、参考文件和 AI 修改记录。">
-      <div className="pa-data-action"><span>{count === null ? '正在读取…' : `${count} 个会话`}</span><button id="pa-clear-history" aria-label="清空历史会话" className="btn btn-secondary btn-sm pa-danger-action" disabled={busy || !count} onClick={() => { setError(''); setConfirm(true) }}>清空</button></div>
+    <Setting controlId="pa-clear-history" label={ui("历史会话")} description={ui("清除对话和摘要，保留正文、评论、参考文件和 AI 修改记录。")}>
+      <div className="pa-data-action"><span>{count === null ? ui("正在读取…") : ui("{0} 个会话", [count])}</span><button id="pa-clear-history" aria-label={ui("清空历史会话")} className="btn btn-secondary btn-sm pa-danger-action" disabled={busy || !count} onClick={() => { setError(''); setConfirm(true) }}>{ui("清空")}</button></div>
     </Setting>
     {error && !confirm && <p className="pa-inline-error" role="alert">{error}</p>}
     {notice && <p className="pa-notice" role="status">{notice}</p>}
     <OLModal show={confirm} onHide={() => { if (!busy) setConfirm(false) }} backdrop="static" size="sm" centered themed>
-      <OLModalHeader closeButton={!busy}><OLModalTitle>{scope === 'project' ? '清空当前项目的历史会话？' : '清空所有项目的历史会话？'}</OLModalTitle></OLModalHeader>
-      <OLModalBody><p>将清除 {count} 个会话及其摘要，无法恢复。</p><p>正文、评论、参考文件和 AI 修改记录会保留。</p>{error && <p className="pa-inline-error" role="alert">{error}</p>}</OLModalBody>
-      <OLModalFooter><button className="btn btn-secondary" disabled={busy} onClick={() => setConfirm(false)}>取消</button><button className="btn btn-danger" disabled={busy} onClick={clear}>{busy ? '正在清空…' : '清空会话'}</button></OLModalFooter>
+      <OLModalHeader closeButton={!busy}><OLModalTitle>{scope === 'project' ? ui("清空当前项目的历史会话？") : ui("清空所有项目的历史会话？")}</OLModalTitle></OLModalHeader>
+      <OLModalBody><p>{ui("将清除 ")}{count}{ui(" 个会话及其摘要，无法恢复。")}</p><p>{ui("正文、评论、参考文件和 AI 修改记录会保留。")}</p>{error && <p className="pa-inline-error" role="alert">{error}</p>}</OLModalBody>
+      <OLModalFooter><button className="btn btn-secondary" disabled={busy} onClick={() => setConfirm(false)}>{ui("取消")}</button><button className="btn btn-danger" disabled={busy} onClick={clear}>{busy ? ui("正在清空…") : ui("清空会话")}</button></OLModalFooter>
     </OLModal>
   </div>
 }

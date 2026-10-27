@@ -1,3 +1,4 @@
+import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjectContext } from '@/shared/context/project-context'
@@ -15,9 +16,7 @@ const GitHubSyncCard = () => {
   const { projectId, name } = useProjectContext()
   const [modalStatus, setModalStatus] = useState<GitSyncModalStatus>('loading')
 
-  if (!githubSync) {
-    return null
-  }
+  if (!githubSync) { return <UnavailableCard title="GitHub" description={t('sync_with_a_github_repository')} icon={<GithubLogo size={32} />} /> }
 
   return (
     <>

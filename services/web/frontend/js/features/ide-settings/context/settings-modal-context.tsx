@@ -32,6 +32,7 @@ import FontSizeSetting from '@/features/ide-settings/components/appearance-setti
 import LineHeightSetting from '@/features/ide-settings/components/appearance-settings/line-height-setting'
 import FontFamilySetting from '@/features/ide-settings/components/appearance-settings/font-family-setting'
 import DarkModePdfSetting from '@/features/ide-settings/components/appearance-settings/dark-mode-pdf-setting'
+import LanguageSetting from '@modules/site-settings/frontend/js/language-setting'
 import RootBibDocumentSetting from '../components/reference-settings/root-bib-document-setting'
 import ReferenceFormatSetting from '../components/reference-settings/reference-format-setting'
 
@@ -276,6 +277,10 @@ export const SettingsModalProvider: FC<React.PropsWithChildren> = ({
               {
                 key: 'overallTheme',
                 component: <OverallThemeSetting />,
+              },
+              {
+                key: 'interfaceLanguage',
+                component: <LanguageSetting />,
               },
               {
                 key: 'editorTheme',

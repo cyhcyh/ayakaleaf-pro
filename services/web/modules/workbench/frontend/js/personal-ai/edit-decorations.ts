@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { StateEffect, StateField, type EditorState } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view'
 import { locateAnchoredEdit } from '../../../shared/edit-anchor.mjs'
@@ -15,8 +16,8 @@ class EditMarker extends WidgetType {
     root.className = 'pa-inline-edit-marker'
     root.contentEditable = 'false'
     root.textContent = 'AI'
-    root.title = '查看此处 AI 修改'
-    root.setAttribute('aria-label', '查看此处 AI 修改')
+    root.title = ui("查看此处 AI 修改")
+    root.setAttribute('aria-label', ui("查看此处 AI 修改"))
     root.onmousedown = event => event.preventDefault()
     root.onclick = () => window.dispatchEvent(new CustomEvent('personal-ai:edit-action', { detail: { id: this.edit.id, action: 'focus' } }))
     return root
@@ -34,7 +35,7 @@ function decorations(state: EditorState, items: EditRecord[], focusedId: string 
   for (const { item, at } of located) {
     if (at < occupiedUntil) continue
     const end = at + item.input.oldText.length
-    if (end > at) ranges.push(Decoration.mark({ class: `pa-inline-change ${item.id === focusedId ? 'pa-inline-change-focused' : ''}`, attributes: { 'data-pa-edit-id': item.id, title: '查看此处 AI 修改' } }).range(at, end))
+    if (end > at) ranges.push(Decoration.mark({ class: `pa-inline-change ${item.id === focusedId ? 'pa-inline-change-focused' : ''}`, attributes: { 'data-pa-edit-id': item.id, title: ui("查看此处 AI 修改") } }).range(at, end))
     else ranges.push(Decoration.widget({ widget: new EditMarker(item), side: 1 }).range(at))
     occupiedUntil = end
   }

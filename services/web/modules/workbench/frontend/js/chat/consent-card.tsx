@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 /**
  * Asks for the AI terms once, with the core's consent text and hook.
  */
@@ -24,13 +25,9 @@ export default function ConsentCard() {
         style={notice}
         aria-label={t("give-ai-consent")}
       >
-        <div className="fw-bold">使用你选择的 AI 模型连接</div>
-        <p className="mb-0">
-          对话、图片和相关文件内容会发送到你选择的模型服务，由该服务处理。
-        </p>
-        <p className="mb-0">
-          开启对话后，审阅论文并添加评论仍需另行确认。
-        </p>
+        <div className="fw-bold">{ui("使用你选择的 AI 模型连接")}</div>
+        <p className="mb-0">{ui(" 对话、图片和相关文件内容会发送到你选择的模型服务，由该服务处理。 ")}</p>
+        <p className="mb-0">{ui(" 开启对话后，审阅论文并添加评论仍需另行确认。 ")}</p>
         <OLButton
           variant="primary"
           className="align-self-end"
