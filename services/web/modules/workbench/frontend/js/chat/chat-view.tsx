@@ -276,6 +276,17 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
   const leave = useRef(stopReply)
   leave.current = stopReply
   useEffect(() => registerFlush?.(async () => { leave.current(); await persistence.flush() }), [registerFlush, persistence.flush])
+  useEffect(() => {
+    const prepare = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (detail.scope === 'all' || detail.projectId === projectId) {
+        leave.current()
+        detail.waitUntil(persistence.flush().catch(() => {}))
+      }
+    }
+    window.addEventListener('personal-ai:history-will-clear', prepare)
+    return () => window.removeEventListener('personal-ai:history-will-clear', prepare)
+  }, [projectId, persistence.flush])
 
   const { editorSelection } = useEditorSelectionContext()
   const selection: Selection[] = useMemo(() => {
@@ -404,8 +415,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
           className="d-flex flex-wrap justify-content-center mb-2"
           style={{ ...faint, fontSize: 'var(--font-size-01)', columnGap: '0.5ch' }}
         >
-          <span className="text-nowrap">AI can make mistakes.</span>
-          <span className="text-nowrap">Always check responses.</span>
+          <span className="text-nowrap">请核对回答和修改建议。</span>
         </p>
       </div>
       {persistence.error && <div className="pa-save-error" role="alert">会话尚未保存：{persistence.error}<button className="pa-text-action" onClick={() => persistence.flush().catch(() => {})}>重试保存</button></div>}

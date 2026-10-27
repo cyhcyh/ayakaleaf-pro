@@ -5,7 +5,7 @@ export function locateEdit(content, before, startLine) {
     return lines.slice(0, startLine - 1).reduce((sum, line) => sum + line.length + 1, 0);
   }
   const at = content.indexOf(before);
-  if (at < 0) throw new Error('该处正文已变化，无法直接应用或撤销；请重新阅读并生成建议');
+  if (at < 0) throw new Error('正文已变化，请重新生成修改建议');
   if (content.indexOf(before, at + 1) !== -1) throw new Error('原文出现多次，请提供更完整的上下文以准确定位');
   return at;
 }

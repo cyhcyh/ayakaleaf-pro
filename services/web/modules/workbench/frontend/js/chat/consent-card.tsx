@@ -26,10 +26,10 @@ export default function ConsentCard() {
       >
         <div className="fw-bold">使用你选择的 AI 模型连接</div>
         <p className="mb-0">
-          助手会将消息以及按任务需要读取的论文内容、图片和参考资料发送至你选择的模型服务。数据的处理方式取决于该服务。
+          对话、图片和相关文件内容会发送到你选择的模型服务，由该服务处理。
         </p>
         <p className="mb-0">
-          审阅论文并添加评论前，助手会单独与你确认。本次同意仅开启 AI 对话。
+          开启对话后，审阅论文并添加评论仍需另行确认。
         </p>
         <OLButton
           variant="primary"

@@ -1,0 +1,67 @@
+// Run only inside the isolated verification app, never against the 8080 stack.
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import Settings from '@overleaf/settings';
+import '../index.mjs';
+import ProjectDeleter from '../../../app/src/Features/Project/ProjectDeleter.mjs';
+import { Project } from '../../../app/src/models/Project.mjs';
+import { collection } from '../app/src/personal-ai/ProfileStore.mjs';
+import { createSession } from '../app/src/personal-ai/Sessions.mjs';
+import { expireProject, projectWrite } from '../app/src/personal-ai/WorkspaceLifecycle.mjs';
+
+if (Settings.siteUrl !== 'http://localhost:39080' || !process.env.PERSONAL_AI_LIFECYCLE_FIXTURE) throw new Error('Isolated lifecycle fixture required');
+const fixture = JSON.parse(await fs.readFile(process.env.PERSONAL_AI_LIFECYCLE_FIXTURE, 'utf8'));
+const projectId = fixture.lifecycleProjectId;
+const session = await (await collection('Sessions')).findOne({ _id: fixture.lifecycleChatId, projectId, title: 'Lifecycle notes' });
+assert.ok(session);
+const userId = session.userId;
+assert.equal((await Project.findById(projectId)).name, 'Lifecycle verification');
+const checks = [];
+const root = '/var/lib/overleaf/data/personal-ai/references';
+const legacyId = crypto.randomUUID();
+await fs.mkdir(path.join(root, userId), { recursive: true });
+await fs.writeFile(path.join(root, userId, legacyId), 'Legacy attachment');
+await (await collection('References')).insertOne({ _id: legacyId, userId, projectId, name: 'legacy.txt' });
+const orphan = path.join(root, 'projects', projectId, userId, crypto.randomUUID());
+await fs.writeFile(orphan, 'Unfinished upload');
+await (await collection('ActiveSessions')).updateOne({ _id: `${userId}:${projectId}` }, { $unset: { userId: '', projectId: '' } });
+await (await collection('Edits')).insertOne({ _id: `lifecycle-${crypto.randomUUID()}`, id: crypto.randomUUID(), userId, projectId, state: 'pending' });
+await (await collection('Reviews')).insertOne({ _id: crypto.randomUUID(), userId, projectId, stopped: false });
+await ProjectDeleter.promises.trashProject(projectId, userId);
+assert.ok(await (await collection('Sessions')).findOne({ _id: session._id, deleted: false }));
+await ProjectDeleter.promises.untrashProject(projectId, userId);
+await ProjectDeleter.promises.deleteProject(projectId);
+assert.ok(await (await collection('References')).findOne({ _id: fixture.lifecycleReferenceId }));
+await ProjectDeleter.promises.undeleteProject(projectId);
+assert.ok(await Project.findById(projectId));
+assert.ok(await (await collection('Messages')).findOne({ sessionId: session._id }));
+checks.push('native trash, recoverable deletion and restoration retain AI history and reference files');
+
+await ProjectDeleter.promises.deleteProject(projectId);
+await ProjectDeleter.promises.expireDeletedProject(projectId);
+for (const name of ['Sessions', 'Messages', 'Edits', 'Reviews', 'References']) assert.equal(await (await collection(name)).countDocuments({ projectId }), 0, name);
+assert.equal(await (await collection('ActiveSessions')).countDocuments({ _id: `${userId}:${projectId}` }), 0);
+for (const file of [path.join(root, 'projects', projectId), path.join(root, userId, legacyId)]) await assert.rejects(fs.stat(file), { code: 'ENOENT' });
+assert.ok(await (await collection('References')).findOne({ _id: fixture.retainedReferenceId, projectId: fixture.projectId }));
+await assert.rejects(createSession(userId, projectId), error => error.status === 410);
+checks.push('native permanent expiry removes new and legacy records, pointers, attachments and unfinished project uploads; late writes are rejected');
+
+const raceId = crypto.randomBytes(12).toString('hex');
+let started, release;
+const ready = new Promise(resolve => { started = resolve });
+const gate = new Promise(resolve => { release = resolve });
+const writer = projectWrite(raceId, async transaction => {
+  started(); await gate;
+  await (await collection('Sessions')).insertOne({ _id: crypto.randomUUID(), userId, projectId: raceId }, { session: transaction });
+});
+await ready;
+const purge = expireProject(raceId);
+release();
+await Promise.all([writer, purge]);
+assert.equal(await (await collection('Sessions')).countDocuments({ projectId: raceId }), 0);
+await assert.rejects(createSession(userId, raceId), error => error.status === 410);
+checks.push('project purge serializes with an in-flight writer and cannot be undone by a delayed request');
+console.log(JSON.stringify({ passed: true, checks }, null, 2));
+process.exit(0);

@@ -22,7 +22,7 @@ export default function PersonalEditProposal({ part, respond }: { part: EditPart
     api<EditRecord>('/edits', { projectId: context.projectId, chatId: context.chatId, toolCallId: part.toolCallId, input: part.input }, abort.signal).then(result => {
       if (!active) return
       putEdit(context.projectId, result); setId(result.id)
-      respond({ tool: 'propose_edit', toolCallId: part.toolCallId, output: { editId: result.id, state: result.state, queued: true, message: '建议已加入编辑器 AI 修改面板，尚未应用，等待用户逐条确认。' } })
+      respond({ tool: 'propose_edit', toolCallId: part.toolCallId, output: { editId: result.id, state: result.state, queued: true, message: '建议已加入 AI 修改，用户接受后才会应用。' } })
     }).catch(error => {
       if (!active) return
       setError(error.message)
@@ -40,6 +40,6 @@ export default function PersonalEditProposal({ part, respond }: { part: EditPart
     <div><strong>{part.input.path}</strong><span className="pa-edit-status">{record ? editStateNames[record.state] : '正在登记建议…'}</span></div>
     {part.input.reason && <p>{part.input.reason}</p>}
     {error && <p role="alert" className="pa-inline-error">{error}</p>}
-    <button className="btn btn-secondary btn-sm" disabled={!id} onClick={() => id && locate(id).catch(error => setError(error.message))}>在编辑器中查看修改</button>
+    <button className="btn btn-secondary btn-sm" disabled={!id} onClick={() => id && locate(id).catch(error => setError(error.message))}>查看 AI 修改</button>
   </div>
 }

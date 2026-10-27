@@ -1,5 +1,9 @@
 import Settings from '@overleaf/settings'
 import WorkbenchRouter from './app/src/WorkbenchRouter.mjs'
+import Modules from '../../app/src/infrastructure/Modules.mjs'
+import { expireProject } from './app/src/personal-ai/WorkspaceLifecycle.mjs'
+
+Modules.hooks.attach('projectExpired', expireProject)
 
 // Configures the shared AI gateway, token quota, and search providers
 // from environment variables:

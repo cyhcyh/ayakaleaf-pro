@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import MaterialIcon from '@/shared/components/material-icon'
+import OLIconButton from '@/shared/components/ol/ol-icon-button'
+import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import { api } from './api'
 import type { SessionItem } from './session-state'
 import './style.scss'
@@ -47,13 +48,14 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
   }
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next })
   return <>
-    <button ref={button} className="btn btn-ghost btn-sm rail-panel-header-button-subdued" aria-label="历史会话" aria-expanded={open} aria-haspopup="dialog" onClick={() => {
+    <OLTooltip id="assistant-history" description="历史会话" overlayProps={{ placement: 'bottom' }}>
+    <OLIconButton ref={button} className="rail-panel-header-button-subdued" size="sm" icon="history" accessibilityLabel="历史会话" aria-expanded={open} aria-haspopup="dialog" onClick={() => {
       if (!open) { const rect = button.current!.getBoundingClientRect(); setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 388)), top: rect.bottom + 6 }); setError(''); setDeleting(false); setRename(null) }
       setOpen(!open)
-    }}><MaterialIcon type="history" /></button>
+    }} /></OLTooltip>
     {open && createPortal(<div ref={menu} className="pa-history-menu" role="dialog" aria-label="历史会话" style={position}>
       <header><div><strong>历史会话</strong><small>当前项目</small></div><button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => execute(async () => { await onNew(); setOpen(false) })}>＋ 新建会话</button></header>
-      <div className="pa-history-search"><input autoFocus className="form-control" aria-label="搜索会话" placeholder="搜索会话…" value={query} onChange={event => setQuery(event.target.value)} />
+      <div className="pa-history-search"><input autoFocus className="form-control" aria-label="搜索会话" placeholder="搜索标题或对话内容" value={query} onChange={event => setQuery(event.target.value)} />
         <button className="btn btn-secondary btn-sm" aria-pressed={batch} onClick={() => { setBatch(!batch); setSelected(new Set()); setDeleting(false) }}>批量管理</button></div>
       {error && <p className="pa-inline-error" role="alert">{error}</p>}
       {rename && <form className="pa-history-rename" onSubmit={event => { event.preventDefault(); execute(async () => {
@@ -67,7 +69,7 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
         {items.map(item => <div key={item.id} className={`pa-history-item ${item.id === currentId || selected.has(item.id) ? 'selected' : ''}`}>
           {batch && <input type="checkbox" aria-label={`选择会话 ${item.title}`} checked={selected.has(item.id)} onChange={() => toggle(item.id)} />}
           <button className="pa-history-select" disabled={busy} onClick={() => batch ? toggle(item.id) : execute(async () => { if (item.id !== currentId) await onSelect(item.id); setOpen(false) })}>
-            <span>{item.title}</span><small>{new Date(item.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></button>
+            <span>{item.title}</span>{item.snippet && <span className="pa-history-snippet">{item.snippet}</span>}<small>{new Date(item.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></button>
           {!batch && <details className="pa-session-actions"><summary aria-label={`管理会话 ${item.title}`}>⋮</summary><div>
             <button onClick={() => setRename({ id: item.id, title: item.title })}>重命名</button><button onClick={() => { setSelected(new Set([item.id])); setDeleting(true) }}>删除</button>
           </div></details>}

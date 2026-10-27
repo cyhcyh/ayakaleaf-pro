@@ -11,6 +11,7 @@ import {
 } from "./api";
 import { ModelPicker } from './model-controls';
 import { BindingFields, CompressionSettings } from './settings-fields';
+import DataSettings from './data-settings';
 import "./style.scss";
 
 const featureNames = {
@@ -230,7 +231,7 @@ export function PersonalAiSettings() {
       <div className="pa-heading">
         <div>
           <h3>AI 与翻译</h3>
-          <p>管理你的模型连接，为写作、审阅和翻译选择合适的模型。</p>
+          <p>设置模型连接、翻译和对话记录。</p>
         </div>
         <MaterialIcon type="auto_awesome" />
       </div>
@@ -241,6 +242,7 @@ export function PersonalAiSettings() {
             ["bindings", "功能分配"],
             ["translation", "划词翻译"],
             ["compression", "上下文压缩"],
+            ["data", "数据管理"],
           ] as const
         ).map(([key, name]) => (
           <button
@@ -495,7 +497,7 @@ export function PersonalAiSettings() {
         )}
         {tab === "bindings" && (
           <>
-            <p className="pa-muted">各功能可独立选择模型和思考参数；选择沿用时，将使用 AI 助手的完整配置。</p>
+            <p className="pa-muted">可分别设置模型和思考参数，也可沿用 AI 助手的配置。</p>
             {Object.entries(featureNames).map(([feature, name]) => {
               const key = feature as keyof Profile["bindings"];
               return <section className="pa-card pa-feature-card" key={key}>
@@ -507,6 +509,7 @@ export function PersonalAiSettings() {
           </>
         )}
         {tab === "compression" && <CompressionSettings profile={profile} onProfile={setProfile} />}
+        {tab === 'data' && <DataSettings />}
         {tab === "translation" && (
           <section className="pa-card">
             <h4>划词翻译</h4>
@@ -599,12 +602,11 @@ export function PersonalAiSettings() {
               </label>
             )}
             <p className="pa-muted">
-              Google 免 Key 模式无需配置密钥；MyMemory
-              有每日免费额度。选择大模型时，使用“功能分配”中的翻译模型。
+              Google 翻译无需密钥，MyMemory 有免费额度。大模型翻译使用“功能分配”中的模型。
             </p>
           </section>
         )}
-        <div className="pa-footer">
+        {tab !== 'data' && <div className="pa-footer">
           <span className="pa-muted">设置仅属于当前账号</span>
           <button
             className="btn btn-primary"
@@ -616,7 +618,7 @@ export function PersonalAiSettings() {
           >
             {busy ? "正在保存…" : "保存设置"}
           </button>
-        </div>
+        </div>}
       </fieldset>
     </div>
   );

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { collection } from './ProfileStore.mjs';
 import { readDoc } from '../../../../mcp-server/app/src/FileTools.mjs';
 import { anchorMatches, locateEdit, makeAnchor } from '../../../shared/edit-anchor.mjs';
+import { projectWrite } from './WorkspaceLifecycle.mjs';
 
 export const proposalSchema = z.object({
   chatId: z.string().uuid(), toolCallId: z.string().min(1).max(150),
@@ -39,8 +40,11 @@ export async function proposeEdit(userId, projectId, body) {
   const { content } = await readDoc(projectId, input.input.path);
   const at = locateEdit(content, input.input.oldText, input.input.startLine);
   const proposalAnchor = makeAnchor(content, at, input.input.oldText, input.input.newText);
-  await store.updateOne({ _id }, { $setOnInsert: { _id, ...scope(userId, projectId), ...input,
-    id: crypto.randomUUID(), proposalAnchor, state: 'pending', revision: 0, createdAt: new Date(), updatedAt: new Date(), operation: null } }, { upsert: true });
+  await projectWrite(projectId, async session => {
+    if (await (await collection('Sessions')).findOne({ _id: input.chatId, ...scope(userId, projectId), deleted: true }, { session })) throw conflict('会话已删除，请新建会话');
+    await store.updateOne({ _id }, { $setOnInsert: { _id, ...scope(userId, projectId), ...input,
+      id: crypto.randomUUID(), proposalAnchor, state: 'pending', revision: 0, createdAt: new Date(), updatedAt: new Date(), operation: null } }, { upsert: true, session });
+  });
   const row = await store.findOne({ _id });
   if (JSON.stringify(row.input) !== JSON.stringify(input.input)) throw conflict('同一工具调用已生成不同建议，请重新发起');
   return visible(row);
@@ -55,7 +59,7 @@ export async function beginEdit(userId, projectId, id, body) {
   const store = await collection('Edits');
   if (input.action === 'reject') {
     if (row.state !== 'pending') throw conflict('只有待确认建议可以拒绝');
-    const result = await store.updateOne({ _id: row._id, revision: input.revision, operation: null }, { $set: { state: 'rejected', updatedAt: new Date() }, $inc: { revision: 1 } });
+    const result = await projectWrite(projectId, session => store.updateOne({ _id: row._id, revision: input.revision, operation: null }, { $set: { state: 'rejected', updatedAt: new Date() }, $inc: { revision: 1 } }, { session }));
     if (!result.matchedCount) throw conflict('修改状态已更新，请重试');
     return visible(await getEdit(userId, projectId, id));
   }
@@ -67,7 +71,7 @@ export async function beginEdit(userId, projectId, id, body) {
   const { content } = await readDoc(projectId, row.input.path);
   if (!anchorMatches(content, input.anchor, 'before')) throw conflict('该处正文或相邻上下文已变化，请重新定位修改');
   const operation = { id: crypto.randomUUID(), action: input.action, from, to, anchor: input.anchor, startedAt: new Date() };
-  const result = await store.updateOne({ _id: row._id, revision: input.revision, operation: null }, { $set: { operation }, $inc: { revision: 1 } });
+  const result = await projectWrite(projectId, session => store.updateOne({ _id: row._id, revision: input.revision, operation: null }, { $set: { operation }, $inc: { revision: 1 } }, { session }));
   if (!result.matchedCount) throw conflict('另一个页面正在处理此建议，请刷新记录');
   return visible(await getEdit(userId, projectId, id));
 }
@@ -82,8 +86,9 @@ export async function reconcileEdit(userId, projectId, id, operationId) {
   const before = anchorMatches(content, op.anchor, 'before');
   const after = anchorMatches(content, op.anchor, 'after');
   if (before === after) throw conflict('当前内容无法安全核对，请保留记录并查看原文差异');
-  const result = await (await collection('Edits')).updateOne({ _id: row._id, 'operation.id': operationId },
-    { $set: { state: after ? op.to : op.from, operation: null, updatedAt: new Date(), ...(after && { lastAnchor: op.anchor }) }, $inc: { revision: 1 } });
+  const store = await collection('Edits');
+  const result = await projectWrite(projectId, session => store.updateOne({ _id: row._id, 'operation.id': operationId },
+    { $set: { state: after ? op.to : op.from, operation: null, updatedAt: new Date(), ...(after && { lastAnchor: op.anchor }) }, $inc: { revision: 1 } }, { session }));
   if (!result.matchedCount) throw conflict('状态已更新，请重新加载');
   return visible(await getEdit(userId, projectId, id));
 }

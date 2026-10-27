@@ -80,6 +80,15 @@ export default function AssistantPanel() {
     const result = await api<SavedSession>('/sessions', { projectId })
     setSession(result); setEpoch(value => value + 1)
   }
+  useEffect(() => {
+    const cleared = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (detail.scope === 'all' || detail.projectId === projectId)
+        newSession(true).catch(error => setError(error.message))
+    }
+    window.addEventListener('personal-ai:history-cleared', cleared)
+    return () => window.removeEventListener('personal-ai:history-cleared', cleared)
+  }, [projectId])
 
   if (!view) return null
 

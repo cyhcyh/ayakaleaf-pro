@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Setting from '@/features/ide-settings/components/setting'
 import { api, type Binding, type ModelInfo, type Profile } from './api'
 
-export function ModelPicker({ value, models, onChange, label = '模型', disabled = false }: {
-  value: string; models: ModelInfo[]; onChange: (value: string) => void; label?: string; disabled?: boolean
+export function ModelPicker({ value, models, onChange, label = '模型', disabled = false, controlId }: {
+  value: string; models: ModelInfo[]; onChange: (value: string) => void; label?: string; disabled?: boolean; controlId?: string
 }) {
   const id = useId()
   const root = useRef<HTMLDivElement>(null)
@@ -35,7 +36,7 @@ export function ModelPicker({ value, models, onChange, label = '模型', disable
   }, [open])
   const choose = (model: string) => { onChange(model); setOpen(false); setQuery(''); setActive(0) }
   return <div className="pa-model-picker" ref={root}>
-    <button type="button" className="form-control pa-picker-trigger" role="combobox" aria-label={label} aria-expanded={open} aria-controls={id} disabled={disabled}
+    <button id={controlId} type="button" className="form-control pa-picker-trigger" role="combobox" aria-label={label} aria-expanded={open} aria-controls={id} disabled={disabled}
       onClick={() => { setOpen(!open); setQuery(''); setActive(0); requestAnimationFrame(() => input.current?.focus()) }}>
       <span>{models.find(model => model.id === value)?.name || value || '选择模型…'}</span><span aria-hidden>⌄</span>
     </button>
@@ -61,8 +62,7 @@ export const thinkingNames: Record<string, string> = { auto: '模型默认', on:
 export const effortNames: Record<string, string> = { auto: '模型默认', none: '无', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高', ultra: '极高' }
 const capabilities = new Map<string, Promise<ModelInfo>>()
 
-export function ThinkingControls({ profile, value, onChange, flat = false }: { profile: Profile; value: Binding; onChange: (value: Partial<Binding>) => void; flat?: boolean }) {
-  const modeId = useId(), effortId = useId()
+export function useModelInfo(profile: Profile, value: Binding) {
   const connection = profile.connections.find(c => c.id === value.connectionId)
   const cached = connection?.catalog?.models.find(model => model.id === value.model)
   const [info, setInfo] = useState<ModelInfo | null>(cached || null)
@@ -76,18 +76,24 @@ export function ThinkingControls({ profile, value, onChange, flat = false }: { p
     capabilities.get(key)!.then(data => { if (live) setInfo(data) }).catch(() => {})
     return () => { live = false }
   }, [connection?.id, connection?.credentialRevision, connection?.catalog?.updatedAt, value.model, cached])
+  return info
+}
+
+export function ThinkingControls({ profile, value, onChange, flat = false }: { profile: Profile; value: Binding; onChange: (value: Partial<Binding>) => void; flat?: boolean }) {
+  const modeId = useId(), effortId = useId()
+  const info = useModelInfo(profile, value)
   const inherited = !value.connectionId
   const mode = value.thinking || 'auto'
   const effort = value.reasoningEffort || 'auto'
-  return <>
-    <div className={flat ? 'pa-flat-row' : 'pa-field'}><label htmlFor={modeId}>思考模式</label>
-      <select id={modeId} className="form-select form-control" aria-label="思考模式" disabled={inherited || !info} value={mode} onChange={event => onChange({ thinking: event.target.value, reasoningEffort: 'auto' })}>
+  const modeControl = <select id={modeId} className="form-select form-control" aria-label="思考模式" disabled={inherited || !info} value={mode} onChange={event => onChange({ thinking: event.target.value, reasoningEffort: 'auto' })}>
         {[...new Set(['auto', ...(info?.thinkingModes || []), mode])].map(item => <option key={item} value={item} disabled={item !== 'auto' && !info?.thinkingModes.includes(item)}>{thinkingNames[item] || item}</option>)}
-      </select></div>
-    <div className={flat ? 'pa-flat-row' : 'pa-field'}><label htmlFor={effortId}>推理强度</label>
-      <select id={effortId} className="form-select form-control" aria-label="推理强度" disabled={inherited || !info?.reasoningEfforts.length || mode === 'off'} value={effort} onChange={event => onChange({ reasoningEffort: event.target.value })}>
+      </select>
+  const effortControl = <select id={effortId} className="form-select form-control" aria-label="推理强度" disabled={inherited || !info?.reasoningEfforts.length || mode === 'off'} value={effort} onChange={event => onChange({ reasoningEffort: event.target.value })}>
         {[...new Set(['auto', ...(info?.reasoningEfforts || []), effort])].map(item => <option key={item} value={item} disabled={item !== 'auto' && (!info?.reasoningEfforts.includes(item) || (mode === 'on' && item === 'none'))}>{effortNames[item] || item}</option>)}
-      </select></div>
-    {value.model && info?.source === 'unknown' && <p className="pa-muted pa-control-note">未获得该模型的思考参数，使用模型默认；可以更新模型目录。</p>}
+      </select>
+  return <>
+    {flat ? <><Setting controlId={modeId} label="思考模式" description={undefined}>{modeControl}</Setting><Setting controlId={effortId} label="推理强度" description={undefined}>{effortControl}</Setting></>
+      : <><div className="pa-field"><label htmlFor={modeId}>思考模式</label>{modeControl}</div><div className="pa-field"><label htmlFor={effortId}>推理强度</label>{effortControl}</div></>}
+    {!flat && value.model && info?.source === 'unknown' && <p className="pa-muted pa-control-note">未获取到思考参数，使用模型默认值。</p>}
   </>
 }

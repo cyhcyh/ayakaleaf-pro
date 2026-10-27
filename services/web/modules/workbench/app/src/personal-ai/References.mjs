@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { collection } from "./ProfileStore.mjs";
+import { projectWrite } from './WorkspaceLifecycle.mjs';
 import { readPublicURL, plainHTML } from "./PublicWeb.mjs";
 import ProjectLocator from "../../../../../app/src/Features/Project/ProjectLocator.mjs";
 import ProjectEntityHandler from "../../../../../app/src/Features/Project/ProjectEntityHandler.mjs";
@@ -16,6 +17,23 @@ const root =
   process.env.PERSONAL_AI_REFERENCE_DIR ||
   "/var/lib/overleaf/data/personal-ai/references";
 const MAX_BYTES = 8 * 1024 * 1024;
+
+function referencePath(row) {
+  if (!/^[a-f0-9]{24}$/i.test(String(row.userId)) || !/^[a-f0-9-]{36}$/i.test(row._id)) throw new Error('参考文件路径无效');
+  return row.storageVersion === 2 ? path.join(projectReferenceDirectory(row.projectId), String(row.userId), row._id) : path.join(root, String(row.userId), row._id);
+}
+
+function projectReferenceDirectory(projectId) {
+  if (!/^[a-f0-9]{24}$/i.test(String(projectId))) throw new Error('项目编号无效');
+  return path.join(root, 'projects', String(projectId));
+}
+
+export async function removeProjectReferences(projectId) {
+  const store = await collection('References');
+  for await (const row of store.find({ projectId })) await fs.rm(referencePath(row), { force: true });
+  await fs.rm(projectReferenceDirectory(projectId), { recursive: true, force: true });
+  await store.deleteMany({ projectId });
+}
 
 export async function pdfText(data, page = 1) {
   if (!data.subarray(0, 5).equals(Buffer.from("%PDF-")))
@@ -81,10 +99,11 @@ export async function upload(userId, projectId, input) {
     throw new Error("支持 PDF、TXT 和 Markdown 参考资料");
   if (pdf) await pdfText(data);
   const id = crypto.randomUUID();
-  const directory = path.join(root, String(userId));
-  await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(path.join(directory, id), data, { mode: 0o600 });
+  const directory = path.join(projectReferenceDirectory(projectId), String(userId));
   try {
+    await projectWrite(projectId, async session => {
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(path.join(directory, id), data, { mode: 0o600 });
     await (
       await collection("References")
     ).insertOne({
@@ -94,10 +113,12 @@ export async function upload(userId, projectId, input) {
       name: input.name,
       mediaType: input.mediaType,
       size: data.length,
+      storageVersion: 2,
       createdAt: new Date(),
+    }, { session });
     });
   } catch (error) {
-    await fs.unlink(path.join(directory, id));
+    await fs.rm(path.join(directory, id), { force: true });
     throw error;
   }
   return { id, name: input.name, mediaType: input.mediaType };
@@ -128,7 +149,7 @@ export async function readReference(
       await collection("References")
     ).findOne({ _id: id, userId: String(userId), projectId });
     if (!reference) throw new Error("参考资料不存在或无权访问");
-    data = await fs.readFile(path.join(root, String(userId), reference._id));
+    data = await fs.readFile(referencePath(reference));
     ({ name, mediaType } = reference);
   } else if (projectPath) {
     const { element, type } = await ProjectLocator.promises.findElementByPath({

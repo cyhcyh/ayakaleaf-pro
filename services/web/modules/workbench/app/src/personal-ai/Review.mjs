@@ -1,12 +1,17 @@
 import crypto from "node:crypto";
 import { collection } from "./ProfileStore.mjs";
+import { projectWrite } from './WorkspaceLifecycle.mjs';
 
 export async function approveReview(userId, projectId, chatId, scope, focus) {
   const reviewId = crypto.randomUUID();
   const store = await collection("Reviews");
+  return await projectWrite(projectId, async session => {
+  if (await (await collection('Sessions')).findOne({ _id: chatId, userId: String(userId), projectId, deleted: true }, { session }))
+    throw Object.assign(new Error('会话已删除，请新建会话'), { status: 409 });
   await store.updateMany(
     { userId: String(userId), projectId, chatId, stopped: false },
     { $set: { stopped: true } },
+    { session },
   );
   await store.insertOne({
     _id: reviewId,
@@ -18,8 +23,9 @@ export async function approveReview(userId, projectId, chatId, scope, focus) {
     approvedAt: new Date(),
     expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
     stopped: false,
-  });
+  }, { session });
   return { reviewId, scope, approved: true };
+  });
 }
 
 export async function checkReview(

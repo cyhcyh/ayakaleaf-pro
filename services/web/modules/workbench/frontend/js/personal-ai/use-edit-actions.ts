@@ -39,7 +39,7 @@ export function useEditActions() {
   const locate = async (id: string) => {
     const record = await ensureEdit(projectId, id)
     focusEdit(projectId, id)
-    openTab('review-panel')
+    openTab('ai-modifications')
     const editor = await open(record)
     const before = ['accepted'].includes(record.state) ? record.input.newText : record.input.oldText
     const at = locateAnchoredEdit(editor.state.doc.toString(), before, record.input.startLine, record.lastAnchor || record.proposalAnchor)
@@ -86,7 +86,7 @@ export function useEditActions() {
       await openDocs.awaitBufferedOps(AbortSignal.timeout(10000))
       putEdit(projectId, await api<EditRecord>(`/edits/${id}/reconcile`, { projectId, operationId: operation!.id }))
       focusEdit(projectId, id)
-      openTab('review-panel')
+      openTab('ai-modifications')
     } catch (error) {
       if (operation) {
         try { putEdit(projectId, await api<EditRecord>(`/edits/${id}/reconcile`, { projectId, operationId: operation.id })) } catch { /* The explicit reconcile action remains available. */ }

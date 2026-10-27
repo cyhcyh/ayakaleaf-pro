@@ -4,7 +4,7 @@ import { api } from './api'
 
 export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[] }
 export type SavedSession = { id: string; projectId: string; title: string; revision: number; messages: UIMessage[]; summary: Summary | null }
-export type SessionItem = { id: string; title: string; updatedAt: string; revision: number }
+export type SessionItem = { id: string; title: string; updatedAt: string; revision: number; snippet?: string }
 
 export function useSessionAutosave(initial: SavedSession | undefined, projectId: string, messages: UIMessage[], summary: Summary | null, streaming: boolean) {
   const latest = useRef({ messages, summary })

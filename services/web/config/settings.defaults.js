@@ -1054,7 +1054,6 @@ module.exports = {
     ],
     sourceEditorVisualExtensions: [],
     sourceEditorComponents: [Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/edit-decoration-sync')],
-    reviewPanelExtensions: [Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/review-extension')],
     pdfLogEntryHeaderActionComponents: [
       Path.resolve(
         __dirname,
@@ -1301,6 +1300,7 @@ module.exports = {
       ),
     ],
     railEntries: [
+      Path.resolve(__dirname, '../modules/workbench/frontend/js/personal-ai/edit-rail-entry'),
       Path.resolve(
         __dirname,
         '../modules/workbench/frontend/js/assistant-rail-entry'

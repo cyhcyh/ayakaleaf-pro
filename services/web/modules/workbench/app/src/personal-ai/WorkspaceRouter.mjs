@@ -32,6 +32,8 @@ export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
   post('/sessions/:id/save', async req => await sessions.saveSession(user(req), await project(req), uuid.parse(req.params.id), req.body));
   post('/sessions/:id/rename', async req => await sessions.renameSession(user(req), await project(req), uuid.parse(req.params.id), req.body.title));
   post('/sessions/delete', async req => await sessions.deleteSessions(user(req), await project(req), req.body.ids));
+  get('/history/count', async req => await sessions.historyCount(user(req), await project(req), sessions.clearScopeSchema.parse(req.query.scope)));
+  post('/history/clear', async req => await sessions.clearHistory(user(req), await project(req), sessions.clearScopeSchema.parse(req.body.scope)));
   get('/edits', async req => ({ items: await edits.listEdits(user(req), await project(req)) }));
   get('/edits/:id', async req => await edits.loadEdit(user(req), await project(req), uuid.parse(req.params.id)));
   post('/edits', async req => await edits.proposeEdit(user(req), await project(req), req.body));

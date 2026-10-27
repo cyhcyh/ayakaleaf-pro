@@ -5,6 +5,7 @@ import { useEditorViewContext } from "@/features/ide-react/context/editor-view-c
 import { api, type Profile } from "./api";
 import "./style.scss";
 import MathText from './math-text';
+import { translationDotPosition } from '../../../shared/selection-position.mjs';
 
 type Selection = { text: string; x: number; y: number };
 type Translation = { translatedText: string; source: string };
@@ -110,8 +111,7 @@ export default function TranslationOverlay() {
       clearTimeout(close.current);
       setSelection({
         text,
-        x: Math.max(8, Math.min(rectangle.right - 6, window.innerWidth - 32)),
-        y: Math.max(8, Math.min(rectangle.bottom + 1, window.innerHeight - 32)),
+        ...translationDotPosition(rectangle, window.innerWidth, window.innerHeight),
       });
       setOpen(false);
       setPinned(false);
@@ -149,6 +149,22 @@ export default function TranslationOverlay() {
       document.removeEventListener("scroll", scroll, true);
     };
   }, [settings?.translation.enabled, view, hide, pinned]);
+
+  useEffect(() => {
+    if (!selection || open) return;
+    // Native selection menus mount after pointerup. Observe their layout without
+    // changing their behavior, then move only the translation dot if needed.
+    const adjust = () => {
+      const obstacles = Array.from(document.querySelectorAll('.editor-floating-menu, .review-tooltip-menu'))
+        .map(element => element.getBoundingClientRect());
+      const point = translationDotPosition({ right: selection.x + 6, bottom: selection.y + 12 }, window.innerWidth, window.innerHeight, obstacles);
+      if (point.x !== selection.x || point.y !== selection.y) setSelection(current => current && ({ ...current, ...point }));
+    };
+    const frame = requestAnimationFrame(adjust);
+    const observer = new MutationObserver(adjust);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [selection, open]);
 
   useEffect(() => {
     if (!open || !selection) return;

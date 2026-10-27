@@ -14,7 +14,7 @@ export async function updateCatalog(userId, connectionId) {
   const auth = connection.kind === 'codex' ? headers(await credentials(userId, connection.id)) : { Authorization: `Bearer ${connection.apiKey}` };
   const suffix = connection.kind === 'codex' ? '/models?client_version=0.160.0' : '/models';
   const response = await fetch(connection.baseURL + suffix, { headers: auth, signal: AbortSignal.timeout(25000) });
-  if (!response.ok) throw new Error(`模型目录返回 HTTP ${response.status}；可以手动填写模型 ID`);
+  if (!response.ok) throw new Error(`获取模型失败（HTTP ${response.status}），可手动填写模型 ID`);
   const data = await response.json();
   const models = (data.data || data.models || []).slice(0, 3000).map(modelMetadata).filter(Boolean);
   const live = await getConnection(userId, connectionId);

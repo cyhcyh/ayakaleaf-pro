@@ -31,7 +31,7 @@ project history and collaboration continue to use the upstream implementations.
 - History lives per user/project. The header button before the settings gear opens
   search, switching, rename and batch deletion. Restoring never replays interrupted
   tools or restores review authorization.
-- Source suggestions are queued in Review → AI 修改 with editor diff previews.
+- Source suggestions are queued in the independent AI 修改 rail panel with editor diff previews.
   Accept/reject each suggestion; accepted changes support persisted undo/reapply.
   Native minimal editor transactions preserve collaboration and project history.
   Conflicting source changes stop the operation for manual rechecking. The edit
@@ -76,11 +76,25 @@ Prefer merging Ayakaleaf's `server-pro` into the feature branch: it already
 integrates Overleaf changes. Merge Overleaf directly only after reviewing its
 relationship with Ayakaleaf's changes.
 
-The settings-tab and review-panel module slots are additive. Source editor preview
+The settings-tab and rail-entry module slots are additive. Source editor preview
 decorations/components register through the existing extension slots. Review the small integration changes
 in `settings.defaults.js`, `settings-modal-context.tsx`, the workbench controller,
 AI client, router/access hook and error-assistant router when merging upstream.
-The core review-panel wrapper keeps the native comment view and mini panel intact.
+The native review panel is restored without a wrapper. The rail key union and
+default width include the independent AI edit pane. Keep these small seams when
+merging. Project data cleanup attaches to the existing `projectExpired` hook,
+without changing upstream trash/restore or retention behavior.
+
+History search matches titles and user/assistant text, with a bounded snippet.
+Data Management clears only the signed-in user's history, for the current project
+or all their projects. Empty current drafts are not history entries. Deleted
+session markers prevent stale autosaves from resurrecting messages.
+Permanent project expiry deletes AI collections and both legacy and new reference
+files. New attachments live under `references/projects/<projectId>/<userId>/`.
+A content-free project marker serializes writes with expiry and rejects late
+requests. Failed file removal keeps the reference metadata for retry.
+Unknown model capacities use 256,000 tokens; unknown summary output limits use
+8,192 tokens, still bounded by the configured target and actual model limits.
 Rebuild and validate against an official base image compatible with the selected
 upstream revision, rather than copying changed files into an old running image.
 

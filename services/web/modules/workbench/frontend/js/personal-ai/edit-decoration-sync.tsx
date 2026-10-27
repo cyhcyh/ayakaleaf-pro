@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useProjectContext } from '@/shared/context/project-context'
 import { useEditorViewContext } from '@/features/ide-react/context/editor-view-context'
 import { useEditorOpenDocContext } from '@/features/ide-react/context/editor-open-doc-context'
+import { useEditorPropertiesContext } from '@/features/ide-react/context/editor-properties-context'
 import { useFileTreePathContext } from '@/features/file-tree/contexts/file-tree-path'
 import { useEdits } from './edits-store'
 import { useEditActions } from './use-edit-actions'
@@ -12,6 +13,7 @@ export default function EditDecorationSync() {
   const { projectId } = useProjectContext()
   const { view } = useEditorViewContext()
   const { currentDocumentId } = useEditorOpenDocContext()
+  const { showVisual } = useEditorPropertiesContext()
   const { pathInFolder } = useFileTreePathContext()
   const state = useEdits(projectId)
   const actions = useEditActions()
@@ -19,9 +21,14 @@ export default function EditDecorationSync() {
   live.current = actions
   const path = currentDocumentId ? pathInFolder(currentDocumentId) : null
   useEffect(() => {
-    if (!view || !view.state.field(pendingEditsField, false)) return
-    view.dispatch({ effects: setPendingEdits.of(state.items.filter(item => item.state === 'pending' && item.input.path === path)) })
-  }, [view, path, state.items])
+    if (!view) return
+    // The native mode-switch effect reconfigures source-only extensions first.
+    const frame = requestAnimationFrame(() => {
+      if (view.state.field(pendingEditsField, false))
+        view.dispatch({ effects: setPendingEdits.of(state.items.filter(item => item.state === 'pending' && item.input.path === path)) })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [view, path, state.items, showVisual])
   useEffect(() => {
     const act = (event: Event) => {
       const detail = (event as CustomEvent).detail

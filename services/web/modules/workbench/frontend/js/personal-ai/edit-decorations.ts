@@ -2,6 +2,7 @@ import { StateEffect, StateField, type EditorState } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view'
 import { locateAnchoredEdit } from '../../../shared/edit-anchor.mjs'
 import type { EditRecord } from './edits-store'
+import { sourceOnly } from '@/features/source-editor/extensions/visual/visual'
 
 export const setPendingEdits = StateEffect.define<EditRecord[]>()
 class EditPreview extends WidgetType {
@@ -60,4 +61,4 @@ export const pendingEditsField = StateField.define<{ items: EditRecord[]; decora
   provide: field => EditorView.decorations.from(field, value => value.decorations),
 })
 
-export const extension = (options: Record<string, any>) => options.showVisual ? [] : pendingEditsField
+export const extension = (options: Record<string, any>) => sourceOnly(options.showVisual, pendingEditsField)
