@@ -154,11 +154,13 @@ function OpenEdits() {
         <div className="pa-edits-anchor-toolbar"><div className="pa-edits-filters" role="group" aria-label={ui("筛选 AI 修改")}>
           {([['all', ui("全部")], ['pending', ui("待确认")], ['done', ui("已处理")]] as const).map(([value, name]) => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{name}</button>)}
         </div></div>
-        {state.error && <div className="pa-anchored-error" role="alert">{state.error}<button className="pa-text-action" onClick={() => refreshEdits(projectId).catch(() => {})}>{ui("刷新记录")}</button></div>}
+        {(state.error || (!overview && !located.length)) && <div className="pa-edits-anchor-status">
+          {state.error && <div className="pa-anchored-error" role="alert">{state.error}<button className="pa-text-action" onClick={() => refreshEdits(projectId).catch(() => {})}>{ui("刷新记录")}</button></div>}
+          {!overview && !located.length && <div className="pa-edits-empty"><p>{state.loading ? ui("正在读取修改…") : ui("当前文件没有可定位的修改")}</p><button className="pa-text-action" onClick={() => setOverview(true)}>{ui("查看全部文件")}</button></div>}
+        </div>}
         {overview ? <div className="pa-edits-overview-items">{items.map(item => card(item))}{!items.length && <p className="pa-muted p-3">{ui("暂无修改建议。")}</p>}</div>
           : <div ref={entries} className="pa-edits-anchor-entries">
             {located.map(({ item, at }) => card(item, at))}
-            {!located.length && <div className="pa-edits-empty"><p>{state.loading ? ui("正在读取修改…") : ui("当前文件没有可定位的修改")}</p><button className="pa-text-action" onClick={() => setOverview(true)}>{ui("查看全部文件")}</button></div>}
           </div>}
         <div className="pa-edits-anchor-footer" role="group" aria-label={ui("修改范围")}><button aria-pressed={!overview} onClick={() => setOverview(false)}>{ui("当前文件")}</button><button aria-pressed={overview} onClick={() => setOverview(true)}>{ui("全部文件")}</button></div>
       </div>

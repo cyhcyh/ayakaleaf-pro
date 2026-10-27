@@ -484,13 +484,18 @@
 .pa-conversation-message { position: absolute; top: 0; left: 0; width: 100%; padding: 0 8px 16px; display: flex; flex-direction: column; gap: 8px; }
 .pa-conversation-history { position: absolute; top: 0; left: 0; width: 100%; height: 32px; display: flex; justify-content: center; align-items: center; color: var(--content-secondary-themed); font-size: 12px; }
 .pa-compaction-marker { font-size: 12px; text-align: center; color: var(--content-secondary-themed); border-top: 1px solid var(--border-divider-themed); padding-top: 8px; }
-.pa-edits-anchored { order: -1; flex-shrink: 0; position: relative; width: var(--review-panel-width); height: 100%; font-family: var(--font-sans); font-size: var(--font-size-01); line-height: 1.5; color: var(--content-primary-themed); background: var(--bg-secondary-themed); border-right: 1px solid var(--border-divider-themed); }
-.pa-edits-anchor-inner { min-height: max(100%, var(--review-panel-height)); width: var(--review-panel-width); position: relative; background: var(--bg-secondary-themed); }
-.pa-edits-anchor-toolbar { position: sticky; top: 0; z-index: 3; padding: 4px 6px; height: 38px; background: var(--bg-secondary-themed); border-bottom: 1px solid var(--border-divider-themed);
+.pa-edits-anchored { --pa-edits-toolbar-height: 38px; order: -1; flex-shrink: 0; position: relative; width: var(--review-panel-width); height: 100%; font-family: var(--font-sans); font-size: var(--font-size-01); line-height: 1.5; color: var(--content-primary-themed); background: var(--bg-secondary-themed); border-right: 1px solid var(--border-divider-themed); }
+.pa-edits-anchor-inner { --pa-edits-header-height: 0px; min-height: max(100%, var(--review-panel-height)); width: var(--review-panel-width); position: relative; background: var(--bg-secondary-themed); }
+.pa-edits-anchor-inner:has(> .review-panel-header) { --pa-edits-header-height: var(--review-panel-header-height); }
+.pa-edits-anchor-inner > .review-panel-header { flex: 0 0 var(--review-panel-header-height); }
+.pa-edits-anchor-toolbar { position: sticky; top: var(--pa-edits-header-height); z-index: 3; padding: 4px 6px; height: var(--pa-edits-toolbar-height); background: var(--bg-secondary-themed); border-bottom: 1px solid var(--border-divider-themed);
   .pa-edits-filters { gap: 3px; justify-content: center; }
   button { padding: 4px 10px; font-size: 12px; }
 }
 .pa-edits-anchor-entries { position: absolute; inset: 0; }
+// Status messages follow the toolbar in normal flow. Keep them visible while
+// the shared editor scrolls, without using the cards' source-position canvas.
+.pa-edits-anchor-status { position: sticky; top: calc(var(--pa-edits-header-height) + var(--pa-edits-toolbar-height)); z-index: 2; flex-shrink: 0; background: var(--bg-secondary-themed); }
 .pa-edits-anchored .pa-edit-card { padding: 10px; border-radius: 6px; width: calc(var(--review-panel-width) - 8px); margin-left: 4px; max-height: calc(100vh - var(--review-panel-top) - 90px); overflow-y: auto; background: var(--bg-primary-themed); }
 .pa-edits-anchor-footer { position: fixed; bottom: 0; width: var(--review-panel-width); height: 36px; display: flex; justify-content: center; align-items: center; gap: 6px; z-index: 3; background: var(--bg-primary-themed); border-top: 1px solid var(--border-divider-themed);
   button { border: 0; color: var(--content-secondary-themed); background: transparent; font-size: 12px; padding: 4px 12px; border-radius: 4px; }
@@ -500,9 +505,10 @@
 .pa-edits-overview { position: sticky; top: 0; overflow: hidden;
   .pa-edits-anchor-inner { height: 100%; min-height: 0; display: flex; flex-direction: column; }
   .pa-edits-overview-items { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0; }
+  .pa-edits-anchor-status { position: static; }
   .pa-edits-anchor-footer { position: static; margin-top: 0; flex-shrink: 0; }
 }
-.pa-anchored-error { position: sticky; top: 38px; z-index: 4; padding: 8px; color: var(--red-60); background: var(--bg-primary-themed); font-size: 12px; }
+.pa-anchored-error { padding: 8px; color: var(--red-60); background: var(--bg-primary-themed); font-size: 12px; }
 .pa-inline-change { background: var(--green-10, #e4f2e9); border-bottom: 1px dotted var(--green-50); cursor: pointer; }
 .pa-inline-change-focused { background: var(--green-20, #c7e8d3); }
 .pa-inline-edit-marker { display: inline; padding: 0 3px; margin-inline: 3px; border: 1px solid var(--green-40); border-radius: 3px; background: var(--green-10); color: var(--green-70); font-size: 10px; line-height: 1.3; vertical-align: baseline; }
