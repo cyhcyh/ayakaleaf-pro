@@ -192,7 +192,7 @@ export function headers(tokens) {
   } catch {}
   return {
     Authorization: `Bearer ${tokens.access_token}`,
-    "User-Agent": "ayakaleaf-personal-ai/1.0",
+    "User-Agent": "rogerleaf-personal-ai/1.0",
     ...(account ? { "ChatGPT-Account-Id": account } : {}),
   };
 }

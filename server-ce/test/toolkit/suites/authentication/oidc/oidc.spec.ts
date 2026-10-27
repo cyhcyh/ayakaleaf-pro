@@ -262,7 +262,7 @@ describe('linking OIDC to an account', function () {
     unlink()
 
     // The local account is lowercase, the IdP keeps the case it was given
-    setAuthentikEmail('carol', 'Carol@ayakaleaf.test')
+    setAuthentikEmail('carol', 'Carol@rogerleaf.test')
     oidcLogin('carol')
     currentUser().its('email').should('equal', idpEmail('carol'))
     isSiteAdmin().should('equal', true)
@@ -280,7 +280,7 @@ describe('OIDC logout', function () {
     cy.request(`${AUTHENTIK_URL}/api/v3/core/users/me/`)
       .its('body.user.username')
       .should('eq', 'alice')
-    cy.intercept('GET', '**/application/o/ayakaleaf-oidc/end-session/**').as(
+    cy.intercept('GET', '**/application/o/rogerleaf-oidc/end-session/**').as(
       'idpLogout'
     )
 

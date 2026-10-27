@@ -1,6 +1,8 @@
+> Rogerleaf is based on [ayakaleaf-pro](https://github.com/ayaka-notes/ayakaleaf-pro). The translated upstream overview below is retained for reference. For this fork’s current features and deployment, see [English](../README.md) or [简体中文](README-ZH.md).
+
 <h1 align="center">
   <br>
-  <a href="https://ayakaleaf-pro.ayaka.space"><img src="logo.png" alt="Ayakaleaf Pro" width="300"></a>
+  <a href="https://ayakaleaf-pro.ayaka.space"><img src="rogerleaf-logo.svg" alt="Rogerleaf" width="300"></a>
 </h1>
 
 <h4 align="center">すべての Pro 機能を搭載した Overleaf Community Edition の拡張版 <br/>（オープンソース、無料で利用可能、セルフホスト対応）。</h4>
@@ -39,11 +41,11 @@
 
 <img src="screenshot-pro.png" alt="Overleaf Community Edition でプロジェクトを編集している画面のスクリーンショット">
 <p align="center">
-  図 1：Ayakaleaf Pro Edition でプロジェクトを編集している画面のスクリーンショット。
+  図 1：Rogerleaf でプロジェクトを編集している画面のスクリーンショット。
 </p>
 
-## Ayakaleaf Pro Edition
-Ayakaleaf Pro は、ほぼすべての機能を備えた Overleaf の拡張版です。詳しくは [Ayakaleaf Pro](https://ayakaleaf-pro.ayaka.space) のページをご覧ください。Ayakaleaf Pro の機能は次のとおりです：
+## Rogerleaf
+Rogerleaf は、ほぼすべての機能を備えた Overleaf の拡張版です。詳しくは [Rogerleaf](https://ayakaleaf-pro.ayaka.space) のページをご覧ください。Rogerleaf の機能は次のとおりです：
 
 - Dropbox 双方向同期（すべてのプロジェクトを Dropbox と同期）
 - MCP サーバー（AI エージェントによる編集・コンパイル・コメント）
@@ -70,28 +72,28 @@ Ayakaleaf Pro は、ほぼすべての機能を備えた Overleaf の拡張版�
 - 完全な i18n 翻訳（すべての UI 文字列を 18 言語で提供）
 - ARM 対応（Docker 上の x86_64/arm64）
 
-最後になりましたが、Ayakaleaf Pro はオープンソースで、無料で利用・改変できます。セルフホストすることも、Ayakaleaf Pro の開発に貢献することもできます。詳しくは [開発者向けドキュメント](https://ayakaleaf-pro.ayaka.space/dev) のページをご覧ください。
+最後になりましたが、Rogerleaf はオープンソースで、無料で利用・改変できます。セルフホストすることも、Rogerleaf の開発に貢献することもできます。詳しくは [開発者向けドキュメント](https://ayakaleaf-pro.ayaka.space/dev) のページをご覧ください。
 
 > [!NOTE]
-> 注意：Ayakaleaf Pro は Overleaf, Inc. およびその親会社である Digital Science とは一切関係ありません。また、Overleaf, Inc. が提供する商用製品である *Server Pro* Edition *でもありません*。
+> 注意：Rogerleaf は Overleaf, Inc. およびその親会社である Digital Science とは一切関係ありません。また、Overleaf, Inc. が提供する商用製品である *Server Pro* Edition *でもありません*。
 > 
-> Ayakaleaf Pro は [ayaka-notes](https://github.com/ayaka-notes) が開発・保守している独立したプロジェクトです。
+> Rogerleaf は [ayaka-notes](https://github.com/ayaka-notes) が開発・保守している独立したプロジェクトです。
 
 ## インストール
 
-サーバーを構築せずに Ayakaleaf Pro を試したいだけなら、[Ayakaleaf Pro Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground) をご利用ください。設定済みの GitHub Codespaces 環境が用意されており、ブラウザ上で直接 Ayakaleaf Pro を起動して試すことができます。
+サーバーを構築せずに Rogerleaf を試したいだけなら、[Rogerleaf Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground) をご利用ください。設定済みの GitHub Codespaces 環境が用意されており、ブラウザ上で直接 Rogerleaf を起動して試すことができます。
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ayaka-notes/ayakaleaf-pro-playground)
 
-本番環境に Ayakaleaf Pro をデプロイしたい場合は、[ドキュメント](https://ayakaleaf-pro.ayaka.space/) ページに詳しいインストール手順があります。Ayakaleaf Pro のインストールには [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/) の使用を強くおすすめします。
+本番環境に Rogerleaf をデプロイしたい場合は、[ドキュメント](https://ayakaleaf-pro.ayaka.space/) ページに詳しいインストール手順があります。Rogerleaf のインストールには [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/) の使用を強くおすすめします。
 
 ## アップグレード
 
-以前のバージョンの Ayakaleaf Pro からアップグレードする場合は、[Releases ページ](https://github.com/ayaka-notes/ayakaleaf-pro/releases) で、現在のバージョンからアップグレード先のバージョンまでの各バージョンの変更点をご確認ください。
+以前のバージョンの Rogerleaf からアップグレードする場合は、[Releases ページ](https://github.com/ayaka-notes/ayakaleaf-pro/releases) で、現在のバージョンからアップグレード先のバージョンまでの各バージョンの変更点をご確認ください。
 
 ## 翻訳
 
-Ayakaleaf Pro の翻訳への貢献を歓迎します。通常、英語のテキストは claude/codex を使って他の言語に翻訳しています。翻訳に誤りを見つけた場合は、修正のための pull request を送ってください。変更するのは `services/web/locales/locales_patches` フォルダ内の該当ファイルのみにしてください。
+Rogerleaf の翻訳への貢献を歓迎します。通常、英語のテキストは claude/codex を使って他の言語に翻訳しています。翻訳に誤りを見つけた場合は、修正のための pull request を送ってください。変更するのは `services/web/locales/locales_patches` フォルダ内の該当ファイルのみにしてください。
 
 `services/web/locales/` 以下のファイルは Overleaf 公式の翻訳ファイルです。直接変更しないでください。
 

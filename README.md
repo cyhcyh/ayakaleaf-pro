@@ -1,115 +1,27 @@
-<h1 align="center">
-  <br>
-  <a href="https://ayakaleaf-pro.ayaka.space"><img src="doc/logo.png" alt="Ayakaleaf Pro" width="300"></a>
-</h1>
+<p align="center"><img src="doc/rogerleaf-logo.svg" alt="Rogerleaf" width="360"></p>
 
-<h4 align="center">Overleaf Community Edition enhanced with all Pro features <br/>(open source, free to use, self-hostable).</h4>
+# Rogerleaf
 
-Deployment for this fork: [English](doc/DEPLOYMENT-EN.md) · [简体中文](doc/DEPLOYMENT-ZH.md)
+Rogerleaf is a self-hosted LaTeX editor based on [ayakaleaf-pro](https://github.com/ayaka-notes/ayakaleaf-pro), which builds on [Overleaf](https://github.com/overleaf/overleaf). This fork adds personal AI workflows for reading, reviewing and editing papers.
 
-<p align="center">
-  <a href="https://ayakaleaf-pro.ayaka.space">Documents</a> •
-  <a href="https://github.com/ayaka-notes/ayakaleaf-pro-playground">Playground</a> •
-  <a href="https://ayakaleaf-pro.ayaka.space/blog">Blog</a> •
-  <a href="https://github.com/orgs/ayaka-notes/packages/container/package/overleaf-pro">Docker Image</a> •
-  <a href="https://github.com/ayaka-notes/texlive-full">TeXLive</a> •
-  <a href="https://ayakaleaf-pro.ayaka.space/dev">Developer</a> •
-  <a href="#authors">Authors</a> •
-  <a href="#license">License</a>
-</p>
+- **Selection translation:** select text in the editor or PDF preview, then hover over the green dot. View the original and translation together, with formulas, scrolling and streamed AI translations.
+- **Custom models and Codex:** save your own model connections and assign models and reasoning settings to each feature. Codex account authorization is also supported.
+- **AI review:** discuss the scope and references with the assistant, approve the review, then read its findings as comments in the Review panel.
+- **AI edits:** inspect anchored suggestions and differences, accept or reject them, and undo accepted changes.
+- **Conversation management:** create, search and manage project conversations, including searching message content and deleting conversations in batches.
+- **Context compression:** configure the summarization model and threshold while keeping the full conversation history available.
 
-<p align="center">
-  <b>English</b> ·
-  <a href="doc/README-CS.md">Čeština</a> ·
-  <a href="doc/README-DA.md">Dansk</a> ·
-  <a href="doc/README-DE.md">Deutsch</a> ·
-  <a href="doc/README-ES.md">Español</a> ·
-  <a href="doc/README-FI.md">Suomi</a> ·
-  <a href="doc/README-FR.md">Français</a> ·
-  <a href="doc/README-IT.md">Italiano</a> ·
-  <a href="doc/README-JP.md">日本語</a> ·
-  <a href="doc/README-KR.md">한국어</a> ·
-  <a href="doc/README-NL.md">Nederlands</a> ·
-  <a href="doc/README-NO.md">Norsk</a> ·
-  <a href="doc/README-PL.md">Polski</a> ·
-  <a href="doc/README-PT.md">Português</a> ·
-  <a href="doc/README-RU.md">Русский</a> ·
-  <a href="doc/README-SV.md">Svenska</a> ·
-  <a href="doc/README-TR.md">Türkçe</a> ·
-  <a href="doc/README-ZH.md">简体中文</a>
-</p>
+## Get started
 
-<img src="doc/screenshot-pro.png" alt="A screenshot of a project being edited in Overleaf Community Edition">
-<p align="center">
-  Figure 1: A screenshot of a project being edited in Ayakaleaf Pro Edition.
-</p>
+- [Quick deployment](doc/DEPLOYMENT-EN.md) · [快速部署](doc/DEPLOYMENT-ZH.md)
+- [Optional advanced configuration](doc/ADVANCED-CONFIGURATION-EN.md) · [高级配置](doc/ADVANCED-CONFIGURATION-ZH.md)
+- [简体中文介绍](doc/README-ZH.md)
 
-## Ayakaleaf Pro Edition
-Ayakaleaf Pro is an enhanced version of Overleaf with almost all features and capabilities. For details, please check [Ayakaleaf Pro](https://ayakaleaf-pro.ayaka.space) page. Features in Ayakaleaf Pro include: 
+Use Help in the editor for AI review, AI edits, selection translation and advanced-feature explanations. Full TeX Live 2026.1 with sandboxed compilation is recommended. Git Bridge, MCP and Pandoc remain disabled by default.
 
-- 2-way Dropbox Sync (Keep All Your Projects in Sync with Dropbox)
-- MCP Server (Let AI Agents Edit, Compile and Comment)
-- AI Chat Assistant (Chat, Edit and Fix with AI)
-- Error Assistant (Explain and Fix Compile Errors)
-- Pandoc Import/Export (Convert Word, Markdown and LaTeX)
-- Python Script Runner (Run Python in Your Project)
-- 2-way GitHub(Enterprise) Sync (Push and Pull with GitHub)
-- 2-way GitLab Sync (GitLab.com or Self-hosted GitLab)
-- 2-way Gitea Sync (Gitea.com or Self-hosted Gitea)
-- Zotero Integration(With Zotero OAuth Support)
-- Mendeley Integration(With Mendeley OAuth Support)
-- Advanced Reference Search (Search All Your Bib Entries)
-- Git-Bridge Support (Clone, Pull and Push with Git)
-- Admin Panel (Global Users/Projects management)
-- SSO with LDAP and SAML or OAuth 2.0
-- Unlimited Compile Times (Adjustable in admin panel)
-- Self Register (Optional, can be limited by mail domain)
-- Sandbox Compile (With [texlive-full](https://github.com/ayaka-notes/texlive-full) image support)
-- Template System (With Template Gallery)
-- Track Changes (With Review and Comment Panel)
-- Full Project History(With Restore and Download)
-- Symbol Palette (Insert Math Symbols in One Click)
-- Full i18n Translation (Every UI String in 18 Languages)
-- ARM Support(x86_64/arm64 on Docker)
+## Upstream and maintenance
 
-Last but not least, Ayakaleaf Pro is open-source, free to use and modify. You can self-host it and contribute to the development of Ayakaleaf Pro. For more details, please check [Developer Documentation](https://ayakaleaf-pro.ayaka.space/dev) page.
-
-> [!NOTE]
-> Note: Ayakaleaf Pro is not affiliated with Overleaf, Inc. or its parent company, Digital Science. It is also *not Server Pro* Edition, which is a commercial product offered by Overleaf, Inc.
-> 
-> Ayakaleaf Pro is an independent project developed and maintained by the [ayaka-notes](https://github.com/ayaka-notes).
-
-## Installation
-
-If you just want to try Ayakaleaf Pro without setting up a server, you can use our [Ayakaleaf Pro Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground). It provides a preconfigured GitHub Codespaces environment that lets you launch and explore Ayakaleaf Pro directly in your browser.
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ayaka-notes/ayakaleaf-pro-playground)
-
-If you want to deploy Ayakaleaf Pro for production use,  we have detailed installation instructions on the [Documents](https://ayakaleaf-pro.ayaka.space/) page. We highly recommend installing Ayakaleaf Pro using the [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/).
-
-## Upgrading
-
-If you are upgrading from a previous version of Ayakaleaf Pro, please see the [Releases page](https://github.com/ayaka-notes/ayakaleaf-pro/releases) for the changes in each version between your current version and the one you are upgrading to.
-
-## Translations
-
-We welcome contributions to translations of Ayakaleaf Pro. Generally, we use claude/codex to translate the English text into other languages. If you find any errors in the translations, please submit a pull request to fix them. Please only modify relevant files in the `services/web/locales/locales_patches` folder.
-
-Files under `services/web/locales/` are overleaf official translation files. Please do not modify them directly.
-
-## Contributing
-
-Please see the [CONTRIBUTING](CONTRIBUTING.md) file for information on contributing to the development of Overleaf.
-
-## Blog
-We write about Overleaf internals, compilation performance, and self-hosted LaTeX infrastructure. Read more on our blog:
-- [2026.08 Overleaf Server Pro Price and Open-Source Alternative](https://ayakaleaf-pro.ayaka.space/blog/2026/overleaf-server-pro-price-and-open-source-alternative)
-- [2026.08 Overleaf Benchmark: A Deep Research of Concurrent LaTeX Compilation in Overleaf](https://ayakaleaf-pro.ayaka.space/blog/2026/overleaf-benchmark)
-
-## Authors
-
-- [The Overleaf Team](https://www.overleaf.com/about)
-- [Features and Copyright](https://ayakaleaf-pro.ayaka.space/on-premises/readme/features-and-copyright)
+Rogerleaf preserves upstream attribution, license notices and valid resource URLs. [Upstream documentation](https://ayakaleaf-pro.ayaka.space/) describes the original project. See [extension maintenance](doc/EXTENSIONS.md) and [image release instructions](doc/RELEASING.md) for this fork.
 
 ## License
 
@@ -117,18 +29,3 @@ The code in this repository is released under the GNU AFFERO GENERAL PUBLIC LICE
 
 - Copyright (c) Overleaf, 2014-2025.
 - Copyright (c) [Pro Authors](https://ayakaleaf-pro.ayaka.space/on-premises/readme/features-and-copyright), 2026-now.
-
-## Sponsor
-- [Linux Do Community](https://linux.do)
-- [OpenAI Codex OSS](https://openai.com/en/form/codex-for-oss/)
-- [GitBook](https://www.gitbook.com/)
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=ayaka-notes%2Fayakaleaf-pro&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ayaka-notes/ayakaleaf-pro&type=date&theme=dark&legend=top-left&sealed_token=u3l5zBKFPuzl3y_xdCmqTPT_5iaimMLJchJaALvNsAR3LtSu2NrnvjlmbfGW1NdyDch3XLj-o6rfTpyk2K7s6gtgdzDvrDAsTkBnGz_m2CAkbq0IvxsFXPzEkypDT3vhHvYsvDu3qd7Dx6LcPFy_330a0kqmByAl6FKN-13QCGuo1LTv0iEUihWDTUlz" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ayaka-notes/ayakaleaf-pro&type=date&legend=top-left&sealed_token=u3l5zBKFPuzl3y_xdCmqTPT_5iaimMLJchJaALvNsAR3LtSu2NrnvjlmbfGW1NdyDch3XLj-o6rfTpyk2K7s6gtgdzDvrDAsTkBnGz_m2CAkbq0IvxsFXPzEkypDT3vhHvYsvDu3qd7Dx6LcPFy_330a0kqmByAl6FKN-13QCGuo1LTv0iEUihWDTUlz" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ayaka-notes/ayakaleaf-pro&type=date&legend=top-left&sealed_token=u3l5zBKFPuzl3y_xdCmqTPT_5iaimMLJchJaALvNsAR3LtSu2NrnvjlmbfGW1NdyDch3XLj-o6rfTpyk2K7s6gtgdzDvrDAsTkBnGz_m2CAkbq0IvxsFXPzEkypDT3vhHvYsvDu3qd7Dx6LcPFy_330a0kqmByAl6FKN-13QCGuo1LTv0iEUihWDTUlz" />
- </picture>
-</a>

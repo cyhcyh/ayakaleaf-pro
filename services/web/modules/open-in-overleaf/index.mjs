@@ -1,6 +1,6 @@
 import OpenInOverleafRouter from './app/src/OpenInOverleafRouter.mjs'
 
-// Open in Overleaf module for Ayakaleaf Pro.
+// Open in Overleaf module for Rogerleaf.
 //
 // The SaaS "Open in Overleaf" / Prefilled-Project API (the `/docs` endpoint
 // documented on the public /devs page) is not shipped in the open-source build.

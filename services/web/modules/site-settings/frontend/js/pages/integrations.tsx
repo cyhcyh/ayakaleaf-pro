@@ -4,6 +4,7 @@ import { getJSON, postJSON } from '@/infrastructure/fetch-json'
 import useWaitForI18n from '@/shared/hooks/use-wait-for-i18n'
 import MaterialIcon from '@/shared/components/material-icon'
 import { ui } from '../ui'
+import AdminNav from '../admin-nav'
 import '../site-settings.scss'
 
 type Provider = { enabled: boolean; clientId: string; clientSecret?: string; hasSecret: boolean; clearSecret?: boolean; url?: string; callback: string; active: boolean }
@@ -34,9 +35,9 @@ function Integrations() {
     } catch (error) { setError(ui((error as Error).message)) } finally { setBusy('') }
   }
   if (!isReady) return null
-  return <main className="ayaka-admin" id="main-content">
+  return <main className="ayaka-admin rogerleaf-admin-page" id="main-content">
     <header className="ayaka-admin-header"><a href="/project" className="ayaka-admin-back"><MaterialIcon type="arrow_back" />{ui('返回项目')}</a><span>{ui('管理')}</span></header>
-    <nav className="ayaka-admin-nav" aria-label={ui('管理导航')}><a href="/admin/user">{ui('用户管理')}</a><a href="/admin/project">{ui('项目管理')}</a><a href="/admin/integrations" aria-current="page">{ui('集成配置')}</a></nav>
+    <div className="rogerleaf-admin-nav-wrap"><AdminNav active="integrations" /></div>
     <section className="ayaka-admin-content">
       <h1>{ui('集成配置')}</h1><p className="ayaka-admin-intro">{ui('配置站点应用，用户再关联自己的账户。保存后重启应用生效。')}</p>
       {error && <div role="alert" className="alert alert-danger">{error}</div>}

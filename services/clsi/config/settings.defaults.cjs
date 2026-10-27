@@ -141,6 +141,8 @@ if ((process.env.DOCKER_RUNNER || process.env.SANDBOXED_COMPILES) === 'true') {
   module.exports.clsi = {
     dockerRunner: true,
     docker: {
+      instanceId: process.env.ROGERLEAF_SANDBOX_INSTANCE,
+      maxContainerAge: Math.max(1, parseInt(process.env.ROGERLEAF_SANDBOX_IDLE_SECONDS, 10) || 3600) * 1000,
       runtime: process.env.DOCKER_RUNTIME,
       image:
         process.env.TEXLIVE_IMAGE ||

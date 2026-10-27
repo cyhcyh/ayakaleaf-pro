@@ -63,10 +63,11 @@ if (env.SANDBOXED_COMPILES === 'true') {
   const info = await docker('GET', `/containers/${encodeURIComponent(os.hostname())}/json`)
   const mount = info.Mounts?.find(item => item.Destination === '/var/lib/overleaf')
   if (!mount) throw new Error('Mount persistent application data at /var/lib/overleaf before enabling sandboxed compiles')
+  env.ROGERLEAF_SANDBOX_INSTANCE = mount.Name || mount.Source
   for (const [suffix, subfolder] of Object.entries({ COMPILES: 'compiles', OUTPUT: 'output', CACHE: 'cache' })) env[`SANDBOXED_COMPILES_HOST_DIR_${suffix}`] ||= path.posix.join(mount.Source, 'data', subfolder)
   try { await docker('GET', `/images/${encodeURIComponent(image)}/json`) } catch (error) {
     if (error.status !== 404) throw error
-    console.log(`[Ayakaleaf] Downloading ${image}. Initial startup may take several minutes.`)
+    console.log(`[Rogerleaf] Downloading ${image}. Initial startup may take several minutes.`)
     let last = 0
     await docker('POST', `/images/create?fromImage=${encodeURIComponent(image)}`, event => {
       if (Date.now() - last > 10000 && event.status) { console.log(`[TeX Live] ${event.status}${event.progress ? ` ${event.progress}` : ''}`); last = Date.now() }

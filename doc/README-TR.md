@@ -1,6 +1,8 @@
+> Rogerleaf is based on [ayakaleaf-pro](https://github.com/ayaka-notes/ayakaleaf-pro). The translated upstream overview below is retained for reference. For this fork’s current features and deployment, see [English](../README.md) or [简体中文](README-ZH.md).
+
 <h1 align="center">
   <br>
-  <a href="https://ayakaleaf-pro.ayaka.space"><img src="logo.png" alt="Ayakaleaf Pro" width="300"></a>
+  <a href="https://ayakaleaf-pro.ayaka.space"><img src="rogerleaf-logo.svg" alt="Rogerleaf" width="300"></a>
 </h1>
 
 <h4 align="center">Tüm Pro özellikleriyle geliştirilmiş Overleaf Community Edition <br/>(açık kaynak, ücretsiz kullanım, kendi sunucunuzda barındırılabilir).</h4>
@@ -39,11 +41,11 @@
 
 <img src="screenshot-pro.png" alt="Overleaf Community Edition'da düzenlenen bir projenin ekran görüntüsü">
 <p align="center">
-  Şekil 1: Ayakaleaf Pro Edition'da düzenlenen bir projenin ekran görüntüsü.
+  Şekil 1: Rogerleaf'da düzenlenen bir projenin ekran görüntüsü.
 </p>
 
-## Ayakaleaf Pro Edition
-Ayakaleaf Pro, neredeyse tüm özellik ve yeteneklere sahip, Overleaf'in geliştirilmiş bir sürümüdür. Ayrıntılar için lütfen [Ayakaleaf Pro](https://ayakaleaf-pro.ayaka.space) sayfasına bakın. Ayakaleaf Pro'nun özellikleri şunlardır:
+## Rogerleaf
+Rogerleaf, neredeyse tüm özellik ve yeteneklere sahip, Overleaf'in geliştirilmiş bir sürümüdür. Ayrıntılar için lütfen [Rogerleaf](https://ayakaleaf-pro.ayaka.space) sayfasına bakın. Rogerleaf'nun özellikleri şunlardır:
 
 - Çift yönlü Dropbox senkronizasyonu (tüm projelerinizi Dropbox ile senkronize tutun)
 - MCP sunucusu (yapay zekâ ajanlarının düzenlemesine, derlemesine ve yorum yapmasına izin verin)
@@ -70,28 +72,28 @@ Ayakaleaf Pro, neredeyse tüm özellik ve yeteneklere sahip, Overleaf'in gelişt
 - Tam i18n çevirisi (arayüzdeki her metin 18 dilde)
 - ARM desteği (Docker üzerinde x86_64/arm64)
 
-Son olarak, Ayakaleaf Pro açık kaynaklıdır; ücretsiz olarak kullanılabilir ve değiştirilebilir. Kendi sunucunuzda barındırabilir ve Ayakaleaf Pro'nun geliştirilmesine katkıda bulunabilirsiniz. Daha fazla ayrıntı için lütfen [Geliştirici Belgeleri](https://ayakaleaf-pro.ayaka.space/dev) sayfasına bakın.
+Son olarak, Rogerleaf açık kaynaklıdır; ücretsiz olarak kullanılabilir ve değiştirilebilir. Kendi sunucunuzda barındırabilir ve Rogerleaf'nun geliştirilmesine katkıda bulunabilirsiniz. Daha fazla ayrıntı için lütfen [Geliştirici Belgeleri](https://ayakaleaf-pro.ayaka.space/dev) sayfasına bakın.
 
 > [!NOTE]
-> Not: Ayakaleaf Pro'nun Overleaf, Inc. veya ana şirketi Digital Science ile herhangi bir bağlantısı yoktur. Ayrıca Overleaf, Inc. tarafından sunulan ticari bir ürün olan *Server Pro* Edition *değildir*.
+> Not: Rogerleaf'nun Overleaf, Inc. veya ana şirketi Digital Science ile herhangi bir bağlantısı yoktur. Ayrıca Overleaf, Inc. tarafından sunulan ticari bir ürün olan *Server Pro* Edition *değildir*.
 > 
-> Ayakaleaf Pro, [ayaka-notes](https://github.com/ayaka-notes) tarafından geliştirilen ve sürdürülen bağımsız bir projedir.
+> Rogerleaf, [ayaka-notes](https://github.com/ayaka-notes) tarafından geliştirilen ve sürdürülen bağımsız bir projedir.
 
 ## Kurulum
 
-Ayakaleaf Pro'yu bir sunucu kurmadan yalnızca denemek istiyorsanız [Ayakaleaf Pro Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground)'u kullanabilirsiniz. Ayakaleaf Pro'yu doğrudan tarayıcınızda başlatıp keşfetmenizi sağlayan, önceden yapılandırılmış bir GitHub Codespaces ortamı sunar.
+Rogerleaf'yu bir sunucu kurmadan yalnızca denemek istiyorsanız [Rogerleaf Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground)'u kullanabilirsiniz. Rogerleaf'yu doğrudan tarayıcınızda başlatıp keşfetmenizi sağlayan, önceden yapılandırılmış bir GitHub Codespaces ortamı sunar.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ayaka-notes/ayakaleaf-pro-playground)
 
-Ayakaleaf Pro'yu üretim ortamında kullanmak üzere dağıtmak istiyorsanız, ayrıntılı kurulum talimatları [Belgeler](https://ayakaleaf-pro.ayaka.space/) sayfasında yer almaktadır. Ayakaleaf Pro'yu [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/) ile kurmanızı önemle tavsiye ederiz.
+Rogerleaf'yu üretim ortamında kullanmak üzere dağıtmak istiyorsanız, ayrıntılı kurulum talimatları [Belgeler](https://ayakaleaf-pro.ayaka.space/) sayfasında yer almaktadır. Rogerleaf'yu [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/) ile kurmanızı önemle tavsiye ederiz.
 
 ## Yükseltme
 
-Ayakaleaf Pro'nun önceki bir sürümünden yükseltiyorsanız, mevcut sürümünüz ile yükselteceğiniz sürüm arasındaki her sürümün değişiklikleri için lütfen [Sürümler sayfasına](https://github.com/ayaka-notes/ayakaleaf-pro/releases) bakın.
+Rogerleaf'nun önceki bir sürümünden yükseltiyorsanız, mevcut sürümünüz ile yükselteceğiniz sürüm arasındaki her sürümün değişiklikleri için lütfen [Sürümler sayfasına](https://github.com/ayaka-notes/ayakaleaf-pro/releases) bakın.
 
 ## Çeviriler
 
-Ayakaleaf Pro çevirilerine yapılan katkıları memnuniyetle karşılıyoruz. Genellikle İngilizce metni diğer dillere çevirmek için claude/codex kullanıyoruz. Çevirilerde bir hata bulursanız, düzeltmek için lütfen bir pull request gönderin. Lütfen yalnızca `services/web/locales/locales_patches` klasöründeki ilgili dosyaları değiştirin.
+Rogerleaf çevirilerine yapılan katkıları memnuniyetle karşılıyoruz. Genellikle İngilizce metni diğer dillere çevirmek için claude/codex kullanıyoruz. Çevirilerde bir hata bulursanız, düzeltmek için lütfen bir pull request gönderin. Lütfen yalnızca `services/web/locales/locales_patches` klasöründeki ilgili dosyaları değiştirin.
 
 `services/web/locales/` altındaki dosyalar Overleaf'in resmî çeviri dosyalarıdır. Lütfen bunları doğrudan değiştirmeyin.
 

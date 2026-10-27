@@ -5,6 +5,7 @@ import { fromEnvironment, validateProvider, providers } from './integrations.mjs
 
 export const directory = () => process.env.AYAKA_SITE_SETTINGS_DIR || '/var/lib/overleaf/data/site-settings'
 const file = () => path.join(directory(), 'integrations.enc.json')
+// Keep the historical AAD below so existing encrypted credentials remain readable.
 const key = async () => crypto.createHash('sha256').update(await fs.readFile(path.join(directory(), 'config.key'))).digest()
 let writes = Promise.resolve()
 

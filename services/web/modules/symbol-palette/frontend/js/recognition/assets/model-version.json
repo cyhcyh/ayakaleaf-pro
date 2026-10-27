@@ -3,7 +3,7 @@
   "version": "v0.1.0-preview.2",
   "trainingRepository": "symbol-recognition-training",
   "trainedBy": "ayaka-notes",
-  "intendedFor": "ayakaleaf-pro",
+  "intendedFor": "rogerleaf",
   "runtime": "onnxruntime-web 1.26.0 (full WASM)",
   "input": "input: float32 [1,1,64,64]",
   "output": "logits: float32 [1,1622]",

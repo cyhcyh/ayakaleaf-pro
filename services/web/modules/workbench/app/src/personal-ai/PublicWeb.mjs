@@ -65,7 +65,7 @@ export async function readPublicURL(input, signal, redirects = 0) {
       url,
       {
         headers: {
-          "User-Agent": "Ayakaleaf-ReferenceReader/1.0",
+          "User-Agent": "Rogerleaf-ReferenceReader/1.0",
           Accept: "application/json,text/html,application/pdf,text/plain,application/atom+xml",
         },
         signal: signal

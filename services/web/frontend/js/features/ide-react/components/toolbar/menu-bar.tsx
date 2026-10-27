@@ -1,3 +1,4 @@
+import GuideMenuItems from '@modules/site-settings/frontend/js/guides/menu-items'
 import {
   OLDropdownDivider,
   OLDropdownHeader,
@@ -328,6 +329,8 @@ export const ToolbarMenuBar = () => {
             title={t('keyboard_shortcuts')}
             onClick={openKeyboardShortcutsModal}
           />
+          <OLDropdownDivider />
+          <GuideMenuItems toolbar />
           {showDocumentation && (
             <MenuBarOption
               title={t('documentation')}

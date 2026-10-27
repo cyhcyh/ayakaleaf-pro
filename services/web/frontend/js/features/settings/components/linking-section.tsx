@@ -1,3 +1,4 @@
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import { ElementType } from 'react'
 import { useTranslation } from 'react-i18next'
 import importOverleafModules from '../../../../macros/import-overleaf-module.macro'
@@ -136,6 +137,7 @@ function LinkingSection() {
       {hasReferencesLinkingSection ? (
         <>
           <h3 id="references">{t('reference_managers')}</h3>
+          <p className="small">{ui('连接 Zotero 或 Mendeley，在项目中导入文献。')}</p>
           {referenceLinkingErrorMessage ? (
             <div className="notification-list">
               <Notification

@@ -5,7 +5,7 @@ import { RateLimiter } from '../../../../app/src/infrastructure/RateLimiter.mjs'
 import OpenInOverleafController from './OpenInOverleafController.mjs'
 
 // "Open in Overleaf" / Prefilled-Project API (documented at /devs). Reproduces
-// the SaaS-only `/docs` endpoint on Ayakaleaf Pro.
+// the SaaS-only `/docs` endpoint on Rogerleaf.
 //
 //   GET  /docs   — link form (`/docs?snip_uri=…` / `?encoded_snip=…`). No Origin
 //                  header on a top-level navigation, so it is never blocked by

@@ -36,7 +36,7 @@ for _ in $(seq 120); do
   # The name filter is not exact, it also returns the embedded outpost.
   outpost=$(api "outposts/instances/?page_size=100" 2>/dev/null | python3 -c '
 import json, sys
-found = [o["pk"] for o in json.load(sys.stdin)["results"] if o["name"] == "ayakaleaf-ldap-outpost"]
+found = [o["pk"] for o in json.load(sys.stdin)["results"] if o["name"] == "rogerleaf-ldap-outpost"]
 print(found[0] if found else "")' || true)
   [[ -n "$outpost" ]] && break
   sleep 3

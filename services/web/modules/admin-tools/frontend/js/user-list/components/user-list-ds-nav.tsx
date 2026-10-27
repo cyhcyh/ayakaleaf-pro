@@ -1,4 +1,5 @@
 import { useUserListContext } from '../context/user-list-context'
+import AdminNav from '@modules/site-settings/frontend/js/admin-nav'
 import { useTranslation, Trans } from 'react-i18next'
 import React from 'react'
 import CreateAccountButton from './create-account-button'
@@ -145,7 +146,7 @@ export function UserListDsNav() {
   const [activeTab, setActiveTab] = React.useState('users')
 
   return (
-    <div className="user-ds-nav-page website-redesign">
+    <div className="user-ds-nav-page website-redesign rogerleaf-admin-page">
       <DefaultNavbar
         {...navbarProps}
         overleafLogo={overleafLogo}
@@ -155,6 +156,7 @@ export function UserListDsNav() {
         <SidebarDsNav />
         <div className="user-ds-nav-content-and-messages">
           <div className="user-ds-nav-content">
+            <AdminNav active="users" />
             <div className="user-ds-nav-main">
 
               {error ? <DashApiError /> : ''}

@@ -1,3 +1,4 @@
+import ReferenceStatus from '@modules/site-settings/frontend/js/reference-status'
 import { authorizeReference } from '../reference-authorization'
 import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useTranslation } from 'react-i18next'
@@ -155,7 +156,7 @@ function ZoteroWidgetInner() {
 export function ZoteroWidget() {
   const { zotero } = useInstanceFeatures()
   if (!zotero) {
-    return null
+    return <ReferenceStatus provider="Zotero" />
   }
   return <ZoteroWidgetInner />
 }

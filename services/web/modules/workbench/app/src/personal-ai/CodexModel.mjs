@@ -18,7 +18,7 @@ export function codexModel(config, transport = fetch) {
           return false
         })
         body.instructions = [body.instructions, ...instructions].filter(Boolean).join('\n\n')
-          || 'You are the writing and research assistant in Ayakaleaf.'
+          || 'You are the writing and research assistant in Rogerleaf.'
         body.store = false
         if (config.reasoningEffort) body.reasoning = { ...body.reasoning, effort: config.reasoningEffort }
         delete body.max_output_tokens

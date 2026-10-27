@@ -1,13 +1,13 @@
 param(
     [string]$BaseImage = 'ghcr.io/ayaka-notes/overleaf-pro@sha256:5f84c7f2d0230dd558130ca2901f603d4e0bfe021054879efea1b7fece2f4f1c',
-    [string]$ImageTag = 'ayakaleaf-pro:personal-ai',
+    [string]$ImageTag = 'rogerleaf:personal-ai',
     [switch]$KeepBuilder
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $workspaceRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $buildId = [Guid]::NewGuid().ToString('N').Substring(0, 10)
-$builderName = "ayakaleaf-build-$buildId"
+$builderName = "rogerleaf-build-$buildId"
 $outputRoot = Join-Path $workspaceRoot ".local\build-$buildId"
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
@@ -50,6 +50,7 @@ export NODE_OPTIONS="--require /src/.pnp.cjs --import /src/.pnp.register.mjs"
 cd services/web
 yarn run lezer-latex:generate
 node --test modules/workbench/test/*.test.mjs modules/site-settings/test/*.test.mjs
+node --test ../clsi/test/rogerleaf-sandbox.test.mjs
 yarn run precompile-pug
 node ../../deploy/personal-ai/prepare-locales.mjs
 yarn run extract-translations

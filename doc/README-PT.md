@@ -1,6 +1,8 @@
+> Rogerleaf is based on [ayakaleaf-pro](https://github.com/ayaka-notes/ayakaleaf-pro). The translated upstream overview below is retained for reference. For this fork’s current features and deployment, see [English](../README.md) or [简体中文](README-ZH.md).
+
 <h1 align="center">
   <br>
-  <a href="https://ayakaleaf-pro.ayaka.space"><img src="logo.png" alt="Ayakaleaf Pro" width="300"></a>
+  <a href="https://ayakaleaf-pro.ayaka.space"><img src="rogerleaf-logo.svg" alt="Rogerleaf" width="300"></a>
 </h1>
 
 <h4 align="center">Overleaf Community Edition melhorado com todas as funcionalidades Pro <br/>(código aberto, de uso gratuito, auto-hospedável).</h4>
@@ -39,11 +41,11 @@
 
 <img src="screenshot-pro.png" alt="Captura de tela de um projeto sendo editado no Overleaf Community Edition">
 <p align="center">
-  Figura 1: Captura de tela de um projeto sendo editado no Ayakaleaf Pro Edition.
+  Figura 1: Captura de tela de um projeto sendo editado no Rogerleaf.
 </p>
 
-## Ayakaleaf Pro Edition
-O Ayakaleaf Pro é uma versão melhorada do Overleaf com quase todas as funcionalidades e capacidades. Para mais detalhes, confira a página [Ayakaleaf Pro](https://ayakaleaf-pro.ayaka.space). As funcionalidades do Ayakaleaf Pro incluem:
+## Rogerleaf
+O Rogerleaf é uma versão melhorada do Overleaf com quase todas as funcionalidades e capacidades. Para mais detalhes, confira a página [Rogerleaf](https://ayakaleaf-pro.ayaka.space). As funcionalidades do Rogerleaf incluem:
 
 - Sincronização bidirecional com o Dropbox (mantenha todos os seus projetos sincronizados com o Dropbox)
 - Servidor MCP (permita que agentes de IA editem, compilem e comentem)
@@ -70,28 +72,28 @@ O Ayakaleaf Pro é uma versão melhorada do Overleaf com quase todas as funciona
 - Tradução i18n completa (todos os textos da interface em 18 idiomas)
 - Suporte para ARM (x86_64/arm64 em Docker)
 
-Por último, mas não menos importante, o Ayakaleaf Pro é de código aberto e pode ser usado e modificado gratuitamente. Você pode hospedá-lo por conta própria e contribuir para o desenvolvimento do Ayakaleaf Pro. Para mais detalhes, confira a página [Documentação para desenvolvedores](https://ayakaleaf-pro.ayaka.space/dev).
+Por último, mas não menos importante, o Rogerleaf é de código aberto e pode ser usado e modificado gratuitamente. Você pode hospedá-lo por conta própria e contribuir para o desenvolvimento do Rogerleaf. Para mais detalhes, confira a página [Documentação para desenvolvedores](https://ayakaleaf-pro.ayaka.space/dev).
 
 > [!NOTE]
-> Nota: o Ayakaleaf Pro não tem qualquer afiliação com a Overleaf, Inc. nem com sua empresa controladora, Digital Science. Também *não é* a edição *Server Pro*, que é um produto comercial oferecido pela Overleaf, Inc.
+> Nota: o Rogerleaf não tem qualquer afiliação com a Overleaf, Inc. nem com sua empresa controladora, Digital Science. Também *não é* a edição *Server Pro*, que é um produto comercial oferecido pela Overleaf, Inc.
 > 
-> O Ayakaleaf Pro é um projeto independente desenvolvido e mantido pela [ayaka-notes](https://github.com/ayaka-notes).
+> O Rogerleaf é um projeto independente desenvolvido e mantido pela [ayaka-notes](https://github.com/ayaka-notes).
 
 ## Instalação
 
-Se você quiser apenas experimentar o Ayakaleaf Pro sem configurar um servidor, pode usar o nosso [Ayakaleaf Pro Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground). Ele oferece um ambiente GitHub Codespaces pré-configurado que permite iniciar e explorar o Ayakaleaf Pro diretamente no seu navegador.
+Se você quiser apenas experimentar o Rogerleaf sem configurar um servidor, pode usar o nosso [Rogerleaf Playground](https://github.com/ayaka-notes/ayakaleaf-pro-playground). Ele oferece um ambiente GitHub Codespaces pré-configurado que permite iniciar e explorar o Rogerleaf diretamente no seu navegador.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ayaka-notes/ayakaleaf-pro-playground)
 
-Se você quiser implantar o Ayakaleaf Pro para uso em produção, temos instruções de instalação detalhadas na página [Documentação](https://ayakaleaf-pro.ayaka.space/). Recomendamos fortemente instalar o Ayakaleaf Pro usando o [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/).
+Se você quiser implantar o Rogerleaf para uso em produção, temos instruções de instalação detalhadas na página [Documentação](https://ayakaleaf-pro.ayaka.space/). Recomendamos fortemente instalar o Rogerleaf usando o [ayaka-notes/Toolkit](https://github.com/ayaka-notes/toolkit/).
 
 ## Atualização
 
-Se você estiver atualizando a partir de uma versão anterior do Ayakaleaf Pro, confira a [página de versões](https://github.com/ayaka-notes/ayakaleaf-pro/releases) para ver as alterações de cada versão entre a sua versão atual e aquela para a qual você está atualizando.
+Se você estiver atualizando a partir de uma versão anterior do Rogerleaf, confira a [página de versões](https://github.com/ayaka-notes/ayakaleaf-pro/releases) para ver as alterações de cada versão entre a sua versão atual e aquela para a qual você está atualizando.
 
 ## Traduções
 
-Contribuições para as traduções do Ayakaleaf Pro são bem-vindas. Geralmente, usamos claude/codex para traduzir o texto em inglês para outros idiomas. Se você encontrar erros nas traduções, envie um pull request para corrigi-los. Modifique apenas os arquivos relevantes na pasta `services/web/locales/locales_patches`.
+Contribuições para as traduções do Rogerleaf são bem-vindas. Geralmente, usamos claude/codex para traduzir o texto em inglês para outros idiomas. Se você encontrar erros nas traduções, envie um pull request para corrigi-los. Modifique apenas os arquivos relevantes na pasta `services/web/locales/locales_patches`.
 
 Os arquivos em `services/web/locales/` são os arquivos de tradução oficiais do Overleaf. Não os modifique diretamente.
 

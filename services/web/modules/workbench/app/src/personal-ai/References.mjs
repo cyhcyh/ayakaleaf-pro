@@ -39,7 +39,7 @@ export async function pdfText(data, page = 1) {
   if (!data.subarray(0, 5).equals(Buffer.from("%PDF-")))
     throw new Error("文件不是有效的 PDF");
   const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), "ayakaleaf-reference-"),
+    path.join(os.tmpdir(), "rogerleaf-reference-"),
   );
   try {
     const file = path.join(directory, "reference.pdf");

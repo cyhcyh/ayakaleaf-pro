@@ -28,7 +28,11 @@ Metrics.open_sockets.monitor(true)
 Metrics.memory.monitor(logger)
 Metrics.leaked_sockets.monitor(logger)
 
-ProjectPersistenceManager.init()
+ProjectPersistenceManager.init(() => {
+  if (Settings.clsi?.docker?.instanceId) {
+    import('./app/js/DockerRunner.mjs').then(({ default: runner }) => runner.startContainerMonitor()).catch(err => logger.error({ err }, 'sandbox cleanup initialization failed'))
+  }
+})
 OutputCacheManager.init()
 const app = express()
 

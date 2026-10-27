@@ -1,3 +1,4 @@
+import AdminNav from '@modules/site-settings/frontend/js/admin-nav'
 import { useTranslation } from 'react-i18next'
 import ProjectListTable from './table/project-list-table'
 import SearchForm from './search-form'
@@ -49,7 +50,7 @@ export function ProjectListDsNav() {
   )
 
   return (
-    <div className="project-ds-nav-page website-redesign">
+    <div className="project-ds-nav-page website-redesign rogerleaf-admin-page">
       <DefaultNavbar
         {...navbarProps}
         overleafLogo={overleafLogo}
@@ -59,6 +60,7 @@ export function ProjectListDsNav() {
         <SidebarDsNav />
         <div className="project-ds-nav-content-and-messages">
           <div className="project-ds-nav-content">
+            <AdminNav active="projects" />
             <div className="project-ds-nav-main">
               {error ? <DashApiError /> : ''}
               <main aria-labelledby="main-content">

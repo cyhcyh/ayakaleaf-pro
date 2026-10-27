@@ -5,7 +5,7 @@ import {
 } from '../../../../../helpers/auth'
 
 // Same deployment as the oidc suite, restarted with the admin mapped from the
-// email claim (OVERLEAF_OIDC_IS_ADMIN_FIELD=email, value bob@ayakaleaf.test).
+// email claim (OVERLEAF_OIDC_IS_ADMIN_FIELD=email, value bob@rogerleaf.test).
 // Leaves bob an admin and alice not, admin-field-scalar runs next.
 
 before(function () {

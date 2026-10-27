@@ -22,7 +22,7 @@ TOOLKIT_REF ?= 5132d5a0e97659b8149df2b407585d21853d7486
 # Empty in CI: one deployment with the toolkit's own names
 INSTANCE ?=
 INSTANCE_SUFFIX := $(if $(INSTANCE),-$(INSTANCE))
-TOOLKIT_DIR ?= $(HOME)/ayakaleaf-toolkit-e2e$(INSTANCE_SUFFIX)
+TOOLKIT_DIR ?= $(HOME)/rogerleaf-toolkit-e2e$(INSTANCE_SUFFIX)
 TOOLKIT_NETWORK ?= overleaf$(INSTANCE)_default
 # Container names start with it, e.g. e2e2-sharelatex; read by the scripts
 export CONTAINER_PREFIX := $(if $(INSTANCE),e2e$(INSTANCE)-)

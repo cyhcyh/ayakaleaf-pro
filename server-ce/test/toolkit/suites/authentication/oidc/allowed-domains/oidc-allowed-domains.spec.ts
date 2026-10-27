@@ -6,7 +6,7 @@ import {
 } from '../../../../../helpers/auth'
 
 // Same deployment as the oidc suite, restarted with
-// OVERLEAF_OIDC_ALLOWED_EMAIL_DOMAINS=ayakaleaf.test: only that domain gets
+// OVERLEAF_OIDC_ALLOWED_EMAIL_DOMAINS=rogerleaf.test: only that domain gets
 // an account on the first OIDC login, existing accounts are not affected.
 
 before(function () {

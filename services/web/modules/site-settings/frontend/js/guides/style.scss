@@ -1,0 +1,14 @@
+.rogerleaf-guide {
+  font-size: 14px; line-height: 1.75;
+  .rogerleaf-guide-intro { color: var(--content-secondary); margin-bottom: 20px; }
+  ol { padding-left: 24px; margin-bottom: 24px; }
+  li { padding-left: 6px; margin-bottom: 14px; }
+  li::marker { color: var(--content-positive, #168442); font-weight: 600; }
+  .rogerleaf-guide-example { border-left: 3px solid var(--content-positive, #168442); background: var(--bg-secondary-themed, #f4f6f5); padding: 16px 18px; border-radius: 0 6px 6px 0; margin: 20px 0; }
+  .rogerleaf-guide-note { color: var(--content-secondary); margin: 20px 0 0; }
+  dl { margin-bottom: 0; }
+  dl > div { padding: 14px 0; border-bottom: 1px solid var(--border-divider-themed); }
+  dl > div:last-child { border: 0; }
+  dt { margin-bottom: 6px; font-size: 15px; }
+  dd { color: var(--content-secondary); margin: 0; }
+}

@@ -4,15 +4,15 @@
 //   bob    group Staff
 //   carol  group Admins
 //   dave   no groups
-//   eve    eve@other.test, frank  frank@sub.ayakaleaf.test
+//   eve    eve@other.test, frank  frank@sub.rogerleaf.test
 import { postWithCsrf } from './request'
 
 export const AUTHENTIK_URL = 'http://authentik:9000'
 
 export function idpEmail(username: string) {
   if (username === 'eve') return 'eve@other.test'
-  if (username === 'frank') return 'frank@sub.ayakaleaf.test'
-  return `${username}@ayakaleaf.test`
+  if (username === 'frank') return 'frank@sub.rogerleaf.test'
+  return `${username}@rogerleaf.test`
 }
 
 // Fills authentik's identification and password stages. The flow is a web

@@ -8,6 +8,7 @@ import LockManager from './DockerLockManager.js'
 import { getLastProjectAccessTime } from './LastProjectAccess.js'
 import Path from 'node:path'
 import _ from 'lodash'
+import { INSTANCE_LABEL, ROLE_LABEL, expiredSandbox, startCleanupMonitor } from './RogerleafSandbox.mjs'
 
 const dockerode = new Docker()
 
@@ -16,6 +17,7 @@ logger.debug('using docker runner')
 
 let containerMonitorTimeout
 let containerMonitorInterval
+let stopRogerleafMonitor
 
 const DockerRunner = {
   run(
@@ -324,6 +326,9 @@ const DockerRunner = {
       }
     }
 
+    if (Settings.clsi.docker.instanceId) {
+      options.Labels = { ...options.Labels, [INSTANCE_LABEL]: Settings.clsi.docker.instanceId, [ROLE_LABEL]: 'compile' }
+    }
     return options
   },
 
@@ -564,6 +569,7 @@ const DockerRunner = {
   },
 
   destroyOldContainers(callback) {
+    if (Settings.clsi.docker.instanceId) return DockerRunner.destroyOwnedContainers(callback)
     dockerode.listContainers({ all: true }, (error, containers) => {
       if (error != null) {
         return callback(error)
@@ -596,6 +602,36 @@ const DockerRunner = {
     })
   },
 
+  destroyOwnedContainers(callback) {
+    const policy = {
+      instanceId: Settings.clsi.docker.instanceId,
+      image: Settings.clsi.docker.image,
+      directories: [Settings.path.sandboxedCompilesHostDirCompiles, Settings.path.sandboxedCompilesHostDirOutput, Settings.path.sandboxedCompilesHostDirCache],
+      maxAge: DockerRunner.MAX_CONTAINER_AGE,
+    }
+    dockerode.listContainers({ all: true }, (error, containers) => {
+      if (error) return callback(error)
+      const jobs = containers.filter(item => item.Names?.some(name => name.startsWith('/project-'))).map(item => done => {
+        const name = item.Names.find(name => name.startsWith('/project-')).slice(1)
+        // Compilation startup takes the same lock. Inspect again while holding
+        // it, so a new compile between listing and deletion is never removed.
+        LockManager.runWithLock(name, release => {
+          dockerode.getContainer(item.Id).inspect((error, info) => {
+            if (error?.statusCode === 404) return release()
+            if (error) return release(error)
+            const projectId = name.match(/^project-([a-f0-9]{24})-/)?.[1]
+            if (!expiredSandbox(info, policy, Date.now(), getLastProjectAccessTime(projectId))) return release()
+            DockerRunner._destroyContainer(item.Id, false, release)
+          })
+        }, error => {
+          if (error) logger.error({ err: error, containerName: name }, 'failed to destroy expired Rogerleaf container')
+          done()
+        })
+      })
+      async.series(jobs, callback)
+    })
+  },
+
   startContainerMonitor() {
     logger.debug(
       { maxAge: DockerRunner.MAX_CONTAINER_AGE },
@@ -604,6 +640,14 @@ const DockerRunner = {
 
     // guarantee only one monitor is running
     DockerRunner.stopContainerMonitor()
+
+    if (Settings.clsi.docker.instanceId) {
+      stopRogerleafMonitor = startCleanupMonitor(done => DockerRunner.destroyOldContainers(error => {
+        if (error) logger.error({ err: error }, 'failed to destroy expired Rogerleaf containers')
+        done()
+      }))
+      return
+    }
 
     // randomise the start time
     const randomDelay = Math.floor(Math.random() * 5 * 60 * 1000)
@@ -621,6 +665,8 @@ const DockerRunner = {
   },
 
   stopContainerMonitor() {
+    stopRogerleafMonitor?.()
+    stopRogerleafMonitor = undefined
     if (containerMonitorTimeout) {
       clearTimeout(containerMonitorTimeout)
       containerMonitorTimeout = undefined
@@ -636,7 +682,8 @@ const DockerRunner = {
   },
 }
 
-DockerRunner.startContainerMonitor()
+// Rogerleaf starts after ProjectPersistenceManager restores last-access data.
+if (!Settings.clsi.docker.instanceId) DockerRunner.startContainerMonitor()
 
 DockerRunner.promises = {
   run: promisify(DockerRunner.run),

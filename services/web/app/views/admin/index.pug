@@ -1,21 +1,25 @@
 extends ../layout-marketing
 include ../_mixins/bookmarkable_tabset
 
+block entrypointVar
+	- entrypoint = 'modules/site-settings/pages/admin-site'
+
 block content
-	#main-content.content.content-alt
-		.container
+	#main-content.content.content-alt.rogerleaf-admin-page
+		.container.rogerleaf-admin-site
+			include ../../../modules/site-settings/app/views/_admin-nav.pug
 			.row
 				.col-sm-12
 					.card
 						.card-body
 							.page-header
-								h1 Admin Panel
+								h1= translate('rogerleaf_site_settings')
 							.ol-tabs(data-ol-bookmarkable-tabset)
 								.nav-tabs-container
 									ul.nav.nav-tabs.align-left(role='tablist')
-										+bookmarkable-tabset-header('system-messages', 'System Messages', true)
-										+bookmarkable-tabset-header('open-sockets', 'Open Sockets')
-										+bookmarkable-tabset-header('open-close-editor', 'Open/Close Editor')
+										+bookmarkable-tabset-header('system-messages', translate('rogerleaf_messages'), true)
+										+bookmarkable-tabset-header('open-sockets', translate('rogerleaf_sockets'))
+										+bookmarkable-tabset-header('open-close-editor', translate('rogerleaf_editor_access'))
 										if hasFeature('saas')
 											+bookmarkable-tabset-header('privileges-matrix', 'Privileges Matrix')
 											+bookmarkable-tabset-header('tpds', 'TPDS/Dropbox Management')
@@ -30,17 +34,17 @@ block content
 										form(method='post' action='/admin/messages')
 											input(name='_csrf' type='hidden' value=csrfToken)
 											.form-group
-												label.form-label(for='system-message') Message
+												label.form-label(for='system-message')= translate('rogerleaf_message')
 												input#system-message.form-control(
 													name='content'
 													type='text'
 													required
 												)
-											button.btn.btn-primary(type='submit') Post Message
+											button.btn.btn-primary(type='submit')= translate('rogerleaf_post_message')
 										hr
 										form(method='post' action='/admin/messages/clear')
 											input(name='_csrf' type='hidden' value=csrfToken)
-											button.btn.btn-danger(type='submit') Clear all messages
+											button.btn.btn-danger(type='submit')= translate('rogerleaf_clear_messages')
 
 									.tab-pane(role='tabpanel' id='open-sockets')
 										.row-spaced
@@ -58,20 +62,20 @@ block content
 											.row-spaced
 												form(method='post' action='/admin/closeEditor')
 													input(name='_csrf' type='hidden' value=csrfToken)
-													button.btn.btn-danger(type='submit') Close Editor
-												p.small Will stop anyone opening the editor. Will NOT disconnect already connected users.
+													button.btn.btn-danger(type='submit')= translate('rogerleaf_close_editor')
+												p.small= translate('rogerleaf_close_editor_hint')
 
 											.row-spaced
 												form(method='post' action='/admin/disconnectAllUsers')
 													input(name='_csrf' type='hidden' value=csrfToken)
-													button.btn.btn-danger(type='submit') Disconnect all users
-												p.small Will force disconnect all users with the editor open. Make sure to close the editor first to avoid them reconnecting.
+													button.btn.btn-danger(type='submit')= translate('rogerleaf_disconnect_users')
+												p.small= translate('rogerleaf_disconnect_hint')
 
 											.row-spaced
 												form(method='post' action='/admin/openEditor')
 													input(name='_csrf' type='hidden' value=csrfToken)
-													button.btn.btn-danger(type='submit') Reopen Editor
-												p.small Will reopen the editor after closing.
+													button.btn.btn-danger(type='submit')= translate('rogerleaf_open_editor')
+												p.small= translate('rogerleaf_open_editor_hint')
 
 									if hasFeature('saas')
 										.tab-pane(role='tabpanel' id='privileges-matrix')

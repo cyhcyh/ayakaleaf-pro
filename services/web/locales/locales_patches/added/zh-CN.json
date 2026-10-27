@@ -37,5 +37,20 @@
   "ayaka_authorization_complete": "授权流程已结束，可以关闭此窗口。",
   "ayaka_admin": "管理",
   "ayaka_manage_users": "用户管理",
-  "ayaka_manage_projects": "项目管理"
+  "ayaka_manage_projects": "项目管理",
+  "rogerleaf_admin_navigation": "管理导航",
+  "reference_managers": "文献管理器",
+  "rogerleaf_site_settings": "站点管理",
+  "rogerleaf_messages": "站点公告",
+  "rogerleaf_sockets": "当前连接",
+  "rogerleaf_editor_access": "编辑器访问",
+  "rogerleaf_message": "公告内容",
+  "rogerleaf_post_message": "发布公告",
+  "rogerleaf_clear_messages": "清空公告",
+  "rogerleaf_close_editor": "关闭编辑器入口",
+  "rogerleaf_disconnect_users": "断开所有用户连接",
+  "rogerleaf_open_editor": "重新开放编辑器",
+  "rogerleaf_close_editor_hint": "阻止用户新打开编辑器，已连接的用户可以继续使用。",
+  "rogerleaf_disconnect_hint": "断开当前编辑器连接。可先关闭入口，避免用户立即重连。",
+  "rogerleaf_open_editor_hint": "恢复用户打开编辑器。"
 }

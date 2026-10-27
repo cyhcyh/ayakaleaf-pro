@@ -1,8 +1,8 @@
-name: ayakaleaf-pro-local
+name: rogerleaf-local
 
 services:
   sharelatex:
-    image: ${AYAKALEAF_IMAGE:-ghcr.io/ayaka-notes/overleaf-pro:latest}
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
     restart: unless-stopped
     depends_on:
       mongo:
@@ -16,7 +16,7 @@ services:
       - overleaf-data:/var/lib/overleaf
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      OVERLEAF_APP_NAME: Ayakaleaf Pro Local
+      OVERLEAF_APP_NAME: Rogerleaf
       OVERLEAF_SITE_URL: http://localhost:8080
       OVERLEAF_SITE_LANGUAGE: zh-CN
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
@@ -29,6 +29,8 @@ services:
       EMAIL_CONFIRMATION_DISABLED: "true"
       OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
       OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
       # Compile projects in the independent TeX Live 2026.1 sandbox.
       SANDBOXED_COMPILES: "true"
       SANDBOXED_COMPILES_SIBLING_CONTAINERS: "true"

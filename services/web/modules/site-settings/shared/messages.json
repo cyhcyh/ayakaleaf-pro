@@ -372,5 +372,14 @@
   "项目已彻底删除": "This project has been permanently deleted.",
   "项目编号无效": "Invalid project ID.",
   "{0} 行": "Line {0}",
-  "切换后重新加载界面，与你的论文语言分别设置。": "Reloads the interface after switching. Your document language is set separately."
+  "切换后重新加载界面，与你的论文语言分别设置。": "Reloads the interface after switching. Your document language is set separately.",
+  "站点尚未启用此服务。": "This service is not enabled on this site.",
+  "前往集成配置": "Open integration settings",
+  "连接 Zotero 或 Mendeley，在项目中导入文献。": "Connect Zotero or Mendeley to import references into your projects.",
+  "示例提问": "Example request",
+  "复制示例": "Copy example",
+  "无法复制，请手动复制。": "Copy failed. Please copy the text manually.",
+  "打开 AI 助手": "Open AI assistant",
+  "打开 AI 修改": "Open AI edits",
+  "前往翻译设置": "Translation settings"
 }

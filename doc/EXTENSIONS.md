@@ -26,3 +26,7 @@ Use Overleaf's existing Docker runner for project compilation. The bootstrap dis
 - Test OAuth with real application credentials before declaring a provider ready for deployment.
 
 Back up the database and application data volume together before upgrading an existing installation.
+
+Rogerleaf's Help copy and shared administrator styling live in `modules/site-settings`. The original forms, action handlers and permission checks remain in their upstream components.
+
+Sandbox cleanup policy lives in `services/clsi/app/js/RogerleafSandbox.mjs`. The existing Docker runner applies instance labels and rechecks idle state under its container lock. Startup scanning begins five seconds after the project cache restores last-access records, then repeats every ten minutes. Containers without labels are eligible only when their image and `/compile` mount match this instance. The historical integration-encryption AAD remains unchanged so old credentials stay readable.

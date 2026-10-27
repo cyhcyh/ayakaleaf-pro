@@ -108,7 +108,7 @@ export default ProjectPersistenceManager = {
 
   refreshExpiryTimeout: callbackify(refreshExpiryTimeout),
 
-  init() {
+  init(onReady = () => {}) {
     fs.readdir(Settings.path.compilesDir, (err, dirs) => {
       if (err) {
         logger.warn({ err }, 'cannot get project listing')
@@ -157,6 +157,7 @@ export default ProjectPersistenceManager = {
             },
             10 * 60 * 1000
           )
+          onReady()
         }
       )
     })

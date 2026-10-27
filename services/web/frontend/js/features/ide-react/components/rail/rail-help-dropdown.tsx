@@ -1,3 +1,4 @@
+import GuideMenuItems from '@modules/site-settings/frontend/js/guides/menu-items'
 import getMeta from '@/utils/meta'
 import { useTranslation } from 'react-i18next'
 import { useRailContext } from '@/features/ide-react/context/rail-context'
@@ -25,6 +26,8 @@ export default function RailHelpDropdown() {
       <OLDropdownItem onClick={openKeyboardShortcutsModal}>
         {t('keyboard_shortcuts')}
       </OLDropdownItem>
+      <OLDropdownDivider />
+      <GuideMenuItems />
       {showDocumentation && (
         <OLDropdownItem
           href="/learn"

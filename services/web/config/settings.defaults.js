@@ -1308,7 +1308,12 @@ module.exports = {
     ],
     railPopovers: [],
     railActions: [],
-    railModals: [],
+    railModals: [
+      Path.resolve(__dirname, '../modules/site-settings/frontend/js/guides/review'),
+      Path.resolve(__dirname, '../modules/site-settings/frontend/js/guides/edits'),
+      Path.resolve(__dirname, '../modules/site-settings/frontend/js/guides/translation'),
+      Path.resolve(__dirname, '../modules/site-settings/frontend/js/guides/advanced'),
+    ],
   },
 
   moduleImportSequence: [

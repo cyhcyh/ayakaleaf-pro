@@ -1,8 +1,7 @@
-# Replace the default image with your published DockerHub image for distribution.
-name: ayakaleaf
+name: rogerleaf
 services:
   sharelatex:
-    image: ${AYAKALEAF_IMAGE:-ayakaleaf-pro:personal-ai}
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
     restart: unless-stopped
     depends_on:
       mongo:
@@ -15,7 +14,7 @@ services:
       - overleaf-data:/var/lib/overleaf
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      OVERLEAF_APP_NAME: Ayakaleaf Pro
+      OVERLEAF_APP_NAME: Rogerleaf
       OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
       OVERLEAF_SITE_LANGUAGE: zh-CN
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
@@ -25,6 +24,8 @@ services:
       EMAIL_CONFIRMATION_DISABLED: "true"
       OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
       OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
       SANDBOXED_COMPILES: "true"
       TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
       COMPILE_TIMEOUT: "180"

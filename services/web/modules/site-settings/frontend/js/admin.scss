@@ -1,0 +1,45 @@
+.rogerleaf-admin-nav {
+  display: flex; gap: 24px; overflow-x: auto; margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-divider-themed, #dee2e6);
+  a { padding: 14px 0 12px; border-bottom: 3px solid transparent; white-space: nowrap; color: var(--content-secondary-themed, #46515e); text-decoration: none; font-size: 14px; }
+  a[aria-current] { color: var(--content-positive, #168442); border-color: currentcolor; font-weight: 600; }
+  a:focus-visible { outline: 2px solid var(--content-positive, #168442); outline-offset: -2px; }
+}
+.rogerleaf-admin-page {
+  color: var(--content-primary-themed, #25303b);
+  h1, h2 { font-size: 24px; line-height: 1.4; font-weight: 600; }
+  .card { border: 1px solid var(--border-divider-themed, #e1e5e9); border-radius: 8px; box-shadow: none; }
+  .card-body { padding: 24px; }
+  .form-control { min-height: 36px; border-radius: 6px; font-size: 14px; }
+  .btn { font-size: 14px; line-height: 1.5; border-radius: 6px; }
+  .user-list-title-link { color: var(--content-positive, #168442) !important; }
+  .page-header { margin: 0 0 24px; padding: 0; border: 0; }
+  .nav-tabs .nav-link { font-size: 14px; }
+  .user-ds-nav-main, .project-ds-nav-main { padding-top: 0; }
+  .user-ds-nav-content, .project-ds-nav-content { background: var(--bg-secondary-themed, #f4f5f7); }
+  .rogerleaf-admin-nav { background: var(--bg-primary-themed, #fff); padding: 0 24px; margin: 0 0 20px; flex-shrink: 0; }
+}
+.rogerleaf-admin-site {
+  max-width: 1160px; padding: 24px; margin: auto;
+  .rogerleaf-admin-nav { padding: 0; }
+  .card-body > .page-header h1 { margin: 0 0 10px; }
+  .tab-content { padding-top: 16px; }
+  .small { margin-top: 8px; color: var(--content-secondary-themed, #586575); }
+}
+body:has(.rogerleaf-admin-page) {
+  background: var(--bg-secondary-themed, #f4f5f7);
+  .navbar-main {
+    background: var(--bg-primary-themed, #fff); color: var(--content-primary-themed, #25303b); border-bottom: 1px solid var(--border-divider-themed, #e1e5e9);
+    --navbar-title-color: var(--content-primary-themed, #25303b);
+    --navbar-subdued-color: var(--content-primary-themed, #25303b);
+    --navbar-subdued-hover-color: var(--content-primary-themed, #25303b);
+    --navbar-subdued-hover-bg: var(--bg-secondary-themed, #f4f5f7);
+  }
+  .navbar-main .navbar-brand, .navbar-main .navbar-title,
+  .navbar-main .nav-link, .navbar-main .nav-link.subdued,
+  .navbar-main .subdued .dropdown-toggle, .navbar-main .dropdown-toggle { color: var(--content-primary-themed, #25303b); }
+}
+@media (max-width: 767px) {
+  .rogerleaf-admin-nav { gap: 20px; }
+  .rogerleaf-admin-page .card-body, .rogerleaf-admin-site { padding: 16px; }
+}

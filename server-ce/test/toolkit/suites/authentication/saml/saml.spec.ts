@@ -131,7 +131,7 @@ describe('SAML profile and logout', function () {
     cy.request(`${AUTHENTIK_URL}/api/v3/core/users/me/`)
       .its('body.user.username')
       .should('eq', 'alice')
-    cy.intercept('GET', '**/application/saml/ayakaleaf-saml/slo/**').as(
+    cy.intercept('GET', '**/application/saml/rogerleaf-saml/slo/**').as(
       'idpLogout'
     )
 

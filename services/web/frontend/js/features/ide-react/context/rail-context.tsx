@@ -28,6 +28,10 @@ export type RailTabKey =
   | 'ai-modifications'
 
 export type RailModalKey =
+  | 'rogerleaf-guide-review'
+  | 'rogerleaf-guide-edits'
+  | 'rogerleaf-guide-translation'
+  | 'rogerleaf-guide-advanced'
   | 'keyboard-shortcuts'
   | 'contact-us'
   | 'dictionary'

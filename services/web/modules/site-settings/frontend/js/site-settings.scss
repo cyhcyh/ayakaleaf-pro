@@ -36,3 +36,16 @@
   .ayaka-admin .ayaka-admin-provider > header { padding: 16px; }
   .ayaka-admin .ayaka-admin-fields { padding: 16px; }
 }
+
+.ayaka-admin .rogerleaf-admin-nav-wrap { max-width: 1160px; margin: auto; padding: 0 24px; }
+.ayaka-admin .rogerleaf-admin-nav { padding: 0; }
+.ayaka-admin .ayaka-admin-header, .ayaka-admin .ayaka-admin-content { max-width: 1160px; }
+
+.ayaka-admin.rogerleaf-admin-page {
+  color: var(--content-primary-themed, #25303b);
+  background: var(--bg-secondary-themed, #f4f5f7);
+  .ayaka-admin-provider { background: var(--bg-primary-themed, #fff); }
+  .ayaka-admin-provider > header { background: var(--bg-primary-themed, #fff); }
+  .ayaka-admin-intro, .ayaka-admin-clear { color: var(--content-secondary-themed, #586575); }
+  .ayaka-admin-pending { background: var(--bg-primary-themed, #fff); }
+}

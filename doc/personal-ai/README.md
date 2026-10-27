@@ -83,9 +83,9 @@ URLs before citing their contents.
 
 `origin` points to `cyhcyh/ayakaleaf-pro`, `upstream` to
 `ayaka-notes/ayakaleaf-pro`, and `overleaf` to `overleaf/overleaf`.
-Prefer merging Ayakaleaf's `server-pro` into the feature branch: it already
+Prefer merging Ayakaleaf Pro's `server-pro` into the feature branch: it already
 integrates Overleaf changes. Merge Overleaf directly only after reviewing its
-relationship with Ayakaleaf's changes.
+relationship with Ayakaleaf Pro's changes.
 
 The settings-tab and rail-entry module slots are additive. Source editor preview
 decorations/components register through the existing extension slots. Review the small integration changes
@@ -130,7 +130,7 @@ pwsh -File deploy/personal-ai/build.ps1
 
 The builder only receives a Git-enumerated source archive. It never mounts the
 working directory or receives `.env`. Override `-BaseImage` when upgrading the
-upstream runtime. After verification, set `AYAKALEAF_IMAGE=ayakaleaf-pro:personal-ai`
+upstream runtime. After verification, set `ROGERLEAF_IMAGE=rogerleaf:personal-ai`
 in the ignored `.env`, then run `docker compose -f docker-compose.local.yml up -d`.
 
 Run the focused backend tests with Node's test runner using the workspace PnP

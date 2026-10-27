@@ -1,73 +1,210 @@
-# Docker deployment for this fork
+# Rogerleaf quick deployment
 
-This fork adds personal AI connections, selection translation, conversation history, AI edits, integration settings and a Chinese/English interface.
+Install Docker Desktop in Linux-container mode, or Docker Engine with Compose. These steps work on a personal computer or a server.
 
-## Prepare a release
+## 1. Choose a version
 
-1. Build the application image with `deploy/personal-ai/build.ps1`.
-2. Tag it with your DockerHub repository and a fixed version, then push it.
-3. Replace the default `AYAKALEAF_IMAGE` in the root `compose.yaml` with that published image.
-4. Distribute the Compose file. Initialization scripts are included in the image.
+**Recommended: full TeX Live 2026.1 with sandboxed compilation.** It includes more packages and fonts for Chinese papers and complex templates. The first start downloads the TeX image automatically. The unpacked image is about 28.8 GB. Allow additional space for downloading, unpacking and application data.
 
-```powershell
-./deploy/personal-ai/build.ps1 -ImageTag YOUR_ACCOUNT/ayakaleaf-pro:VERSION
-docker push YOUR_ACCOUNT/ayakaleaf-pro:VERSION
+The basic version uses the application's bundled basic TeX environment for a simple trial. Choose the full version when packages or fonts are missing. Both versions include Rogerleaf's AI and translation features.
+
+## 2. Save one Compose file
+
+Create an empty folder. Choose **one** complete configuration below and save it as `compose.yaml`. Start only one version.
+
+### Recommended: full TeX Live 2026.1 with sandboxed compilation
+
+```yaml
+name: rogerleaf
+services:
+  sharelatex:
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      OVERLEAF_APP_NAME: Rogerleaf
+      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
+      SANDBOXED_COMPILES: "true"
+      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
+      COMPILE_TIMEOUT: "180"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 20m
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: [mongod, --replSet, overleaf, --bind_ip_all]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { if (e.code === 94) rs.initiate({_id:'overleaf',members:[{_id:0,host:'mongo:27017'}]}); else throw e; } quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
 ```
 
-The image contains no site data, accounts, personal credentials or local `.env` file.
+The sandbox version runs compilation in separate containers. The Docker socket mount lets the application create and reclaim these containers. It also grants the application control of that Docker engine.
 
-## Start a new site
+### Basic version
 
-Install Docker Engine and Compose, or Docker Desktop in Linux container mode. Put the release's `compose.yaml` in a new directory and run:
+```yaml
+name: rogerleaf
+services:
+  sharelatex:
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+    environment:
+      OVERLEAF_APP_NAME: Rogerleaf
+      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
+      SANDBOXED_COMPILES: "false"
+      SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
+      DOCKER_RUNNER: "false"
+      COMPILE_TIMEOUT: "180"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: [mongod, --replSet, overleaf, --bind_ip_all]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { if (e.code === 94) rs.initiate({_id:'overleaf',members:[{_id:0,host:'mongo:27017'}]}); else throw e; } quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
+```
+
+## 3. Check the access settings
+
+For use on the same computer, keep the defaults. For LAN or server access, optionally create a `.env` file in the same folder:
+
+```dotenv
+SITE_URL=http://192.168.1.10:8080
+BIND_ADDRESS=0.0.0.0
+APP_PORT=8080
+```
+
+| Setting | Meaning |
+| --- | --- |
+| `SITE_URL` | The address users open in their browsers. Enter your IP address or domain. With an HTTPS reverse proxy, use the external HTTPS address. |
+| `BIND_ADDRESS` | The default `127.0.0.1` allows local access only. Use `0.0.0.0` when LAN or server access is needed. |
+| `APP_PORT` | External port, 8080 by default. If occupied, change it and update the port in the access address. |
+| Three data volumes | Store application files and keys, the database, and Redis data. Keep these volumes when restarting. |
+
+## 4. Start
+
+Open a terminal in the folder containing the Compose file:
 
 ```sh
 docker compose up -d
 docker compose logs -f sharelatex
 ```
 
-The first start initializes MongoDB, generates persistent site secrets and downloads `ghcr.io/ayaka-notes/texlive-full:2026.1`. The application starts after the large TeX image is ready. Download status appears in the logs.
+Initial image downloads can take time. The full version starts the application after the TeX image is ready. TeX Live progress messages mean initialization is still running. Press Ctrl+C to stop following logs without stopping the service.
 
-Open <http://localhost:8080/launchpad> to create the administrator. The default port binds only to the local machine.
-
-For server deployment, set `SITE_URL` to the public address, and set `BIND_ADDRESS=0.0.0.0` and `APP_PORT` as needed. An optional `.env` next to the Compose file can provide these values. With an HTTPS reverse proxy, use its external HTTPS address for `SITE_URL`.
-
-```dotenv
-AYAKALEAF_IMAGE=YOUR_ACCOUNT/ayakaleaf-pro:VERSION
-SITE_URL=https://latex.example.com
-BIND_ADDRESS=0.0.0.0
-APP_PORT=8080
-```
-
-## Sandboxed compilation
-
-The application uses the mounted Docker socket to manage separate compile containers. This gives the application management access to that Docker engine. Keep this boundary explicit and do not accept arbitrary user-supplied compile image names.
-
-Compile, output and cache paths are discovered from the application's data volume. The default deployment uses only TeX Live 2026.1. Users press the existing Recompile button. Containers share the image and use separate project working directories.
-
-Legacy Basic projects without a saved image use the deployment default without rewriting their records. Projects with another explicitly selected image require that image to remain available, or a planned migration.
-
-## Integrations and language
-
-- Open Admin → Integration settings from the project list to configure site applications for GitHub, GitLab, Gitea, Dropbox, Zotero and Mendeley.
-- Register applications with the providers and enter the displayed callback URLs in their developer settings.
-- After saving, run `docker compose restart sharelatex` and reload the settings page.
-- Users link their own accounts. Zotero and Mendeley authorization opens in a separate browser window.
-- Git and MCP require a separately deployed Git Bridge service. The main Compose file does not enable these services. MCP keeps its existing direct-edit workflow.
-- Choose Simplified Chinese or English in Settings → Appearance → Interface language. The preference is saved to the account.
-
-Personal model connections are configured under AI & translation.
-
-## Data and upgrades
-
-Site data, encryption keys and integration settings live in the `overleaf-data` volume. MongoDB and Redis have separate persistent volumes. Back up both application data and MongoDB. Existing encrypted credentials need the original encryption keys.
-
-Back up before upgrading. Change the application image to the new fixed version, then run:
+Check startup status:
 
 ```sh
-docker compose pull
+docker compose ps
+```
+
+When the application is healthy, open <http://localhost:8080/launchpad> to create the administrator. Replace localhost:8080 if you changed the access address. If an administrator already exists, log in directly.
+
+## 5. Stop and start again
+
+```sh
+docker compose stop
 docker compose up -d
 ```
 
-Keep the volumes. `docker compose down -v` deletes persistent data and is not an upgrade command.
-
-The older local development deployment uses a different Compose project name. Reuse or copy its volumes deliberately when migrating. Starting the new Compose project with empty volumes creates a new site.
+Start Docker before starting Rogerleaf. Closing the browser does not stop the service. Keep the data volumes so your work remains available at the next start.

@@ -1,75 +1,210 @@
-# 此分支的 Docker 部署
+# Rogerleaf 快速部署
 
-本分支包含个人 AI 设置、划词翻译、会话管理、AI 修改、集成配置和中英文界面。
+安装 Docker Desktop（使用 Linux 容器）或 Docker Engine 与 Compose。以下步骤适用于个人电脑和服务器。
 
-## 发布者准备
+## 1. 选择部署版本
 
-1. 使用 `deploy/personal-ai/build.ps1` 构建应用镜像。
-2. 给镜像添加自己的 DockerHub 仓库名和固定版本标签，上传 DockerHub。
-3. 将根目录 `compose.yaml` 中 `AYAKALEAF_IMAGE` 的默认值替换为已发布的镜像地址。
-4. 把这一份 Compose 文件交给部署者。初始化程序已经包含在应用镜像里。
+**推荐完整 TeX Live 2026.1＋沙箱编译版**。它的宏包和字体更齐全，适合中文论文和复杂模板。首次启动会自动下载完整 TeX 镜像，解包后约 28.8 GB，还需为下载解压和应用数据留出空间。
 
-示例（将 `YOUR_ACCOUNT` 和版本号替换为自己的值）：
+基础版使用应用自带的基础 TeX 环境，适合简单体验。缺少宏包或字体时，建议使用完整版。两版都包含 Rogerleaf 的 AI 和翻译功能。
 
-```powershell
-./deploy/personal-ai/build.ps1 -ImageTag YOUR_ACCOUNT/ayakaleaf-pro:VERSION
-docker push YOUR_ACCOUNT/ayakaleaf-pro:VERSION
+## 2. 保存一份 Compose 文件
+
+新建一个空文件夹，从下面选择**一份**完整配置，保存为 `compose.yaml`。不要把两份配置同时启动。
+
+### 推荐：完整 TeX Live 2026.1＋沙箱编译
+
+```yaml
+name: rogerleaf
+services:
+  sharelatex:
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      OVERLEAF_APP_NAME: Rogerleaf
+      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
+      SANDBOXED_COMPILES: "true"
+      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
+      COMPILE_TIMEOUT: "180"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 20m
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: [mongod, --replSet, overleaf, --bind_ip_all]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { if (e.code === 94) rs.initiate({_id:'overleaf',members:[{_id:0,host:'mongo:27017'}]}); else throw e; } quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
 ```
 
-应用镜像不包含站点数据、账户、模型凭据或本地 `.env`。
+沙箱版把编译任务放在独立容器里。Docker socket 挂载用于创建和回收这些容器，也使主应用拥有管理该 Docker 引擎的权限。
 
-## 首次启动
+### 基础版
 
-安装 Docker Engine 和 Compose，或使用 Linux 容器模式的 Docker Desktop。把发布者提供的 `compose.yaml` 放入一个新目录，然后执行：
+```yaml
+name: rogerleaf
+services:
+  sharelatex:
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+    environment:
+      OVERLEAF_APP_NAME: Rogerleaf
+      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
+      SANDBOXED_COMPILES: "false"
+      SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
+      DOCKER_RUNNER: "false"
+      COMPILE_TIMEOUT: "180"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: [mongod, --replSet, overleaf, --bind_ip_all]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { if (e.code === 94) rs.initiate({_id:'overleaf',members:[{_id:0,host:'mongo:27017'}]}); else throw e; } quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
+```
+
+## 3. 按访问方式检查设置
+
+个人电脑本机使用时，保持默认值即可。需要局域网或服务器访问时，在同一文件夹新建可选的 `.env`：
+
+```dotenv
+SITE_URL=http://192.168.1.10:8080
+BIND_ADDRESS=0.0.0.0
+APP_PORT=8080
+```
+
+| 设置 | 含义 |
+| --- | --- |
+| `SITE_URL` | 浏览器实际访问地址，填写自己的 IP 或域名。使用 HTTPS 反向代理时填写外部 HTTPS 地址。 |
+| `BIND_ADDRESS` | 默认 `127.0.0.1` 只允许本机访问。局域网或服务器按需改为 `0.0.0.0`。 |
+| `APP_PORT` | 对外端口。默认 8080，端口被占用时修改，并同步修改访问地址中的端口。 |
+| 三个数据卷 | 分别保存应用文件与密钥、数据库、Redis 数据。再次启动时保留这些卷。 |
+
+## 4. 启动
+
+在 Compose 文件所在目录打开终端，执行：
 
 ```sh
 docker compose up -d
 docker compose logs -f sharelatex
 ```
 
-首次启动自动初始化数据库、生成并持久保存站点密钥，并下载 `ghcr.io/ayaka-notes/texlive-full:2026.1`。完整镜像较大，下载期间应用尚未就绪。日志会显示下载状态，下载完成后继续启动。
+首次下载镜像可能较慢。完整版下载结束后才继续启动应用。日志里的 TeX Live 下载进度表示初始化仍在进行。按 Ctrl+C 退出日志查看不会停止服务。
 
-就绪后打开 <http://localhost:8080/launchpad> 创建管理员，再登录使用。默认端口只绑定本机。
-
-部署到服务器时，设置 `SITE_URL` 为实际访问地址，按需设置 `BIND_ADDRESS=0.0.0.0` 和 `APP_PORT`。可以使用同目录的可选 `.env`，也可以直接修改 Compose。通过反向代理提供 HTTPS 时，将 `SITE_URL` 设置为外部 HTTPS 地址。
-
-```dotenv
-AYAKALEAF_IMAGE=YOUR_ACCOUNT/ayakaleaf-pro:VERSION
-SITE_URL=https://latex.example.com
-BIND_ADDRESS=0.0.0.0
-APP_PORT=8080
-```
-
-## 沙箱编译
-
-主应用通过挂载的 Docker socket 管理独立编译容器。此挂载赋予主应用管理该 Docker 引擎的权限。部署时请保留这一权限边界，不要将任意用户提供的镜像地址作为编译镜像。
-
-编译文件、输出和缓存目录根据应用的数据卷自动定位。默认只使用 TeX Live 2026.1，用户点击原来的“重新编译”即可。每个项目共享同一个镜像，工作文件各自保存。
-
-升级旧的 Basic 部署时，未指定镜像的项目使用部署默认镜像，不批量修改项目记录。已指定其他版本的项目需要保留对应版本，或由管理员明确安排迁移。
-
-## 配置集成和语言
-
-- 项目列表顶部“管理 → 集成配置”用于填写 GitHub、GitLab、Gitea、Dropbox、Zotero、Mendeley 的站点应用凭据。
-- 在第三方平台注册应用，把页面提供的回调地址填入第三方应用设置。
-- 保存配置后执行 `docker compose restart sharelatex`，再刷新配置页查看状态。
-- 用户各自关联第三方账户。Zotero 和 Mendeley 使用官方授权小窗口。
-- Git Bridge 和 MCP 需要配套 Git Bridge 服务，主部署文件不会自动启用这些服务。MCP 保持原来的修改方式。
-- “设置 → 外观 → 界面语言”选择简体中文或 English，语言偏好保存在个人账户中。
-
-个人模型连接在“AI 与翻译”中配置。
-
-## 数据、升级和备份
-
-应用数据、站点密钥和集成配置保存在 `overleaf-data` 卷，数据库和 Redis 分别使用自己的持久卷。备份时同时备份应用数据卷和数据库。丢失站点密钥会导致已有加密凭据无法解密。
-
-升级前先备份，然后把 Compose 中的应用镜像改为新的固定版本：
+查看启动状态：
 
 ```sh
-docker compose pull
+docker compose ps
+```
+
+应用显示 healthy 后，打开 <http://localhost:8080/launchpad> 创建管理员。使用自定义地址时，将 localhost:8080 替换为实际地址。已有管理员时直接登录。
+
+## 5. 停止与再次启动
+
+```sh
+docker compose stop
 docker compose up -d
 ```
 
-保留数据卷。`docker compose down -v` 会删除持久数据，不用于普通升级。
-
-旧的本地开发部署使用不同的 Compose 项目名。迁移时需要明确复用或复制其数据卷，不能直接在旧目录执行新文件后把空白站点当作原站点。
+先启动 Docker，再启动 Rogerleaf。关闭网页不会停止后台服务。停止服务时保留数据卷，下一次启动即可继续使用。

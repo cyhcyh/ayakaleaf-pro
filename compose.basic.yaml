@@ -1,0 +1,70 @@
+name: rogerleaf
+services:
+  sharelatex:
+    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+    environment:
+      OVERLEAF_APP_NAME: Rogerleaf
+      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_LANGUAGE: zh-CN
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file,url
+      EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_ALLOW_PUBLIC_REGISTRATION: "true"
+      OVERLEAF_TEMPLATE_GALLERY: "true"
+      GIT_BRIDGE_ENABLED: "false"
+      ENABLE_PANDOC_CONVERSIONS: "false"
+      SANDBOXED_COMPILES: "false"
+      SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
+      DOCKER_RUNNER: "false"
+      COMPILE_TIMEOUT: "180"
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: [mongod, --replSet, overleaf, --bind_ip_all]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { if (e.code === 94) rs.initiate({_id:'overleaf',members:[{_id:0,host:'mongo:27017'}]}); else throw e; } quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:

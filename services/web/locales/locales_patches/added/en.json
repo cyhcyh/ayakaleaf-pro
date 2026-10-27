@@ -37,5 +37,20 @@
   "ayaka_authorization_complete": "Authorization finished. You can close this window.",
   "ayaka_admin": "Admin",
   "ayaka_manage_users": "Users",
-  "ayaka_manage_projects": "Projects"
+  "ayaka_manage_projects": "Projects",
+  "rogerleaf_admin_navigation": "Administration",
+  "reference_managers": "Reference managers",
+  "rogerleaf_site_settings": "Site administration",
+  "rogerleaf_messages": "Site messages",
+  "rogerleaf_sockets": "Open connections",
+  "rogerleaf_editor_access": "Editor access",
+  "rogerleaf_message": "Message",
+  "rogerleaf_post_message": "Post message",
+  "rogerleaf_clear_messages": "Clear all messages",
+  "rogerleaf_close_editor": "Close editor access",
+  "rogerleaf_disconnect_users": "Disconnect all users",
+  "rogerleaf_open_editor": "Reopen editor access",
+  "rogerleaf_close_editor_hint": "Prevent new editor sessions. Existing sessions stay connected.",
+  "rogerleaf_disconnect_hint": "Disconnect current editor sessions. Close editor access first to prevent reconnection.",
+  "rogerleaf_open_editor_hint": "Allow users to open the editor again."
 }

@@ -1,3 +1,4 @@
+import ReferenceStatus from '@modules/site-settings/frontend/js/reference-status'
 import { authorizeReference } from '../reference-authorization'
 import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useTranslation } from 'react-i18next'
@@ -155,7 +156,7 @@ function MendeleyWidgetInner() {
 export function MendeleyWidget() {
   const { mendeley } = useInstanceFeatures()
   if (!mendeley) {
-    return null
+    return <ReferenceStatus provider="Mendeley" />
   }
   return <MendeleyWidgetInner />
 }
