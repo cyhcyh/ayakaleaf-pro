@@ -28,11 +28,15 @@ export function ownsSandbox(info, { instanceId, image, directories }) {
   })
 }
 
-export function expiredSandbox(info, policy, now = Date.now(), projectAccess = 0) {
+export function expiredSandbox(info, policy, now = Date.now()) {
   if (!ownsSandbox(info, policy)) return false
   if (info.State?.Running || info.State?.Paused || info.State?.Restarting) return false
   if (!['exited', 'created', 'dead'].includes(info.State?.Status)) return false
-  const lastUse = Math.max(timestamp(info.Created), timestamp(info.State?.FinishedAt), timestamp(projectAccess))
+  // Reusing another container for the same project must not renew this one.
+  // Containers which have never started have no finish time.
+  const lastUse = info.State.Status === 'created'
+    ? timestamp(info.Created)
+    : timestamp(info.State.FinishedAt)
   return lastUse > 0 && now - lastUse >= policy.maxAge
 }
 

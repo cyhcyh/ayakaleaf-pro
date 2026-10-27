@@ -955,6 +955,93 @@ describe('DockerRunner', () => {
     })
   })
 
+  describe('instance-scoped cleanup', () => {
+    beforeEach(ctx => {
+      ctx.Settings.clsi.docker.instanceId = 'test-site'
+      ctx.DockerRunner.MAX_CONTAINER_AGE = 60 * 60 * 1000
+      ctx.LastProjectAccess.getLastProjectAccessTime.returns(Date.now())
+      ctx.DockerRunner._destroyContainer = sinon.stub().callsArg(2)
+      ctx.sandboxInfo = (id, finishedAt = Date.now() - 2 * 60 * 60 * 1000) => ({
+        Id: id,
+        Name: `/project-0123456789abcdef01234567-${id}`,
+        Created: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        Config: {
+          Image: ctx.defaultImage,
+          Labels: { 'org.rogerleaf.instance': 'test-site', 'org.rogerleaf.role': 'compile' },
+        },
+        State: { Status: 'exited', Running: false, FinishedAt: new Date(finishedAt).toISOString() },
+        Mounts: [{ Source: `${ctx.Settings.path.sandboxedCompilesHostDirCompiles}/project-user`, Destination: '/compile' }],
+      })
+      ctx.setCandidates = candidates => {
+        ctx.listContainers.yields(null, candidates.map(info => ({ Id: info.Id, Names: [info.Name] })))
+        ctx.getContainer.callsFake(id => ({ inspect: sinon.stub().yields(null, candidates.find(info => info.Id === id)) }))
+      }
+      ctx.sweep = () => new Promise((resolve, reject) => {
+        ctx.DockerRunner.destroyOldContainers(error => error ? reject(error) : resolve())
+      })
+    })
+
+    it('expires an old container while retaining a reused one for the same active project', async ctx => {
+      ctx.setCandidates([ctx.sandboxInfo('old'), ctx.sandboxInfo('reused', Date.now() - 1000)])
+      await ctx.sweep()
+      expect(ctx.DockerRunner._destroyContainer.calledOnceWithExactly('old', false, sinon.match.func)).to.equal(true)
+      expect(ctx.LastProjectAccess.getLastProjectAccessTime.called).to.equal(false)
+    })
+
+    it('retains running, paused and restarting containers', async ctx => {
+      const candidates = ['running', 'paused', 'restarting'].map(state => {
+        const info = ctx.sandboxInfo(state)
+        info.State.Status = state
+        info.State[{ running: 'Running', paused: 'Paused', restarting: 'Restarting' }[state]] = true
+        return info
+      })
+      ctx.setCandidates(candidates)
+      await ctx.sweep()
+      expect(ctx.DockerRunner._destroyContainer.called).to.equal(false)
+    })
+
+    it('only removes legacy containers whose image and compile mount belong to this instance', async ctx => {
+      const legacy = ctx.sandboxInfo('legacy'); legacy.Config.Labels = {}
+      const foreignLabel = ctx.sandboxInfo('foreign-label')
+      foreignLabel.Config.Labels['org.rogerleaf.instance'] = 'another-site'
+      const foreignMount = ctx.sandboxInfo('foreign-mount'); foreignMount.Config.Labels = {}
+      foreignMount.Mounts[0].Source = '/other-site/compiles/project-user'
+      const foreignImage = ctx.sandboxInfo('foreign-image'); foreignImage.Config.Labels = {}
+      foreignImage.Config.Image = 'unrelated-app'
+      const unrelated = ctx.sandboxInfo('unrelated'); unrelated.Name = '/another-app'
+      ctx.setCandidates([legacy, foreignLabel, foreignMount, foreignImage, unrelated])
+      await ctx.sweep()
+      expect(ctx.DockerRunner._destroyContainer.calledOnceWithExactly('legacy', false, sinon.match.func)).to.equal(true)
+      expect(ctx.getContainer.calledWith('unrelated')).to.equal(false)
+    })
+
+    it('rechecks state inside the operation lock when a listed container starts running', async ctx => {
+      const candidate = ctx.sandboxInfo('restarted')
+      ctx.setCandidates([candidate])
+      const locks = (await import('../../../app/js/DockerLockManager.js')).default
+      let lockHeld = false
+      const lock = sinon.stub(locks, 'runWithLock').callsFake((name, runner, done) => {
+        expect(name).to.equal(candidate.Name.slice(1))
+        candidate.State.Running = true
+        candidate.State.Status = 'running'
+        lockHeld = true
+        runner(error => { lockHeld = false; done(error) })
+      })
+      const inspect = sinon.stub().callsFake(callback => {
+        expect(lockHeld).to.equal(true)
+        callback(null, candidate)
+      })
+      ctx.getContainer.returns({ inspect })
+      try {
+        await ctx.sweep()
+        expect(inspect.calledOnce).to.equal(true)
+        expect(ctx.DockerRunner._destroyContainer.called).to.equal(false)
+      } finally {
+        lock.restore()
+      }
+    })
+  })
+
   describe('_destroyContainer', () => {
     beforeEach(ctx => {
       ctx.containerId = 'some_id'

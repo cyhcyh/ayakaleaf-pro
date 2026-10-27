@@ -619,8 +619,7 @@ const DockerRunner = {
           dockerode.getContainer(item.Id).inspect((error, info) => {
             if (error?.statusCode === 404) return release()
             if (error) return release(error)
-            const projectId = name.match(/^project-([a-f0-9]{24})-/)?.[1]
-            if (!expiredSandbox(info, policy, Date.now(), getLastProjectAccessTime(projectId))) return release()
+            if (!expiredSandbox(info, policy)) return release()
             DockerRunner._destroyContainer(item.Id, false, release)
           })
         }, error => {
