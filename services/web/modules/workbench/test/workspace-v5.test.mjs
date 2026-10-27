@@ -35,13 +35,37 @@ test('translation SSE frames survive arbitrary byte boundaries and multibyte tex
 test('anchored cards retain source order around the selected card without overlap', () => {
   const cards = [{ id: 'a', top: 10, height: 200 }, { id: 'b', top: 60, height: 150 }, { id: 'c', top: 80, height: 180 }];
   const { positions, bottom } = layoutEditCards(cards, 'b');
-  assert.equal(positions.get('b'), 60);
+  assert.ok(positions.get('a') >= 44);
+  assert.ok(positions.get('b') >= 60);
   assert.ok(positions.get('a') + 200 < positions.get('b'));
   assert.ok(positions.get('b') + 150 < positions.get('c'));
   assert.equal(bottom, positions.get('c') + 180);
   assert.equal(revealEditDelta(30, 150, 50, 650), -20);
   assert.equal(revealEditDelta(550, 150, 50, 650), 50);
   assert.equal(revealEditDelta(250, 150, 50, 650), 0);
+});
+
+test('dense cards remain reachable below the filter bar when a later card is focused', () => {
+  const cards = [
+    { id: 'line12', top: 240, height: 154 },
+    { id: 'line15', top: 300, height: 154 },
+    { id: 'line16', top: 330, height: 154 },
+    { id: 'line19', top: 468.1875, height: 154 },
+  ];
+  for (const focused of cards) {
+    for (const minimumTop of [44, 80]) {
+      const { positions, bottom } = layoutEditCards(cards, focused.id, minimumTop);
+      assert.ok(positions.get(cards[0].id) >= minimumTop);
+      for (let i = 1; i < cards.length; i++) {
+        assert.ok(positions.get(cards[i].id) >= positions.get(cards[i - 1].id) + cards[i - 1].height + 4);
+      }
+      assert.equal(bottom, positions.get('line19') + cards.at(-1).height);
+    }
+  }
+  cards[0].height = 420;
+  const expanded = layoutEditCards(cards, 'line19', 44);
+  assert.equal(expanded.positions.get('line12'), 44);
+  assert.ok(expanded.bottom > 44 + cards.reduce((height, card) => height + card.height, 0));
 });
 
 test('translation transport sends early text, preserves partial errors and cancels upstream work', async () => {

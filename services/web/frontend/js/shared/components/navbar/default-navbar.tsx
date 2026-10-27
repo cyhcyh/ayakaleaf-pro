@@ -18,7 +18,7 @@ import overleafGreenLogo from '@/shared/svgs/overleaf-green.svg'
 import type { CSSPropertiesWithVariables } from '../../../../../types/css-properties-with-variables'
 
 function DefaultNavbar(
-  props: DefaultNavbarMetadata & { overleafLogo?: string }
+  props: DefaultNavbarMetadata & { overleafLogo?: string; showThemeToggle?: boolean }
 ) {
   const {
     overleafLogo,
@@ -35,6 +35,7 @@ function DefaultNavbar(
     suppressNavContentLinks,
     showCloseIcon = false,
     showSubscriptionLink,
+    showThemeToggle = false,
     showSignUpLink,
     sessionUser,
     adminUrl,
@@ -141,6 +142,7 @@ function DefaultNavbar(
                     <LoggedInItems
                       sessionUser={sessionUser}
                       showSubscriptionLink={showSubscriptionLink}
+                      showThemeToggle={showThemeToggle}
                     />
                   ) : (
                     <LoggedOutItems showSignUpLink={showSignUpLink} />

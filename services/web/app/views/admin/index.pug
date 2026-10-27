@@ -6,14 +6,16 @@ block entrypointVar
 
 block content
 	#main-content.content.content-alt.rogerleaf-admin-page
-		.container.rogerleaf-admin-site
+		.rogerleaf-admin-layout
 			include ../../../modules/site-settings/app/views/_admin-nav.pug
-			.row
-				.col-sm-12
+			.rogerleaf-admin-main
+				.rogerleaf-admin-content.rogerleaf-admin-site
+					header.rogerleaf-admin-page-header
+						div
+							h1= translate('rogerleaf_site_settings')
+							p= translate('rogerleaf_site_description')
 					.card
 						.card-body
-							.page-header
-								h1= translate('rogerleaf_site_settings')
 							.ol-tabs(data-ol-bookmarkable-tabset)
 								.nav-tabs-container
 									ul.nav.nav-tabs.align-left(role='tablist')

@@ -381,5 +381,11 @@
   "无法复制，请手动复制。": "Copy failed. Please copy the text manually.",
   "打开 AI 助手": "Open AI assistant",
   "打开 AI 修改": "Open AI edits",
-  "前往翻译设置": "Translation settings"
+  "前往翻译设置": "Translation settings",
+  "查找用户，管理账户与权限。": "Find users and manage account access.",
+  "查找项目，管理归档和删除状态。": "Find projects and manage archived and deleted projects.",
+  "从 Zotero 文献库导入参考文献。": "Import references from your Zotero library.",
+  "从 Mendeley 文献库导入参考文献。": "Import references from your Mendeley library.",
+  "展开配置": "Show configuration",
+  "收起配置": "Hide configuration"
 }

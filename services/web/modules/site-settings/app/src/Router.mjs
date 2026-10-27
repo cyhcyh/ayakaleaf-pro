@@ -3,6 +3,7 @@ import Authentication from '../../../../app/src/Features/Authentication/Authenti
 import Authorization from '../../../../app/src/Features/Authorization/AuthorizationMiddleware.mjs'
 import SessionManager from '../../../../app/src/Features/Authentication/SessionManager.mjs'
 import { User } from '../../../../app/src/models/User.mjs'
+import UserSettingsHelper from '../../../../app/src/Features/Project/UserSettingsHelper.mjs'
 import { publicConfig, saveConfig } from '../../shared/store.mjs'
 
 const handle = run => async (req, res, next) => {
@@ -21,8 +22,12 @@ const handle = run => async (req, res, next) => {
 export default {
   apply(router) {
     const admin = Authorization.ensureUserIsSiteAdmin
-    router.get('/admin/integrations', admin, (req, res) => {
-      res.render(path.resolve(import.meta.dirname, '../views/integrations'), { title: req.i18n.t('ayaka_integrations_configuration') })
+    router.get('/admin/integrations', admin, async (req, res, next) => {
+      try {
+        const user = await User.findById(SessionManager.getLoggedInUserId(req.session), 'ace')
+        const userSettings = await UserSettingsHelper.buildUserSettings(req, res, user)
+        res.render(path.resolve(import.meta.dirname, '../views/integrations'), { title: req.i18n.t('ayaka_integrations_configuration'), userSettings })
+      } catch (error) { next(error) }
     })
     router.get('/admin/integrations/config', admin, handle(async (req, res) => res.json(await publicConfig())))
     router.post('/admin/integrations/config', admin, handle(async (req, res) => {

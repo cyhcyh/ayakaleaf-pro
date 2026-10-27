@@ -13,7 +13,7 @@
   "loading_x_repositories": "正在读取您的__provider__存储库",
   "mcp_server": "MCP 服务器",
   "mcp_server_connect_with_git_token": "使用 Git 身份验证令牌连接 AI 客户端。",
-  "mcp_server_description": "将 AI 客户端连接到此项目。",
+  "mcp_server_description": "让外部 AI 编辑、编译论文并添加评论。",
   "no_new_commits_in_x": "自上次合并后__provider__未收到新的提交",
   "only_project_owner_can_link_x": "只有项目所有者可以将此项目链接到 __provider__ 存储库。如果您想进行此设置，请联系项目所有者。",
   "project_not_linked_to_x": "该项目未与__provider__任一存储库关联。您可以在__provider__中为该项目创建一个存储库：",
@@ -22,7 +22,7 @@
   "show_x_more_users": "再显示 __count__ 个用户",
   "show_x_more_users_plural": "再显示 __count__ 个用户",
   "sync_project_to_x_explanation": "您在 __appName__ 中的所有更改将被提交并与 __provider__ 中的所有更新合并。",
-  "sync_with_a_x_repository": "与 __provider__ 存储库同步。",
+  "sync_with_a_x_repository": "与 __provider__ 仓库双向同步项目文件。",
   "sync_with_x": "与 __provider__ 同步",
   "unlink_the_project_from_the_current_x_repo": "取消项目与当前 __provider__ 存储库的链接，并创建与您拥有的存储库的连接。",
   "unlink_x_repository": "取消链接 __provider__ 存储库",
@@ -52,5 +52,11 @@
   "rogerleaf_open_editor": "重新开放编辑器",
   "rogerleaf_close_editor_hint": "阻止用户新打开编辑器，已连接的用户可以继续使用。",
   "rogerleaf_disconnect_hint": "断开当前编辑器连接。可先关闭入口，避免用户立即重连。",
-  "rogerleaf_open_editor_hint": "恢复用户打开编辑器。"
+  "rogerleaf_open_editor_hint": "恢复用户打开编辑器。",
+  "rogerleaf_back_to_projects": "返回项目",
+  "rogerleaf_site_description": "管理站点公告和编辑器访问。",
+  "git_clone_this_project": "在本地用 Git 下载、更新和提交项目文件。",
+  "sync_with_a_github_repository": "与 GitHub 仓库双向同步项目文件。",
+  "sync_all_projects_with_dropbox": "将所有项目与 Dropbox 双向同步。",
+  "git_integration": "Git"
 }

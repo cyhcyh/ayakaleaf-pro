@@ -1,51 +1,39 @@
-.ayaka-admin {
-  color: var(--content-primary);
-  background: var(--bg-primary);
-  min-height: 100vh;
-  .ayaka-admin-header, .ayaka-admin-nav, .ayaka-admin-content { max-width: 960px; margin: auto; padding: 20px 24px; }
-  .ayaka-admin-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-divider-themed); }
-  .ayaka-admin-back { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
-  .ayaka-admin-nav { display: flex; gap: 24px; padding-top: 0; padding-bottom: 0; border-bottom: 1px solid var(--border-divider-themed); overflow-x: auto; }
-  .ayaka-admin-nav a { padding: 16px 0 12px; text-decoration: none; white-space: nowrap; color: inherit; border-bottom: 3px solid transparent; }
-  .ayaka-admin-nav a[aria-current] { color: var(--content-positive, #1b8148); border-color: currentcolor; }
-  h1 { font-size: 24px; margin: 8px 0 12px; }
-  .ayaka-admin-intro { color: var(--content-secondary); line-height: 1.6; }
-  .ayaka-admin-pending { display: flex; gap: 10px; padding: 12px 14px; margin: 20px 0; border: 1px solid var(--border-divider-themed); border-radius: 6px; background: var(--bg-secondary); }
-  .ayaka-admin-provider { margin: 24px 0; border: 1px solid var(--border-divider-themed); border-radius: 8px; overflow: hidden; }
-  .ayaka-admin-provider > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-divider-themed); }
-  .ayaka-admin-provider > header > div { display: flex; align-items: center; gap: 12px; }
-  h2 { font-size: 18px; margin: 0; }
-  .ayaka-admin-toggle, .ayaka-admin-clear { display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 0; }
+.rogerleaf-admin-integrations {
+  min-height: 100dvh; display: flex; flex-direction: column; padding-top: 68px;
+  .rogerleaf-admin-layout { flex: 1; }
+  .ayaka-admin-provider { margin: 0 0 12px; border: 1px solid var(--border-divider-themed, #e1e5e9); border-radius: 8px; background: var(--bg-primary-themed, #fff); }
+  .ayaka-admin-provider > header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; }
+  .ayaka-admin-provider h2 { font-size: 16px; font-weight: 600; margin: 0; color: inherit; }
+  .ayaka-admin-provider-icon { width: 26px; height: 26px; display: inline-flex; flex: 0 0 26px; align-items: center; justify-content: center; }
+  .ayaka-admin-provider-icon svg { max-width: 26px; max-height: 26px; }
+  .ayaka-admin-toggle { margin-left: auto; }
+  .ayaka-admin-toggle, .ayaka-admin-clear { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: normal; }
   input[type='checkbox'] { accent-color: #168442; }
-  .ayaka-admin-fields { padding: 20px; display: grid; gap: 18px; }
-  .ayaka-admin-fields > label { display: grid; gap: 7px; font-weight: normal; margin: 0; }
-  .form-control { width: 100%; min-width: 0; }
-  .ayaka-admin-clear { color: var(--content-secondary); font-size: 13px; margin-top: 4px; }
-  .ayaka-admin-copy { display: flex; gap: 8px; }
-  .ayaka-admin-copy button { flex: none; display: grid; place-items: center; }
-  footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 20px 20px; }
-  footer a { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
-  footer .btn { min-width: 100px; }
+  .ayaka-admin-expand { display: inline-flex; gap: 5px; align-items: center; padding: 5px 0 5px 12px; border: 0; border-radius: 4px; background: transparent; color: var(--content-secondary-themed, #586575); font-size: 12px; }
+  .ayaka-admin-expand:hover { color: var(--content-positive, #168442); }
+  .ayaka-admin-fields { display: grid; gap: 16px; padding: 20px; border-top: 1px solid var(--border-divider-themed, #e1e5e9); }
+  .ayaka-admin-fields > label { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 8px 20px; font-size: 14px; font-weight: normal; margin: 0; }
+  .ayaka-admin-clear { grid-column: 2; color: var(--content-secondary-themed, #586575); }
+  .form-control { width: 100%; min-width: 0; color: var(--content-primary-themed); background: var(--bg-primary-themed); border-color: var(--border-divider-themed); }
+  .ayaka-admin-copy { display: flex; min-width: 0; gap: 8px; }
+  .ayaka-admin-copy .btn { flex: none; display: grid; place-items: center; width: 36px; padding: 6px; }
+  .ayaka-admin-provider footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 20px 20px; }
+  .ayaka-admin-provider footer a { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .ayaka-admin-provider footer .btn { min-width: 100px; }
+  .ayaka-admin-pending { display: flex; gap: 10px; padding: 12px 14px; margin-bottom: 20px; border: 1px solid var(--border-divider-themed); border-radius: 6px; background: var(--bg-primary-themed); font-size: 14px; }
+  .ayaka-admin-intro { color: var(--content-secondary-themed, #586575); font-size: 13px; margin: 20px 0 0; }
 }
-.ayaka-integration-status { display: inline-block; color: var(--content-secondary); font-size: 12px; font-weight: normal; white-space: nowrap; }
+.ayaka-integration-status { display: inline-block; color: var(--content-secondary-themed, #586575); font-size: 12px; font-weight: normal; white-space: nowrap; }
 .ayaka-integration-status.ready { color: var(--content-positive, #168442); }
 .ayaka-integration-header { flex-wrap: wrap; gap: 4px 8px; }
 .ayaka-integration-unavailable p { line-height: 1.6; }
-@media (max-width: 575px) {
-  .ayaka-admin .ayaka-admin-content, .ayaka-admin .ayaka-admin-header, .ayaka-admin .ayaka-admin-nav { padding-left: 16px; padding-right: 16px; }
-  .ayaka-admin .ayaka-admin-provider > header { padding: 16px; }
-  .ayaka-admin .ayaka-admin-fields { padding: 16px; }
-}
-
-.ayaka-admin .rogerleaf-admin-nav-wrap { max-width: 1160px; margin: auto; padding: 0 24px; }
-.ayaka-admin .rogerleaf-admin-nav { padding: 0; }
-.ayaka-admin .ayaka-admin-header, .ayaka-admin .ayaka-admin-content { max-width: 1160px; }
-
-.ayaka-admin.rogerleaf-admin-page {
-  color: var(--content-primary-themed, #25303b);
-  background: var(--bg-secondary-themed, #f4f5f7);
-  .ayaka-admin-provider { background: var(--bg-primary-themed, #fff); }
-  .ayaka-admin-provider > header { background: var(--bg-primary-themed, #fff); }
-  .ayaka-admin-intro, .ayaka-admin-clear { color: var(--content-secondary-themed, #586575); }
-  .ayaka-admin-pending { background: var(--bg-primary-themed, #fff); }
+@media (max-width: 767px) {
+  .rogerleaf-admin-integrations {
+    .ayaka-admin-provider > header { padding: 14px 16px; gap: 8px; }
+    .ayaka-admin-expand span:first-child { display: none; }
+    .ayaka-admin-fields { padding: 16px; }
+    .ayaka-admin-fields > label { grid-template-columns: 1fr; }
+    .ayaka-admin-clear { grid-column: 1; }
+    .ayaka-admin-provider footer { padding: 0 16px 16px; }
+  }
 }

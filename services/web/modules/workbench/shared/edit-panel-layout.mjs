@@ -14,7 +14,14 @@ export function layoutEditCards(cards, focusedId, minimumTop = 44) {
     positions.set(cards[i].id, top);
     limit = top;
   }
-  limit = anchor + cards[active].height;
+  // Dense suggestions may push the preceding cards above the scrollable area.
+  // Move the group down before placing the remaining cards so every card stays
+  // reachable below the filter bar, including after expansion or navigation.
+  const shift = Math.max(0, minimumTop - positions.get(cards[0].id));
+  if (shift) {
+    for (const [id, top] of positions) positions.set(id, top + shift);
+  }
+  limit = positions.get(cards[active].id) + cards[active].height;
   for (let i = active + 1; i < cards.length; i++) {
     const top = Math.max(topOf(cards[i]), limit + 4);
     positions.set(cards[i].id, top);

@@ -5,6 +5,11 @@ block entrypointVar
 
 block vars
 	- const suppressNavContentLinks = true
+	- const suppressFooter = true
+
+block append meta
+	meta(name='ol-userSettings' data-type='json' content=userSettings)
+	meta(name='ol-overallThemes' data-type='json' content=overallThemes)
 
 block content
 	#site-integrations-root

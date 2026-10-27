@@ -1,4 +1,5 @@
 import UnavailableCard from '@modules/site-settings/frontend/js/unavailable-card'
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import ReferenceIntegrationCard from './reference-integration-card'
 import { useTranslation } from 'react-i18next'
 import MendeleyLogo from '@/shared/svgs/mendeley-logo'
@@ -15,12 +16,12 @@ const MendeleyIntegrationCard = () => {
   const { t } = useTranslation()
   const { mendeley } = useInstanceFeatures()
 
-  if (!mendeley) { return <UnavailableCard title="Mendeley" description={t('cite_directly_or_import_references')} icon={<MendeleyLogo size={32} />} /> }
+  if (!mendeley) { return <UnavailableCard title="Mendeley" description={ui('从 Mendeley 文献库导入参考文献。')} icon={<MendeleyLogo size={32} />} /> }
 
   return (
     <ReferenceIntegrationCard
       title={t('mendeley')}
-      description={t('cite_directly_or_import_references')}
+      description={ui('从 Mendeley 文献库导入参考文献。')}
       icon={<MendeleyLogo size={32} />}
       provider="mendeley"
     />

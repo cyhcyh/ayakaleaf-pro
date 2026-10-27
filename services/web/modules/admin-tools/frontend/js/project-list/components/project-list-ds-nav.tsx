@@ -14,7 +14,9 @@ import DashApiError from '@/features/project-list/components/dash-api-error'
 import getMeta from '@/utils/meta'
 import DefaultNavbar from '@/shared/components/navbar/default-navbar'
 import Footer from '@/shared/components/footer/footer'
-import SidebarDsNav from './sidebar/sidebar-ds-nav'
+import SidebarFilters from './sidebar/sidebar-filters'
+import AdminPageHeader from '@modules/site-settings/frontend/js/admin-page-header'
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import overleafLogo from '@/shared/svgs/overleaf-a-ds-solution-mallard.svg'
 import { useProjectListContext } from '../context/project-list-context'
 import { useUserIdentityContext } from '../../user-list/context/user-identity-context'
@@ -55,15 +57,17 @@ export function ProjectListDsNav() {
         {...navbarProps}
         overleafLogo={overleafLogo}
         showCloseIcon
+        showThemeToggle
       />
-      <div className="project-list-wrapper">
-        <SidebarDsNav />
-        <div className="project-ds-nav-content-and-messages">
+      <div className="rogerleaf-admin-layout">
+        <AdminNav active="projects" />
+        <div className="project-ds-nav-content-and-messages rogerleaf-admin-main">
           <div className="project-ds-nav-content">
-            <AdminNav active="projects" />
-            <div className="project-ds-nav-main">
+            <div className="project-ds-nav-main rogerleaf-admin-content">
+              <AdminPageHeader title={ui('项目管理')} description={ui('查找项目，管理归档和删除状态。')} actions={projectsOwnerId && <button className="btn btn-secondary" onClick={() => { if (history.length > 1) history.back(); else history.replaceState({ type: 'users' }, '') }}>{t('back')}</button>} />
               {error ? <DashApiError /> : ''}
               <main aria-labelledby="main-content">
+                {projectsOwnerId && <p>{t('owner')}: <strong translate="no">{userName}</strong></p>}
                 <div className="project-list-header-row position-relative">
                   <ProjectListTitle
                     filter={filter}
@@ -76,6 +80,7 @@ export function ProjectListDsNav() {
                   </div>
                 </div>
                 <div className="project-ds-nav-project-list">
+                  <div className="rogerleaf-admin-filters" aria-label={t('filters')}><SidebarFilters /></div>
                   <OLRow className="d-none d-md-block">
                     <OLCol lg={7}>
                       <SearchForm

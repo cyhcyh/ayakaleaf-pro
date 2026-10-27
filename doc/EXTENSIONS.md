@@ -29,4 +29,10 @@ Back up the database and application data volume together before upgrading an ex
 
 Rogerleaf's Help copy and shared administrator styling live in `modules/site-settings`. The original forms, action handlers and permission checks remain in their upstream components.
 
+Administrator pages share `admin-nav`, `admin-page-header` and scoped `admin.scss` styles. The server-rendered site page uses the matching Pug sidebar. User and project filters reuse the native filter components, and the native table actions, dialogs and license tab remain in place. `DefaultNavbar` has an optional `showThemeToggle` prop for administrator React pages; other callers keep the upstream default. Integration accordions keep form state mounted while collapsed and save one provider at a time. The integration page receives the same user-settings metadata and context providers as the native administrator pages.
+
+Run locale preparation and extraction before building frontend assets. `check-locales.mjs` checks the integration keys in both server dictionaries and the extracted frontend key list. Do not overwrite the generated extraction with a checkout copy after this step.
+
+AI edit card positioning is isolated in `modules/workbench/shared/edit-panel-layout.mjs`. Dense card groups are bounded by the filter bar, and their full height contributes to the scroll extent. This keeps every card reachable without changing native review-panel state or edit acceptance handlers.
+
 Sandbox cleanup policy lives in `services/clsi/app/js/RogerleafSandbox.mjs`. The existing Docker runner applies instance labels and rechecks idle state under its container lock. Expiry uses each stopped container's own finish time, independent of other compiles for the same project. Never-started containers use their creation time. Startup scanning begins five seconds after cache initialization, then repeats every ten minutes. Containers without labels are eligible only when their image and `/compile` mount match this instance. The historical integration-encryption AAD remains unchanged so old credentials stay readable.

@@ -17,7 +17,9 @@ import DashApiError from '@/features/project-list/components/dash-api-error'
 import getMeta from '@/utils/meta'
 import DefaultNavbar from '@/shared/components/navbar/default-navbar'
 import Footer from '@/shared/components/footer/footer'
-import SidebarDsNav from './sidebar/sidebar-ds-nav'
+import SidebarFilters from './sidebar/sidebar-filters'
+import AdminPageHeader from '@modules/site-settings/frontend/js/admin-page-header'
+import { ui } from '@modules/site-settings/frontend/js/ui'
 import overleafLogo from '@/shared/svgs/overleaf-a-ds-solution-mallard.svg'
 import CookieBanner from '@/shared/components/cookie-banner'
 import type { Filter } from '../context/user-list-context'
@@ -53,6 +55,7 @@ export function UsersTab({
         </div>
       </div>
       <div className="user-ds-nav-user-list">
+        <div className="rogerleaf-admin-filters" aria-label={t('filters')}><SidebarFilters /></div>
         <OLRow className="d-none d-md-block">
           <OLCol lg={7}>
             <SearchForm
@@ -151,13 +154,14 @@ export function UserListDsNav() {
         {...navbarProps}
         overleafLogo={overleafLogo}
         showCloseIcon
+        showThemeToggle
       />
-      <div className="user-list-wrapper">
-        <SidebarDsNav />
-        <div className="user-ds-nav-content-and-messages">
+      <div className="rogerleaf-admin-layout">
+        <AdminNav active="users" />
+        <div className="user-ds-nav-content-and-messages rogerleaf-admin-main">
           <div className="user-ds-nav-content">
-            <AdminNav active="users" />
-            <div className="user-ds-nav-main">
+            <div className="user-ds-nav-main rogerleaf-admin-content">
+              <AdminPageHeader title={ui('用户管理')} description={ui('查找用户，管理账户与权限。')} actions={<CreateAccountButton id="create-account-button-sidebar" />} />
 
               {error ? <DashApiError /> : ''}
               <main aria-labelledby="main-content">

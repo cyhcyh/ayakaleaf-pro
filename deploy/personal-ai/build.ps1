@@ -54,6 +54,7 @@ node --test ../clsi/test/rogerleaf-sandbox.test.mjs
 yarn run precompile-pug
 node ../../deploy/personal-ai/prepare-locales.mjs
 yarn run extract-translations
+node ../../deploy/personal-ai/check-locales.mjs
 yarn run webpack:production
 cd /src
 YARN_NPM_REGISTRY_SERVER=https://registry.npmjs.org npm_config_nodedir=/usr yarn workspaces focus --all --production
