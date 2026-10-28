@@ -122,16 +122,20 @@ upstream revision, rather than copying changed files into an old running image.
 
 ## Verification
 
-On Windows, build the local image from the repository root:
+Deployment files default to the published `roger1001/rogerleaf:latest` image.
+On Windows, build a local development image from the repository root:
 
 ```powershell
-pwsh -File deploy/personal-ai/build.ps1
+pwsh -File deploy/personal-ai/build.ps1 -ImageTag rogerleaf:personal-ai
 ```
 
 The builder only receives a Git-enumerated source archive. It never mounts the
 working directory or receives `.env`. Override `-BaseImage` when upgrading the
-upstream runtime. After verification, set `ROGERLEAF_IMAGE=rogerleaf:personal-ai`
-in the ignored `.env`, then run `docker compose -f docker-compose.local.yml up -d`.
+upstream runtime. To test the local build, change the `sharelatex` image in
+`docker-compose.local.yml` to `rogerleaf:personal-ai`, then run
+`docker compose -f docker-compose.local.yml up -d`. Restore
+`roger1001/rogerleaf:latest` to use the published image. When using the verification
+overlay, change both its `sharelatex` and `mock` images to the local tag as well.
 
 Run the focused backend tests with Node's test runner using the workspace PnP
 environment, then run the web TypeScript check and production frontend build.

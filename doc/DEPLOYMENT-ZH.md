@@ -2,6 +2,8 @@
 
 安装 Docker Desktop（使用 Linux 容器）或 Docker Engine 与 Compose。以下步骤适用于个人电脑和服务器。
 
+默认应用镜像为 `roger1001/rogerleaf:latest`，当前发布架构为 `linux/amd64`。
+
 ## 1. 选择部署版本
 
 **推荐完整 TeX Live 2026.1＋沙箱编译版**。它的宏包和字体更齐全，适合中文论文和复杂模板。首次启动会自动下载完整 TeX 镜像，解包后约 28.8 GB，还需为下载解压和应用数据留出空间。
@@ -18,7 +20,7 @@
 name: rogerleaf
 services:
   sharelatex:
-    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    image: roger1001/rogerleaf:latest
     restart: unless-stopped
     depends_on:
       mongo:
@@ -26,13 +28,13 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+      - "8080:80"
     volumes:
       - overleaf-data:/var/lib/overleaf
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       OVERLEAF_APP_NAME: Rogerleaf
-      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_URL: http://localhost:8080
       OVERLEAF_SITE_LANGUAGE: zh-CN
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
       OVERLEAF_REDIS_HOST: redis
@@ -95,7 +97,7 @@ volumes:
 name: rogerleaf
 services:
   sharelatex:
-    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    image: roger1001/rogerleaf:latest
     restart: unless-stopped
     depends_on:
       mongo:
@@ -103,12 +105,12 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+      - "8080:80"
     volumes:
       - overleaf-data:/var/lib/overleaf
     environment:
       OVERLEAF_APP_NAME: Rogerleaf
-      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_URL: http://localhost:8080
       OVERLEAF_SITE_LANGUAGE: zh-CN
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
       OVERLEAF_REDIS_HOST: redis
@@ -166,19 +168,18 @@ volumes:
 
 ## 3. 按访问方式检查设置
 
-个人电脑本机使用时，保持默认值即可。需要局域网或服务器访问时，在同一文件夹新建可选的 `.env`：
+默认端口映射为 `8080:80`，左边是电脑、服务器或 NAS 的访问端口，右边是容器内端口。若 8080 已被占用，直接在 Compose 中改成 `18080:80`，并同步修改访问地址中的端口。容器内端口保持 80。
 
-```dotenv
-SITE_URL=http://192.168.1.10:8080
-BIND_ADDRESS=0.0.0.0
-APP_PORT=8080
+默认监听所有网络接口。个人电脑本机使用时，访问地址保持默认值即可。需要局域网、服务器或 NAS 访问时，直接修改 Compose 中 `sharelatex` 服务下的 `OVERLEAF_SITE_URL`，填写浏览器实际访问的地址，例如：
+
+```yaml
+OVERLEAF_SITE_URL: http://192.168.1.10:8080
 ```
 
 | 设置 | 含义 |
 | --- | --- |
-| `SITE_URL` | 浏览器实际访问地址，填写自己的 IP 或域名。使用 HTTPS 反向代理时填写外部 HTTPS 地址。 |
-| `BIND_ADDRESS` | 默认 `127.0.0.1` 只允许本机访问。局域网或服务器按需改为 `0.0.0.0`。 |
-| `APP_PORT` | 对外端口。默认 8080，端口被占用时修改，并同步修改访问地址中的端口。 |
+| `OVERLEAF_SITE_URL` | 浏览器实际访问地址，填写自己的 IP 或域名。使用 HTTPS 反向代理时填写外部 HTTPS 地址。 |
+| `ports` | 默认 `8080:80`。修改冒号左边的端口后，同步更新 `OVERLEAF_SITE_URL` 中的端口。 |
 | 三个数据卷 | 分别保存应用文件与密钥、数据库、Redis 数据。再次启动时保留这些卷。 |
 
 ## 4. 启动
@@ -208,3 +209,31 @@ docker compose up -d
 ```
 
 先启动 Docker，再启动 Rogerleaf。关闭网页不会停止后台服务。停止服务时保留数据卷，下一次启动即可继续使用。
+
+## 6. 可选：把数据保存到指定文件夹
+
+默认配置使用 Docker 自动创建的命名数据卷，无需准备文件夹。如果想把数据放在自己指定的目录，可以在**首次部署前**按以下步骤修改。两种部署版本都适用。
+
+1. 在 Linux 服务器或 NAS 的本地磁盘上新建 `rogerleaf` 文件夹，再在里面新建 `app`、`mongo`、`redis` 三个子文件夹。
+2. 在 Compose 中找到三个服务各自的 `volumes`，按下表替换挂载项。左边是宿主机路径，冒号右边的容器路径保持不变。
+
+| 服务 | 原挂载项 | 替换示例 |
+| --- | --- | --- |
+| `sharelatex` | `overleaf-data:/var/lib/overleaf` | `/volume1/docker/rogerleaf/app:/var/lib/overleaf` |
+| `mongo` | `mongo-data:/data/db` | `/volume1/docker/rogerleaf/mongo:/data/db` |
+| `redis` | `redis-data:/data` | `/volume1/docker/rogerleaf/redis:/data` |
+
+`/volume1/docker/rogerleaf` 只是示例，请换成你创建的文件夹的**实际绝对路径**。绿联和 QNAP 的路径可能不同，以 NAS 显示的路径为准，并确保对应容器能够写入这些目录。Windows Docker Desktop 建议保留默认命名数据卷。
+
+3. 删除文件最底部这一段。保留各服务里的 `volumes`，沙箱版的 Docker socket 挂载也保留。
+
+```yaml
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
+```
+
+修改后按第 4 节启动即可，沙箱编译的工作目录会自动准备。
+
+**已有数据时，不能直接换成空目录。** 原数据卷中的账号、项目和配置不会自动迁移。请先备份并停止服务，把三个数据卷的内容完整迁移到对应目录，保留文件权限，再切换挂载方式。确认数据完整前保留原数据卷。

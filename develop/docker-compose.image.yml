@@ -1,3 +1,5 @@
+# Per-service development images. Use ../compose.yaml for the released
+# all-in-one Rogerleaf application image.
 services:
   chat:
     image: ghcr.io/ayaka-notes/overleaf-pro/dev:chat

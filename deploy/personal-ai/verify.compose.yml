@@ -1,7 +1,7 @@
 # Isolated verification services. Run with -p rogerleaf-checks.
 services:
   sharelatex:
-    image: ${ROGERLEAF_VERIFY_IMAGE:-rogerleaf:personal-ai}
+    image: roger1001/rogerleaf:latest
     ports: !override
       - "127.0.0.1:39080:80"
     environment:
@@ -10,6 +10,6 @@ services:
       OVERLEAF_SESSION_SECRET: personal-ai-isolated-verification-only
       OVERLEAF_INVITE_TOKEN_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   mock:
-    image: ${ROGERLEAF_VERIFY_IMAGE:-rogerleaf:personal-ai}
+    image: roger1001/rogerleaf:latest
     restart: "no"
     entrypoint: ["node", "/overleaf/services/web/modules/workbench/test/mock-ai.mjs"]

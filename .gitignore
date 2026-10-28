@@ -3,7 +3,52 @@
 
 # user defined files
 .env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
 docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
 
 # Local build archives, verification artifacts and caches
 .local/
+
+# Installed dependencies and generated Yarn PnP metadata.
+# Keep .pnp.register.mjs and .yarn/patches in version control.
+node_modules/
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.yarn/build-state.yml
+
+# Build, lint and test caches
+.cache/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+/services/web/stats.json
+
+# Runtime logs, while retaining test fixtures
+*.log
+!**/fixtures/**/*.log
+!**/test/resources/**/*.log
+
+# Local Python environments and bytecode
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vs/
+*.swp
+*.swo
+*~

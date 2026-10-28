@@ -1,7 +1,7 @@
 name: rogerleaf
 services:
   sharelatex:
-    image: ${ROGERLEAF_IMAGE:-rogerleaf:personal-ai}
+    image: roger1001/rogerleaf:latest
     restart: unless-stopped
     depends_on:
       mongo:
@@ -9,12 +9,12 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:80"
+      - "8080:80"
     volumes:
       - overleaf-data:/var/lib/overleaf
     environment:
       OVERLEAF_APP_NAME: Rogerleaf
-      OVERLEAF_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      OVERLEAF_SITE_URL: http://localhost:8080
       OVERLEAF_SITE_LANGUAGE: zh-CN
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
       OVERLEAF_REDIS_HOST: redis

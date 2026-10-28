@@ -1,9 +1,8 @@
+# Legacy bind-mount deployment. The recommended deployment is compose.yaml.
 services:
   sharelatex:
     restart: always
-    # Server Pro users:
-    # image: quay.io/sharelatex/sharelatex-pro
-    image: sharelatex/sharelatex
+    image: roger1001/rogerleaf:latest
     container_name: sharelatex
     depends_on:
       mongo:
@@ -15,13 +14,10 @@ services:
     stop_grace_period: 60s
     volumes:
       - ~/sharelatex_data:/var/lib/overleaf
-      ########################################################################
-      ####  Server Pro: Uncomment the following line to mount the docker  ####
-      ####             socket, required for Sibling Containers to work    ####
-      ########################################################################
-      # - /var/run/docker.sock:/var/run/docker.sock
+      # Required for the sandbox compilation enabled below.
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      OVERLEAF_APP_NAME: Overleaf Community Edition
+      OVERLEAF_APP_NAME: Rogerleaf
 
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex
 
@@ -76,16 +72,10 @@ services:
       ## Server Pro ##
       ################
 
-      ## The Community Edition is intended for use in environments where all users are trusted and is not appropriate for
-      ## scenarios where isolation of users is required. Sandboxed Compiles are not available in the Community Edition,
-      ## so the following environment variables must be commented out to avoid compile issues.
-      ##
       ## Sandboxed Compiles: https://docs.overleaf.com/on-premises/configuration/overleaf-toolkit/server-pro-only-configuration/sandboxed-compiles
       SANDBOXED_COMPILES: "true"
-      ### Bind-mount source for /var/lib/overleaf/data/compiles inside the container.
-      SANDBOXED_COMPILES_HOST_DIR_COMPILES: "/home/user/sharelatex_data/data/compiles"
-      ### Bind-mount source for /var/lib/overleaf/data/output inside the container.
-      SANDBOXED_COMPILES_HOST_DIR_OUTPUT: "/home/user/sharelatex_data/data/output"
+      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
+      # Rogerleaf discovers the host compile/output paths from the data mount.
       ### Backwards compatibility (before Server Pro 5.5)
       DOCKER_RUNNER: "true"
       SANDBOXED_COMPILES_SIBLING_CONTAINERS: "true"
