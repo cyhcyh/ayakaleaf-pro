@@ -49,7 +49,7 @@ export const guides = {
       ['Python 与数学符号', 'Python and math symbols', '打开项目中的 .py 文件可运行浏览器内的 Python。支持的库取决于 Pyodide。编辑器工具栏提供数学符号入口。', 'Open a .py project file to run Python in the browser. Available libraries depend on Pyodide. The editor toolbar also provides a math symbol panel.'],
       ['模板与界面语言', 'Templates and language', '从项目列表进入模板库。设置 → 外观可选择简体中文或 English。', 'Open the template gallery from the project list. Choose Simplified Chinese or English in Settings → Appearance.'],
       ['管理与登录', 'Administration and login', '管理员通过管理菜单管理用户、项目和集成。自助注册及 LDAP、SAML、OIDC 单点登录由站点部署配置决定。', 'Administrators manage users, projects and integrations from the Admin menu. Self-registration and LDAP, SAML or OIDC single sign-on depend on site configuration.'],
-      ['编译环境', 'Compilation environment', '推荐使用完整 TeX Live 2026.1 沙箱环境。编译时限由管理员设置，当前默认 180 秒。', 'The full TeX Live 2026.1 sandbox is recommended. Administrators set compilation limits, with a current default of 180 seconds.'],
+      ['编译环境', 'Compilation environment', '推荐使用完整 TeX Live 2025 沙箱环境。编译时限由管理员设置，当前默认 240 秒。', 'The full TeX Live 2025 sandbox is recommended. Administrators set compilation limits, with a current default of 240 seconds.'],
       ['部署平台', 'Deployment platforms', '本项目使用 Docker。ARM 设备需要对应架构的应用和 TeX 镜像。', 'This project uses Docker. ARM devices need application and TeX images built for that architecture.'],
     ],
   },

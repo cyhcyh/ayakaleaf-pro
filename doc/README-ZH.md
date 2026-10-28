@@ -17,7 +17,7 @@ Rogerleaf 是基于 [ayakaleaf-pro](https://github.com/ayaka-notes/ayakaleaf-pro
 - [可选高级配置](ADVANCED-CONFIGURATION-ZH.md) · [Advanced configuration](ADVANCED-CONFIGURATION-EN.md)
 - [English introduction](../README.md)
 
-编辑器“帮助”中提供 AI 审阅、AI 修改、划词翻译和高级功能说明。推荐使用完整 TeX Live 2026.1＋沙箱编译版。Git Bridge、MCP、Pandoc 默认关闭。
+编辑器“帮助”中提供 AI 审阅、AI 修改、划词翻译和高级功能说明。推荐使用完整 TeX Live 2025＋沙箱编译版。Git Bridge、MCP、Pandoc 默认关闭。
 
 ## 上游与维护
 

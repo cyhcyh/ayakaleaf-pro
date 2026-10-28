@@ -1,4 +1,5 @@
 import { ui } from '@modules/site-settings/frontend/js/ui'
+import { v4 as uuid } from 'uuid'
 import { useEffect, useRef, useState } from "react";
 import MaterialIcon from "@/shared/components/material-icon";
 import type { SettingsTab } from "@/features/ide-settings/context/types";
@@ -104,7 +105,7 @@ export function PersonalAiSettings() {
           connections: [
             ...current.connections,
             {
-              id: crypto.randomUUID(),
+              id: uuid(),
               kind,
               name:
                 kind === "codex"

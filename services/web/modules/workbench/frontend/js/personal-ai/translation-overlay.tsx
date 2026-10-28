@@ -1,4 +1,5 @@
 import { ui } from '@modules/site-settings/frontend/js/ui'
+import { copyTextToClipboard } from '@/utils/clipboard'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MaterialIcon from "@/shared/components/material-icon";
@@ -233,10 +234,10 @@ export default function TranslationOverlay() {
     if (!pinned) close.current = setTimeout(hide, 500);
   };
   const copy = async (text: string, part: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyTextToClipboard(text)) {
       setCopied(part);
-    } catch {
+    } else {
+      setCopied("");
       setError(ui("复制未完成，请手动选中内容复制"));
     }
   };

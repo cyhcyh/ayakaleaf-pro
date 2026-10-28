@@ -4,6 +4,7 @@ import OLButton from '@/shared/components/ol/ol-button'
 import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
 import MaterialIcon from '@/shared/components/material-icon'
+import { copyTextToClipboard } from '@/utils/clipboard'
 
 export const CopyToClipboard = memo<{
   content: string
@@ -15,27 +16,33 @@ export const CopyToClipboard = memo<{
   const { t } = useTranslation()
 
   const [copied, setCopied] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const handleClick = useCallback(() => {
-    navigator.clipboard.writeText(content).then(() => {
-      setCopied(true)
-      window.setTimeout(() => {
-        setCopied(false)
-      }, 1500)
+    copyTextToClipboard(content).then(success => {
+      setCopied(success)
+      setFailed(!success)
+      if (success) {
+        window.setTimeout(() => {
+          setCopied(false)
+        }, 1500)
+      }
     })
     if (onClick) {
       onClick()
     }
   }, [content, onClick])
 
-  if (!navigator.clipboard?.writeText) {
-    return null
-  }
-
   return (
     <OLTooltip
       id={tooltipId}
-      description={copied ? `${t('copied')}!` : t('copy')}
+      description={
+        failed
+          ? t('clipboard_copy_failed')
+          : copied
+            ? `${t('copied')}!`
+            : t('copy')
+      }
       overlayProps={{ delay: copied ? 1000 : 250 }}
     >
       {kind === 'text' ? (

@@ -66,4 +66,35 @@ describe('<ImageNameSetting />', function () {
       ).to.be.true
     }
   })
+
+  it('keeps a retired image visible until an available replacement is selected', async function () {
+    const currentImage = 'texlive-full:2026.1'
+    render(
+      <EditorProviders imageName={currentImage}>
+        <SettingsModalProvider>
+          <ImageNameSetting />
+        </SettingsModalProvider>
+      </EditorProviders>
+    )
+
+    const select = screen.getByLabelText('TeX Live version') as HTMLSelectElement
+    const retired = within(select).getByRole('option', {
+      name: 'TeX Live 2026',
+    }) as HTMLOptionElement
+    expect(select.value).to.equal(currentImage)
+    expect(retired.disabled).to.be.true
+
+    const saveSettingsMock = fetchMock.post('express:/project/:projectId/settings', {
+      status: 200,
+    })
+    await userEvent.selectOptions(select, imageNames[0].imageName)
+
+    expect(
+      saveSettingsMock.callHistory.called(
+        `/project/${projectDefaults._id}/settings`,
+        { body: { imageName: imageNames[0].imageName } }
+      )
+    ).to.be.true
+    expect(select.value).to.equal(imageNames[0].imageName)
+  })
 })

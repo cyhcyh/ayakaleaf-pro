@@ -6,7 +6,7 @@
 
 ## 1. 选择部署版本
 
-**推荐完整 TeX Live 2026.1＋沙箱编译版**。它的宏包和字体更齐全，适合中文论文和复杂模板。首次启动会自动下载完整 TeX 镜像，解包后约 28.8 GB，还需为下载解压和应用数据留出空间。
+**推荐完整 TeX Live 2025＋沙箱编译版**。它的宏包和字体更齐全，适合中文论文和复杂模板。首次启动会自动下载 `roger1001/rogerleaf-texlive:2025.1`，本机 Docker Desktop 显示约 9.9 GB。实际占用取决于 Docker 存储方式，还需为下载解压和应用数据留出空间。
 
 基础版使用应用自带的基础 TeX 环境，适合简单体验。缺少宏包或字体时，建议使用完整版。两版都包含 Rogerleaf 的 AI 和翻译功能。
 
@@ -14,7 +14,7 @@
 
 新建一个空文件夹，从下面选择**一份**完整配置，保存为 `compose.yaml`。不要把两份配置同时启动。
 
-### 推荐：完整 TeX Live 2026.1＋沙箱编译
+### 推荐：完整 TeX Live 2025＋沙箱编译
 
 ```yaml
 name: rogerleaf
@@ -46,8 +46,11 @@ services:
       GIT_BRIDGE_ENABLED: "false"
       ENABLE_PANDOC_CONVERSIONS: "false"
       SANDBOXED_COMPILES: "true"
-      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
-      COMPILE_TIMEOUT: "180"
+      TEX_LIVE_DOCKER_IMAGE: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGES: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGE_NAMES: TeX Live 2025
+      IMAGE_ROOT: roger1001
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
@@ -124,7 +127,7 @@ services:
       SANDBOXED_COMPILES: "false"
       SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
       DOCKER_RUNNER: "false"
-      COMPILE_TIMEOUT: "180"
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]

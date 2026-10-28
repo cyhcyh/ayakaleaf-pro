@@ -8,6 +8,7 @@ import OLBadge from '@/shared/components/ol/ol-badge'
 import { formatDate } from '@/utils/dates'
 import UsersActionModal from './users-action-modal'
 import { getAdditionalUserInfo } from '../../util/api'
+import { copyTextToClipboard } from '@/utils/clipboard'
 
 type ShowUserInfoModalProps = Pick<
   React.ComponentProps<typeof UsersActionModal>,
@@ -42,7 +43,8 @@ function ShowUserInfoModal({
   const user = users[0]
 
   const [activationLink, setActivationLink] = useState<string | null>(null)
-   const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
 
   useEffect(() => {
     if (!showModal) return
@@ -56,30 +58,15 @@ function ShowUserInfoModal({
       })
   }, [showModal, user.id])
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!activationLink) return
 
-    const markCopied = () => {
-      setCopied(true)
+    const success = await copyTextToClipboard(activationLink)
+    setCopied(success)
+    setCopyFailed(!success)
+    if (success) {
       setTimeout(() => setCopied(false), 1500)
     }
-
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(activationLink).then(markCopied)
-      return
-    }
-
-    // fallback for older browsers
-    const tempInput = document.createElement('input')
-    tempInput.value = activationLink
-    tempInput.style.position = 'fixed'
-    tempInput.style.opacity = '0'
-    document.body.appendChild(tempInput)
-    tempInput.select()
-    document.execCommand('copy')
-    document.body.removeChild(tempInput)
-
-    markCopied()
   }
 
   return (
@@ -122,6 +109,11 @@ function ShowUserInfoModal({
                       {copied && (
                         <span className="ms-2 text-success">
                           ({t('copied')})
+                        </span>
+                      )}
+                      {copyFailed && (
+                        <span className="ms-2 text-danger" role="alert">
+                          {t('clipboard_copy_failed')}
                         </span>
                       )}
                     </span>

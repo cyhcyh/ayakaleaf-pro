@@ -6,7 +6,7 @@ The default application image is `roger1001/rogerleaf:latest`. The current relea
 
 ## 1. Choose a version
 
-**Recommended: full TeX Live 2026.1 with sandboxed compilation.** It includes more packages and fonts for Chinese papers and complex templates. The first start downloads the TeX image automatically. The unpacked image is about 28.8 GB. Allow additional space for downloading, unpacking and application data.
+**Recommended: full TeX Live 2025 with sandboxed compilation.** It includes more packages and fonts for Chinese papers and complex templates. The first start automatically downloads `roger1001/rogerleaf-texlive:2025.1`. Docker Desktop reports about 9.9 GB locally. Actual usage depends on Docker storage. Allow additional space for downloading, unpacking and application data.
 
 The basic version uses the application's bundled basic TeX environment for a simple trial. Choose the full version when packages or fonts are missing. Both versions include Rogerleaf's AI and translation features.
 
@@ -14,7 +14,7 @@ The basic version uses the application's bundled basic TeX environment for a sim
 
 Create an empty folder. Choose **one** complete configuration below and save it as `compose.yaml`. Start only one version.
 
-### Recommended: full TeX Live 2026.1 with sandboxed compilation
+### Recommended: full TeX Live 2025 with sandboxed compilation
 
 ```yaml
 name: rogerleaf
@@ -46,8 +46,11 @@ services:
       GIT_BRIDGE_ENABLED: "false"
       ENABLE_PANDOC_CONVERSIONS: "false"
       SANDBOXED_COMPILES: "true"
-      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
-      COMPILE_TIMEOUT: "180"
+      TEX_LIVE_DOCKER_IMAGE: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGES: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGE_NAMES: TeX Live 2025
+      IMAGE_ROOT: roger1001
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]
@@ -124,7 +127,7 @@ services:
       SANDBOXED_COMPILES: "false"
       SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
       DOCKER_RUNNER: "false"
-      COMPILE_TIMEOUT: "180"
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]

@@ -26,7 +26,10 @@ import {
   pasteWithoutFormatting,
   pasteWithFormatting,
 } from '../commands/clipboard'
-import { showClipboardPasteErrorToast } from '../components/clipboard-toasts'
+import {
+  showClipboardCopyErrorToast,
+  showClipboardPasteErrorToast,
+} from '../components/clipboard-toasts'
 import { isVisual } from '../extensions/visual/visual'
 import { useEditorContext } from '@/shared/context/editor-context'
 import { useTrackingChangesMode } from '@/shared/hooks/use-tracking-changes-mode'
@@ -132,13 +135,28 @@ export const useContextMenuItems = () => {
 
   const inVisualMode = isVisual(view)
 
-  const handleCut = wrapForContextMenu('cut', () => cutSelection(view))
-  const handleCopy = wrapForContextMenu('copy', () => copySelection(view))
+  const handleCut = wrapForContextMenu('cut', async () => {
+    const result = await cutSelection(view)
+    if (!result) {
+      closeMenu()
+      showClipboardCopyErrorToast(true)
+    }
+    return result
+  })
+  const handleCopy = wrapForContextMenu('copy', async () => {
+    const result = await copySelection(view)
+    if (!result) {
+      closeMenu()
+      showClipboardCopyErrorToast()
+    }
+    return result
+  })
   const handlePaste = wrapForContextMenu('paste', async () => {
     const result = await (inVisualMode
       ? pasteWithFormatting(view)
       : pasteWithoutFormatting(view))
     if (result === false) {
+      closeMenu()
       showClipboardPasteErrorToast(getShortcut('paste'))
     }
     return result
@@ -150,6 +168,7 @@ export const useContextMenuItems = () => {
         ? pasteWithoutFormatting(view)
         : pasteWithFormatting(view))
       if (result === false) {
+        closeMenu()
         showClipboardPasteErrorToast(getShortcut('paste'))
       }
       return result

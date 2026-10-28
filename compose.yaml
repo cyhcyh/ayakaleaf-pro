@@ -27,8 +27,11 @@ services:
       GIT_BRIDGE_ENABLED: "false"
       ENABLE_PANDOC_CONVERSIONS: "false"
       SANDBOXED_COMPILES: "true"
-      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
-      COMPILE_TIMEOUT: "180"
+      TEX_LIVE_DOCKER_IMAGE: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGES: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGE_NAMES: TeX Live 2025
+      IMAGE_ROOT: roger1001
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]

@@ -1,4 +1,7 @@
 {
+  "clipboard_copy_failed": "复制失败，请选中文本后手动复制。",
+  "clipboard_cut_failed": "剪切失败，原文已保留。请使用快捷键剪切。",
+  "clipboard_paste_shortcut": "请按 __shortcut__ 粘贴。",
   "about_to_permanently_delete_accounts": "您将永久删除下面的账户：",
   "about_to_restore_accounts": "您将恢复下面的用户账户：",
   "about_to_restore_projects": "您将恢复下面的项目：",

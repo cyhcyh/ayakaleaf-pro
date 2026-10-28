@@ -7,6 +7,7 @@ import { directory, loadConfig } from '../../services/web/modules/site-settings/
 import { applyIntegrations, providers } from '../../services/web/modules/site-settings/shared/integrations.mjs'
 
 const env = process.env
+env.COMPILE_TIMEOUT ||= '240'
 const folder = directory()
 await fs.mkdir(folder, { recursive: true, mode: 0o700 })
 await fs.chown(folder, 33, 33)
@@ -54,10 +55,11 @@ function docker(method, endpoint, onEvent) {
 }
 
 if (env.SANDBOXED_COMPILES === 'true') {
-  const image = env.TEX_LIVE_DOCKER_IMAGE || 'ghcr.io/ayaka-notes/texlive-full:2026.1'
+  const image = env.TEX_LIVE_DOCKER_IMAGE || 'roger1001/rogerleaf-texlive:2025.1'
   env.TEX_LIVE_DOCKER_IMAGE = image
   env.ALL_TEX_LIVE_DOCKER_IMAGES ||= image
-  env.ALL_TEX_LIVE_DOCKER_IMAGE_NAMES ||= 'TeX Live 2026'
+  env.ALL_TEX_LIVE_DOCKER_IMAGE_NAMES ||= 'TeX Live 2025'
+  env.IMAGE_ROOT ||= image.substring(0, image.lastIndexOf('/')) || 'roger1001'
   env.DOCKER_RUNNER = 'true'
   env.SANDBOXED_COMPILES_SIBLING_CONTAINERS = 'true'
   const info = await docker('GET', `/containers/${encodeURIComponent(os.hostname())}/json`)

@@ -76,7 +76,7 @@ volumes:
 
 ## Pandoc 导入和导出
 
-当前保持关闭。建议在沙箱版上按需启用。转换使用独立 Pandoc 镜像，不改变 TeX Live 2026.1。先拉取转换镜像，再修改开关。
+当前保持关闭。建议在沙箱版上按需启用。转换使用独立 Pandoc 镜像，不改变 TeX Live 2025。先拉取转换镜像，再修改开关。
 
 ```sh
 docker pull quay.io/sharelatex/pandoc:3.9
@@ -175,4 +175,4 @@ services:
 
 ## 注册、模板与编译时限
 
-自助注册和模板库在默认 Compose 中已开启。按邮箱域名限制注册时，可将 OVERLEAF_ALLOW_PUBLIC_REGISTRATION 改为 @example.com,@example.org。模板库开关为 OVERLEAF_TEMPLATE_GALLERY。编译时限在管理 → 用户管理 → 更新中调整，目前允许 1～600 秒，默认 180 秒。不要将 README 上游的“不限时”理解为当前没有超时限制。
+自助注册和模板库在默认 Compose 中已开启。按邮箱域名限制注册时，可将 OVERLEAF_ALLOW_PUBLIC_REGISTRATION 改为 @example.com,@example.org。模板库开关为 OVERLEAF_TEMPLATE_GALLERY。编译时限在管理 → 用户管理 → 更新中调整，目前允许 1～600 秒，新用户默认 240 秒。已有用户的时限保留原值，可在用户管理中调整。不要将 README 上游的“不限时”理解为当前没有超时限制。

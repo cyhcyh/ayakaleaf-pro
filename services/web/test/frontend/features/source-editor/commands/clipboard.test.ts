@@ -1,6 +1,8 @@
 import { expect } from 'chai'
 import { EditorState, EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { history, undo } from '@codemirror/commands'
+import sinon from 'sinon'
 import {
   copySelection,
   cutSelection,
@@ -13,7 +15,9 @@ const createClipboardStub = () => {
     written: null as string | null,
     reads: [] as string[],
     rejectRead: undefined as Error | undefined,
+    rejectWrite: undefined as Error | undefined,
     writeText: async (text: string) => {
+      if (stub.rejectWrite) throw stub.rejectWrite
       stub.written = text
     },
     readText: async () => {
@@ -49,13 +53,67 @@ const createViewWithMultipleRanges = (
 
 describe('clipboard behavior', function () {
   let clipboard: ReturnType<typeof createClipboardStub>
+  const originalClipboard = Object.getOwnPropertyDescriptor(
+    navigator,
+    'clipboard'
+  )
+  const originalExecCommand = Object.getOwnPropertyDescriptor(
+    document,
+    'execCommand'
+  )
+  let legacyCopy: sinon.SinonStub
 
   beforeEach(function () {
     clipboard = createClipboardStub()
-    ;(navigator as any).clipboard = clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: clipboard,
+    })
+    legacyCopy = sinon.stub().returns(false)
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: legacyCopy,
+    })
+  })
+
+  afterEach(function () {
+    if (originalClipboard)
+      Object.defineProperty(navigator, 'clipboard', originalClipboard)
+    else delete (navigator as any).clipboard
+    if (originalExecCommand)
+      Object.defineProperty(document, 'execCommand', originalExecCommand)
+    else delete (document as any).execCommand
   })
 
   describe('copySelection', function () {
+    it('uses compatibility copy on HTTP and preserves the editor selection', async function () {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: undefined,
+      })
+      const view = createView('abcde', 1, 4)
+      legacyCopy.callsFake(() => {
+        expect((document.activeElement as HTMLTextAreaElement).value).to.equal(
+          'bcd'
+        )
+        return true
+      })
+      expect(await copySelection(view)).to.equal(true)
+      expect(view.state.doc.toString()).to.equal('abcde')
+      expect(view.state.selection.main.from).to.equal(1)
+      expect(view.state.selection.main.to).to.equal(4)
+      view.destroy()
+    })
+
+    it('returns false without changing the document when both copy paths fail', async function () {
+      clipboard.rejectWrite = new Error('denied')
+      const view = createView('abcde', 1, 4)
+      expect(await copySelection(view)).to.equal(false)
+      expect(view.state.doc.toString()).to.equal('abcde')
+      expect(view.state.selection.main.from).to.equal(1)
+      expect(view.state.selection.main.to).to.equal(4)
+      view.destroy()
+    })
     it('copies only the selected range when a selection exists', async function () {
       const view = createView('abcde', 1, 4) // selects "bcd"
       await copySelection(view)
@@ -94,6 +152,36 @@ describe('clipboard behavior', function () {
   })
 
   describe('cutSelection', function () {
+    it('keeps the original text and selection if copying is denied', async function () {
+      clipboard.rejectWrite = new Error('denied')
+      const view = createView('abcde', 1, 4)
+      expect(await cutSelection(view)).to.equal(false)
+      expect(view.state.doc.toString()).to.equal('abcde')
+      expect(view.state.selection.main.from).to.equal(1)
+      expect(view.state.selection.main.to).to.equal(4)
+      view.destroy()
+    })
+
+    it('cuts through the compatibility path and can undo the deletion', async function () {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: undefined,
+      })
+      legacyCopy.returns(true)
+      const view = new EditorView({
+        state: EditorState.create({
+          doc: 'abcde',
+          selection: { anchor: 1, head: 4 },
+          extensions: [history()],
+        }),
+        parent: document.createElement('div'),
+      })
+      expect(await cutSelection(view)).to.equal(true)
+      expect(view.state.doc.toString()).to.equal('ae')
+      expect(undo(view)).to.equal(true)
+      expect(view.state.doc.toString()).to.equal('abcde')
+      view.destroy()
+    })
     it('cuts only the selected range when a selection exists', async function () {
       const view = createView('abcde', 1, 4) // selects "bcd"
       await cutSelection(view)
@@ -137,6 +225,18 @@ describe('clipboard behavior', function () {
   })
 
   describe('pasteWithoutFormatting', function () {
+    it('returns false on HTTP without changing the document or selection', async function () {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: undefined,
+      })
+      const view = createView('stay', 1, 3)
+      expect(await pasteWithoutFormatting(view)).to.equal(false)
+      expect(view.state.doc.toString()).to.equal('stay')
+      expect(view.state.selection.main.from).to.equal(1)
+      expect(view.state.selection.main.to).to.equal(3)
+      view.destroy()
+    })
     it('inserts a line-wise single line above current line when no selection', async function () {
       clipboard.reads.push('pasted\n')
       const view = createView('current', 0)

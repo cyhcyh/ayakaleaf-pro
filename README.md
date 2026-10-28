@@ -17,7 +17,7 @@ Rogerleaf is a self-hosted LaTeX editor based on [ayakaleaf-pro](https://github.
 - [Optional advanced configuration](doc/ADVANCED-CONFIGURATION-EN.md) · [高级配置](doc/ADVANCED-CONFIGURATION-ZH.md)
 - [简体中文介绍](doc/README-ZH.md)
 
-Use Help in the editor for AI review, AI edits, selection translation and advanced-feature explanations. Full TeX Live 2026.1 with sandboxed compilation is recommended. Git Bridge, MCP and Pandoc remain disabled by default.
+Use Help in the editor for AI review, AI edits, selection translation and advanced-feature explanations. Full TeX Live 2025 with sandboxed compilation is recommended. Git Bridge, MCP and Pandoc remain disabled by default.
 
 ## Upstream and maintenance
 

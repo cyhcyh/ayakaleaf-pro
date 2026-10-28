@@ -22,6 +22,7 @@ import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import MaterialIcon from '@/shared/components/material-icon'
 import { useActiveOverallTheme } from '@/shared/hooks/use-active-overall-theme'
 import { framed, link, muted } from './themed'
+import { copyTextToClipboard } from '@/utils/clipboard'
 
 PrismLight.registerLanguage('latex', latexGrammar)
 
@@ -138,14 +139,17 @@ function CopyCode({ code }: { code: string }) {
   const { t } = useTranslation()
   const tooltipId = useId()
   const [copied, setCopied] = useState(false)
-  if (!navigator.clipboard?.writeText) return null
-  const copy = () =>
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true)
+  const [failed, setFailed] = useState(false)
+  const copy = async () => {
+    const success = await copyTextToClipboard(code)
+    setCopied(success)
+    setFailed(!success)
+    if (success) {
       window.setTimeout(() => setCopied(false), 1500)
-    })
+    }
+  }
   return (
-    <OLTooltip id={tooltipId} description={copied ? `${t('copied')}!` : t('copy')}>
+    <OLTooltip id={tooltipId} description={failed ? t('clipboard_copy_failed') : copied ? `${t('copied')}!` : t('copy')}>
       <button
         type="button"
         className="btn btn-link btn-sm p-0 text-reset d-inline-flex"

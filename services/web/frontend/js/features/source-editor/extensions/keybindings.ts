@@ -9,6 +9,8 @@ import type { EmacsHandler } from '@replit/codemirror-emacs'
 import type { CodeMirror, Vim } from '@replit/codemirror-vim'
 import { foldCode, toggleFold, unfoldCode } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
+import { copyTextToClipboard } from '@/utils/clipboard'
+import { showClipboardCopyErrorToast } from '../components/clipboard-toasts'
 import {
   cursorToBeginningOfVisualLine,
   cursorToEndOfVisualLine,
@@ -36,8 +38,10 @@ const customiseVimOnce = (_Vim: typeof Vim, _CodeMirror: typeof CodeMirror) => {
 
   _Vim.defineAction('insertModeCtrlC', (cm: CodeMirror) => {
     if (hasNonEmptySelection(cm)) {
-      navigator.clipboard.writeText(cm.getSelection())
-      cm.setSelection(cm.getCursor(), cm.getCursor())
+      copyTextToClipboard(cm.getSelection()).then(success => {
+        if (success) cm.setSelection(cm.getCursor(), cm.getCursor())
+        else showClipboardCopyErrorToast()
+      })
     } else {
       _Vim.exitInsertMode(cm)
     }

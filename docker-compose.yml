@@ -74,7 +74,11 @@ services:
 
       ## Sandboxed Compiles: https://docs.overleaf.com/on-premises/configuration/overleaf-toolkit/server-pro-only-configuration/sandboxed-compiles
       SANDBOXED_COMPILES: "true"
-      TEX_LIVE_DOCKER_IMAGE: ghcr.io/ayaka-notes/texlive-full:2026.1
+      TEX_LIVE_DOCKER_IMAGE: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGES: roger1001/rogerleaf-texlive:2025.1
+      ALL_TEX_LIVE_DOCKER_IMAGE_NAMES: TeX Live 2025
+      IMAGE_ROOT: roger1001
+      COMPILE_TIMEOUT: "240"
       # Rogerleaf discovers the host compile/output paths from the data mount.
       ### Backwards compatibility (before Server Pro 5.5)
       DOCKER_RUNNER: "true"

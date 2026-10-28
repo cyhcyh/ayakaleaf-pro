@@ -12,9 +12,11 @@ The main upstream merge points are the module list, translation middleware, opti
 
 ## Deployment
 
-`compose.yaml` is the distribution entry point. Deployment files use the literal `roger1001/rogerleaf:latest` application image so NAS deployment interfaces do not need to expand environment variables. For a local build or a fixed version, edit the relevant service's `image` entry directly. When testing a local build, also update both image entries in the isolated verification overlay. Per-service images under `develop/` remain separate development tools. Keep the separate TeX Live image at `ghcr.io/ayaka-notes/texlive-full:2026.1` until a version change is explicitly planned.
+`compose.yaml` is the distribution entry point. Deployment files use the literal `roger1001/rogerleaf:latest` application image so NAS deployment interfaces do not need to expand environment variables. For a local build or a fixed version, edit the relevant service's `image` entry directly. When testing a local build, also update both image entries in the isolated verification overlay. Per-service images under `develop/` remain separate development tools. The recommended sandbox uses `roger1001/rogerleaf-texlive:2025.1`. Keep its image address, allowed-image list, display name and `IMAGE_ROOT` consistent across Compose and bootstrap defaults. Existing projects retain their selected image until changed through the project settings.
 
 Use Overleaf's existing Docker runner for project compilation. The bootstrap discovers persistent paths from Docker's mount metadata. It does not rewrite legacy project image metadata.
+
+The project TeX Live selector retains a retired image as a disabled current option until the user chooses an available replacement. This avoids displaying the new default before the project selection has actually been saved.
 
 ## Before merging an upstream update
 

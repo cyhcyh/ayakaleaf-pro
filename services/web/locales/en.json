@@ -1,4 +1,7 @@
 {
+  "clipboard_copy_failed": "Copy failed. Select the text and copy it manually.",
+  "clipboard_cut_failed": "Cut failed. Your text was kept. Use the keyboard shortcut to cut.",
+  "clipboard_paste_shortcut": "Press __shortcut__ to paste.",
   "1_2_width": "½ width",
   "1_4_width": "¼ width",
   "1_user": "1 user",

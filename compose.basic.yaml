@@ -28,7 +28,7 @@ services:
       SANDBOXED_COMPILES: "false"
       SANDBOXED_COMPILES_SIBLING_CONTAINERS: "false"
       DOCKER_RUNNER: "false"
-      COMPILE_TIMEOUT: "180"
+      COMPILE_TIMEOUT: "240"
     stop_grace_period: 60s
     healthcheck:
       test: [CMD, curl, --fail, --silent, --output, /dev/null, http://127.0.0.1/login]

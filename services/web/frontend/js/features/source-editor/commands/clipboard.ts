@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
+import { copyTextToClipboard } from '@/utils/clipboard'
 import { handleImagePaste } from '../utils/paste-image'
 import { convertHtmlStringToLatex } from '../extensions/visual/paste-html'
 import {
@@ -66,7 +67,7 @@ export const cutSelection = async (view: EditorView): Promise<boolean> => {
     }
   }
 
-  await navigator.clipboard.writeText(texts.join(''))
+  if (!(await copyTextToClipboard(texts.join('')))) return false
   view.dispatch({
     changes,
     selection: { anchor: changes[0]?.from ?? view.state.selection.main.from },
@@ -87,8 +88,7 @@ export const copySelection = async (view: EditorView): Promise<boolean> => {
     texts.push(text)
   }
 
-  await navigator.clipboard.writeText(texts.join(''))
-  return true
+  return await copyTextToClipboard(texts.join(''))
 }
 
 export const pasteWithoutFormatting = async (

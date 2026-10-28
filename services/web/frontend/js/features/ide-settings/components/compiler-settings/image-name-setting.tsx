@@ -18,17 +18,30 @@ export default function ImageNameSetting() {
 
   const imageNames = useMemo(() => getMeta('ol-imageNames') || [], [])
 
-  const options: Array<Option> = useMemo(
-    () =>
-      imageNames
-        // filter out images that aren't allowed, unless thats the current image the project is on
-        .filter(image => image.allowed || image.imageName === imageName)
-        .map(({ imageName, imageDesc }) => ({
-          value: imageName,
-          label: imageDesc,
-        })),
-    [imageNames, imageName]
-  )
+  const options: Array<Option> = useMemo(() => {
+    const availableOptions: Array<Option> = imageNames
+      // filter out images that aren't allowed, unless thats the current image the project is on
+      .filter(image => image.allowed || image.imageName === imageName)
+      .map(({ imageName, imageDesc }) => ({
+        value: imageName,
+        label: imageDesc,
+      }))
+
+    // Keep a retired selection visible until the user chooses a replacement.
+    if (
+      imageName &&
+      !availableOptions.some(option => option.value === imageName)
+    ) {
+      const year = imageName.match(/:(\d{4})(?:[.-]|$)/)?.[1]
+      availableOptions.unshift({
+        value: imageName,
+        label: year ? `TeX Live ${year}` : imageName,
+        disabled: true,
+      })
+    }
+
+    return availableOptions
+  }, [imageNames, imageName])
 
   if (imageNames.length === 0) {
     return null

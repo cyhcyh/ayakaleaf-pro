@@ -1,4 +1,7 @@
 {
+  "clipboard_copy_failed": "Copy failed. Select the text and copy it manually.",
+  "clipboard_cut_failed": "Cut failed. Your text was kept. Use the keyboard shortcut to cut.",
+  "clipboard_paste_shortcut": "Press __shortcut__ to paste.",
   "about_to_permanently_delete_accounts": "You are about to permanently delete the following accounts:",
   "about_to_restore_accounts": "You are about to restore the following user accounts:",
   "about_to_restore_projects": "You are about to restore the following projects:",

@@ -1,4 +1,7 @@
 {
+  "clipboard_copy_failed": "复制失败，请选中文本后手动复制。",
+  "clipboard_cut_failed": "剪切失败，原文已保留。请使用快捷键剪切。",
+  "clipboard_paste_shortcut": "请按 __shortcut__ 粘贴。",
   "1_2_width": "½ 宽度",
   "1_4_width": "¼ 宽度",
   "24x_basic": "24倍 免费时长 (240s)",

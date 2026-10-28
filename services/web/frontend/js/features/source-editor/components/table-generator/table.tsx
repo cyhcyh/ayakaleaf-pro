@@ -316,7 +316,12 @@ export const Table: FC = () => {
     }
 
     const onCopy = (event: ClipboardEvent) => {
-      if (cellData || !selection || columnWidthModalShown) {
+      if (
+        cellData ||
+        !selection ||
+        columnWidthModalShown ||
+        !event.clipboardData
+      ) {
         // We're editing a cell, or modifying column widths,
         // so allow browser to copy from there
         return false
@@ -331,7 +336,7 @@ export const Table: FC = () => {
         cells[row - minY].push(cell.content)
       })
       const content = cells.map(row => row.join('\t')).join('\n')
-      navigator.clipboard.writeText(content)
+      event.clipboardData.setData('text/plain', content)
     }
     window.addEventListener('paste', onPaste)
     window.addEventListener('copy', onCopy)

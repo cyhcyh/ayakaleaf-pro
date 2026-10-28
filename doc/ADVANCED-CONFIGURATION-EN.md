@@ -76,7 +76,7 @@ Update GIT_BRIDGE_ALLOWED_CORS_ORIGINS for your access address. Open project Int
 
 ## Pandoc import and export
 
-Disabled by default. Enable it on the sandbox deployment when needed. Conversion uses a separate Pandoc image and does not change TeX Live 2026.1. Pull the conversion image before enabling it.
+Disabled by default. Enable it on the sandbox deployment when needed. Conversion uses a separate Pandoc image and does not change TeX Live 2025. Pull the conversion image before enabling it.
 
 ```sh
 docker pull quay.io/sharelatex/pandoc:3.9
@@ -175,4 +175,4 @@ Omit the search field if you only need a default model. Personal feature assignm
 
 ## Registration, templates and compilation limits
 
-Self-registration and templates are enabled in the default Compose. To restrict registration by email domain, set OVERLEAF_ALLOW_PUBLIC_REGISTRATION to @example.com,@example.org. OVERLEAF_TEMPLATE_GALLERY controls the gallery. Change compilation limits under Admin → Users → Update. The current allowed range is 1–600 seconds, with a 180-second default. The current application still enforces a timeout.
+Self-registration and templates are enabled in the default Compose. To restrict registration by email domain, set OVERLEAF_ALLOW_PUBLIC_REGISTRATION to @example.com,@example.org. OVERLEAF_TEMPLATE_GALLERY controls the gallery. Change compilation limits under Admin → Users → Update. The current allowed range is 1–600 seconds, with a 240-second default for new users. Existing users retain their saved limits, which can be changed in User management. The current application still enforces a timeout.
