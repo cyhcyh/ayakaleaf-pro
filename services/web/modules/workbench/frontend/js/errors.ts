@@ -23,7 +23,7 @@ export class AiUnavailableError extends Error {
 export class ToolBudgetError extends Error {
   constructor() {
     super(
-      'The assistant used all the steps it may take for one message. Reply to let it carry on.'
+      'ai_tool_call_limit_exceeded'
     )
     this.name = 'ToolBudgetError'
   }

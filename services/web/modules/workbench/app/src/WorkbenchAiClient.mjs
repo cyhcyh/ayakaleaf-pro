@@ -112,7 +112,7 @@ export function getProviderOptions() {
 /** Maximum tool calls per user message, including automatic continuations. */
 export function getMaxSteps() {
   const limit = Settings.workbenchAi?.maxSteps
-  return Number.isSafeInteger(limit) && limit > 0 ? limit : 20
+  return Number.isSafeInteger(limit) && limit > 0 ? limit : 100
 }
 
 /**

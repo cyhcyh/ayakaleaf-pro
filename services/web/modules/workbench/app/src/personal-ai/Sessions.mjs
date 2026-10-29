@@ -8,6 +8,7 @@ import { restoredMessage } from '../../../shared/session-context.mjs';
 import { messagesPage } from './SessionMessages.mjs';
 import { validateSessionBinding } from './Runtime.mjs';
 import { selectionSchema } from './Pure.mjs';
+import { outboxSchema } from './QueueSchema.mjs';
 
 const message = z.object({
   order: z.number().int().min(0).max(1000000),
@@ -19,12 +20,13 @@ export const saveSessionSchema = z.object({
   messages: z.array(message).max(500),
   summary: z.object({ summary: z.string().max(500000), upToMessageId: z.string().max(150), protectedFirstIds: z.array(z.string()).optional() }).nullable().optional(),
   binding: selectionSchema.nullable().optional(),
+  outbox: outboxSchema.optional(),
 });
 const missing = () => Object.assign(new Error('会话不存在或已被删除'), { status: 404 });
 const conflict = () => Object.assign(new Error('会话已在其他页面更新，请重新打开会话后继续'), { status: 409 });
 const scope = (userId, projectId) => ({ userId: String(userId), projectId, deleted: false });
 // An empty current draft is ready for the next message, not a history entry.
-const visibleHistory = { $or: [{ named: true }, { autoTitle: false }, { hasContent: true }] };
+const visibleHistory = { $or: [{ named: true }, { autoTitle: false }, { hasContent: true }, { hasQueued: true }] };
 
 export async function listSessions(userId, projectId, query = '', cursor) {
   const store = await collection('Sessions');
@@ -44,8 +46,8 @@ export async function listSessions(userId, projectId, query = '', cursor) {
     ], as: 'hits' } },
     { $match: { $or: [{ title: match }, { 'hits.0': { $exists: true } }] } },
     { $sort: { updatedAt: -1, _id: -1 } }, { $limit: 51 },
-    { $project: { summary: 0, userId: 0, deleted: 0 } },
-  ]).toArray() : await store.find(filter, { projection: { summary: 0, userId: 0, deleted: 0 } }).sort({ updatedAt: -1, _id: -1 }).limit(51).toArray();
+    { $project: { summary: 0, userId: 0, deleted: 0, outbox: 0 } },
+  ]).toArray() : await store.find(filter, { projection: { summary: 0, userId: 0, deleted: 0, outbox: 0 } }).sort({ updatedAt: -1, _id: -1 }).limit(51).toArray();
   const items = found.slice(0, 50).map(({ _id, hits, ...item }) => ({ id: _id, ...item,
     ...(hits?.[0] && { snippet: searchSnippet(messageText(hits[0].message), query) }),
   }));
@@ -60,7 +62,7 @@ export async function createSession(userId, projectId) {
     await (await collection('Sessions')).insertOne(row, { session });
     await (await collection('ActiveSessions')).updateOne({ _id: `${userId}:${projectId}` }, { $set: { sessionId: row._id, userId: String(userId), projectId } }, { upsert: true, session });
   });
-  return { id: row._id, projectId, title: row.title, revision: 0, messages: [], messageOffset: 0, olderBefore: null, summary: null, binding: null };
+  return { id: row._id, projectId, title: row.title, revision: 0, messages: [], messageOffset: 0, olderBefore: null, summary: null, binding: null, outbox: [] };
 }
 
 export async function loadSession(userId, projectId, id, paged = false) {
@@ -74,7 +76,14 @@ export async function loadSession(userId, projectId, id, paged = false) {
     messages: (await (await collection('Messages')).find({ sessionId: id, userId: String(userId), projectId }).sort({ order: 1, _id: 1 }).toArray()).map(row => restoredMessage(row.message)),
     messageOffset: 0, olderBefore: null,
   };
-  return { id, projectId, title: row.title, revision: row.revision, ...page, summary: row.summary, binding: row.binding || null };
+  // A user message and removal from the queue can be saved in different batches.
+  // Its stable id prevents replay if a page closes between those batches.
+  const outbox = row.outbox || [];
+  const delivered = outbox.length ? await (await collection('Messages')).distinct('message.id', {
+    sessionId: id, userId: String(userId), projectId, 'message.role': 'user', 'message.id': { $in: outbox.map(item => item.id) },
+  }) : [];
+  return { id, projectId, title: row.title, revision: row.revision, ...page, summary: row.summary, binding: row.binding || null,
+    outbox: outbox.filter(item => !delivered.includes(item.id)) };
 }
 
 export async function saveSession(userId, projectId, id, body) {
@@ -97,6 +106,7 @@ export async function saveSession(userId, projectId, id, body) {
         updatedAt: new Date(), title, ...(firstUser && { named: true }), ...(input.summary !== undefined && { summary: input.summary }),
         ...(input.messages.length && { hasContent: true }),
         ...(input.binding !== undefined && { binding: input.binding }),
+        ...(input.outbox !== undefined && { outbox: input.outbox, hasQueued: input.outbox.length > 0 }),
       }, $inc: { revision: 1 } }, { session: transaction });
       return { revision: input.revision + 1, title };
   });
@@ -134,7 +144,7 @@ export async function clearHistory(userId, projectId, range) {
       const projects = await (await collection('Sessions')).distinct('projectId', filter, { session });
       await (await collection('ProjectState')).updateMany({ _id: { $in: projects } }, { $inc: { revision: 1 } }, { session });
       const result = await (await collection('Sessions')).updateMany({ ...filter, deleted: false },
-        { $set: { deleted: true, title: '', summary: null, updatedAt: new Date() }, $inc: { revision: 1 } }, { session });
+        { $set: { deleted: true, title: '', summary: null, outbox: [], hasQueued: false, updatedAt: new Date() }, $inc: { revision: 1 } }, { session });
       await (await collection('Messages')).deleteMany(filter, { session });
       await (await collection('Reviews')).updateMany(filter, { $set: { stopped: true } }, { session });
       await (await collection('ActiveSessions')).deleteMany(range === 'project'
@@ -154,7 +164,7 @@ export async function deleteSessions(userId, projectId, ids) {
       const owned = await store.find({ _id: { $in: identifiers }, ...scope(userId, projectId) }, { session: transaction }).toArray();
       if (owned.length !== new Set(identifiers).size) throw missing();
       await store.updateMany({ _id: { $in: identifiers }, ...scope(userId, projectId) },
-        { $set: { deleted: true, title: '', summary: null, updatedAt: new Date() }, $inc: { revision: 1 } }, { session: transaction });
+        { $set: { deleted: true, title: '', summary: null, outbox: [], hasQueued: false, updatedAt: new Date() }, $inc: { revision: 1 } }, { session: transaction });
       await messages.deleteMany({ sessionId: { $in: identifiers }, userId: String(userId), projectId }, { session: transaction });
       await reviews.updateMany({ chatId: { $in: identifiers }, userId: String(userId), projectId }, { $set: { stopped: true } }, { session: transaction });
       return { deleted: identifiers.length };

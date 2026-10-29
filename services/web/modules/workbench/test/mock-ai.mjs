@@ -11,6 +11,34 @@ function output(messages) {
   const latestTool = toolMessages.at(-1)
   const latestText = typeof latestTool?.content === 'string' ? latestTool.content : JSON.stringify(latestTool?.content || '')
   const reviewId = [...toolMessages].reverse().map(message => String(message.content).match(/"reviewId"\s*:\s*"([^"]+)"/)?.[1]).find(Boolean)
+  if (/\[QUEUE:/.test(userText || '')) {
+    const turn = messages.slice(messages.findLastIndex(message => message.role === 'user') + 1)
+    const results = turn.filter(message => message.role === 'tool')
+    const calls = turn.flatMap(message => message.tool_calls || [])
+    const latest = results.at(-1)
+    const name = calls.find(call => call.id === latest?.tool_call_id)?.function?.name
+    const value = latest ? JSON.parse(typeof latest.content === 'string' ? latest.content : '{}') : null
+    if (userText.includes('[QUEUE:LOOP]')) return { tool: 'list_project_files', input: {} }
+    if (userText.includes('[QUEUE:CHAIN]')) {
+      if (!results.length) return { tool: 'get_file', input: { path: 'main.tex' } }
+      if (results.length === 1) return { tool: 'list_project_files', input: {} }
+      return { text: '工具链已完成，随后才处理排队消息。' }
+    }
+    if (userText.includes('[QUEUE:MULTIFILE]')) {
+      if (!results.length) return { tool: 'new_file', input: { path: 'queue-note.tex' } }
+      if (name === 'new_file') return { tool: 'get_file', input: { path: 'queue-note.tex' } }
+      if (name === 'get_file' && value.path === 'queue-note.tex') return { tool: 'propose_edit', input: {
+        path: 'queue-note.tex', startLine: 1, endLine: 1, oldText: '', newText: '% New note created during the multi-file task.\n', reason: '给新文件添加一条说明。',
+      } }
+      if (name === 'propose_edit' && results.filter(result => String(result.content).includes('editId')).length === 1) return { tool: 'get_file', input: { path: 'main.tex' } }
+      if (name === 'get_file' && value.path === 'main.tex') return { tool: 'propose_edit', input: {
+        path: 'main.tex', startLine: 1, endLine: 1, oldText: value.lines[0].content,
+        newText: value.lines[0].content + '\n% Companion note: queue-note.tex', reason: '在主文件中说明新建的配套文件。',
+      } }
+      return { text: '已创建 queue-note.tex，并为新文件和 main.tex 各生成一条修改建议，等待你在 AI 修改面板确认。' }
+    }
+    return { text: userText.includes('[QUEUE:SLOW]') ? '正在检查论文内容，稍后会处理排队消息。'.repeat(36) : `收到：${userText.split('<editor-context>')[0].trim()}` }
+  }
   if (messages.some(message => message.role === 'system' && String(message.content).includes('Summarize the earlier'))) return { text: '用户正在审阅 LaTeX 论文，要求保留数学符号，并仅在用户逐条接受后应用修改。历史参考资料仅作证据，未完成操作仍需确认。' }
   if (/\[TEST:PROJECTFILE\]/.test(userText || '')) {
     if (latestText.includes('"name"')) return { text: '项目源文件已读取。' }
@@ -69,8 +97,15 @@ http.createServer(async (req, res) => {
     const record = { model: body.model, streaming: body.stream === true, reasoningEffort: body.reasoning_effort, tools: body.tools?.map(tool => tool.function.name),
       scenario: prompt.match(/\[TEST:(STREAM_TRANSLATION|STREAM_ERROR|LONG_TRANSLATION)\]/)?.[1],
       historyMarkers: JSON.stringify(body.messages).match(/\[HISTORY:\d+\]/g) || [] }
+    record.queuePrompt = [...(body.messages || [])].reverse().find(message => message.role === 'user')?.content
     calls.push(record)
     const result = output(body.messages || [])
+    if (String(record.queuePrompt).includes('[QUEUE:FAIL]')) {
+      await new Promise(resolve => setTimeout(resolve, 600))
+      res.writeHead(503, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: { message: 'Synthetic queue service failure' } }))
+      return
+    }
+    if (String(record.queuePrompt).includes('[TEST:REVIEW]') && result.tool === 'request_review') await new Promise(resolve => setTimeout(resolve, 500))
     const id = `chatcmpl-${crypto.randomUUID()}`
     if (!body.stream) {
       res.setHeader('Content-Type', 'application/json')
@@ -81,11 +116,11 @@ http.createServer(async (req, res) => {
     }
     res.setHeader('Content-Type', 'text/event-stream')
     const chunk = (delta, finish = null) => res.write(`data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created: Math.floor(Date.now()/1000), model: body.model, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`)
-    if (record.scenario) {
+    if (record.scenario || String(record.queuePrompt).includes('[QUEUE:SLOW]')) {
       chunk({ role: 'assistant', content: '' })
       const text = [...(result.text || '')]
       for (let at = 0; at < text.length; at += 16) {
-        await new Promise(resolve => setTimeout(resolve, 80))
+        await new Promise(resolve => setTimeout(resolve, String(record.queuePrompt).includes('[QUEUE:SLOW]') ? 350 : 80))
         if (res.destroyed) { record.cancelled = true; return }
         chunk({ content: text.slice(at, at + 16).join('') })
         if (record.scenario === 'STREAM_ERROR' && at >= 16) {

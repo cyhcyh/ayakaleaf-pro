@@ -50,8 +50,8 @@ export default function AssistantPanel() {
   const { t } = useTranslation()
   const { setSettingsShown } = useLayoutContext()
   const { view } = useEditorViewContext()
-  const { side, moveTo, setOpen } = useAssistantDock()
-  const { isOpen, setIsOpen } = useRailContext()
+  const { side, open: assistantOpen, moveTo, setOpen } = useAssistantDock()
+  const { isOpen, selectedTab, setIsOpen } = useRailContext()
   const { projectId } = useProjectContext()
   const [session, setSession] = useState<SavedSession | null>(null)
   const [epoch, setEpoch] = useState(0)
@@ -62,6 +62,15 @@ export default function AssistantPanel() {
     return () => { if (flush.current === work) flush.current = async () => {} }
   }, [])
   const beforeChange = useCallback(async () => { await flush.current() }, [])
+  const visible = side === 'right' ? assistantOpen : isOpen && selectedTab === 'workbench'
+  const closed = side === 'right' ? !assistantOpen : !isOpen && selectedTab === 'workbench'
+  const wasVisible = useRef(visible)
+  useEffect(() => {
+    // The rail keeps its portal mounted when hidden. Closing it must still
+    // stop the turn, pause the queue and save, while changing dock preserves it.
+    if (wasVisible.current && !visible && closed) beforeChange().catch(error => setError(error.message))
+    wasVisible.current = visible
+  }, [visible, closed, beforeChange])
   const load = useCallback(async () => {
     const result = await api<SavedSession>(`/sessions/current?projectId=${projectId}&paged=true`)
     setSession(result); setError('')

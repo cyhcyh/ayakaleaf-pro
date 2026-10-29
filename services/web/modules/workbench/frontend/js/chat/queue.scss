@@ -1,0 +1,46 @@
+.assistant-queue {
+  margin: 8px 16px -9px;
+  border: 1px solid var(--border-divider-themed);
+  border-radius: 12px 12px 0 0;
+  background: var(--bg-secondary-themed);
+  color: var(--content-primary-themed);
+  overflow: hidden;
+  .assistant-queue-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    color: var(--content-secondary-themed);
+    font-size: var(--font-size-01);
+    border-bottom: 1px solid var(--border-divider-themed);
+  }
+  .assistant-queue-list { list-style: none; margin: 0; padding: 0; max-height: min(190px, 26vh); overflow-y: auto; overscroll-behavior: contain; }
+  li { position: relative; display: flex; align-items: center; gap: 6px; padding: 5px 8px; min-width: 0; min-height: 35px; }
+  li + li { border-top: 1px solid var(--border-divider-themed); }
+  li.is-editing { display: block; padding: 0; }
+  .assistant-queue-mark { flex-shrink: 0; color: var(--content-secondary-themed); font-size: 18px; }
+  .assistant-queue-preview {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: start; padding: 4px 0;
+    > span, > small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { color: var(--content-secondary-themed); font-size: var(--font-size-01); }
+    small .material-symbols { font-size: 14px; vertical-align: middle; }
+    &.is-expanded > span, &.is-expanded > small { white-space: pre-wrap; overflow-wrap: anywhere; }
+  }
+  .assistant-queue-actions {
+    display: flex; align-items: center; gap: 0; flex-shrink: 0; padding-left: 4px;
+  }
+  .assistant-queue-actions .btn { padding: 4px; min-width: 24px; height: 28px; }
+  .assistant-queue-actions button { color: var(--content-secondary-themed); }
+  .assistant-queue-actions .material-symbols { font-size: 18px; }
+  .assistant-queue-steer {
+    display: inline-flex; align-items: center; gap: 3px; padding: 5px; border: 0; border-radius: 5px;
+    background: transparent; font-size: var(--font-size-01); white-space: nowrap;
+    &:hover:not(:disabled) { color: var(--content-primary-themed); background: var(--bg-tertiary-themed); }
+    &:disabled { opacity: .45; }
+  }
+  .assistant-queue-editor { margin: 5px !important; }
+}
+.assistant-composer { position: relative; background: var(--bg-primary-themed); }
+.assistant-turn-limit { margin: 8px; padding: 10px; border: 1px solid var(--border-divider-themed); border-radius: 8px; color: var(--content-secondary-themed); font-size: var(--font-size-01); }
+.assistant-turn-limit p { margin-bottom: 8px; }

@@ -5,7 +5,6 @@ import { ui } from '@modules/site-settings/frontend/js/ui'
  */
 import { forwardRef, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { FileUIPart } from 'ai'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
 import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import MaterialIcon from '@/shared/components/material-icon'
@@ -13,11 +12,12 @@ import { boxed, flatGhost, plain, surface } from './themed'
 import ImagePreview from './image-preview'
 import { useProjectContext } from '@/shared/context/project-context'
 import { api } from '../personal-ai/api'
+import useAbortController from '@/shared/hooks/use-abort-controller'
+import type { Draft, DraftContext, ReferenceAttachment } from './draft'
+export type { Draft } from './draft'
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 const MAX_ROWS = 8
-
-export type Draft = { text: string; files: FileUIPart[] }
 
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -38,12 +38,19 @@ const Composer = forwardRef<
     onProblem: (message: string | false) => void
     modelPicker?: ReactNode
     disabled?: boolean
+    initial?: Draft
+    editing?: boolean
+    onCancel?: () => void
+    captureContext?: () => DraftContext
   }
->(function Composer({ working, selectionNote, onSend, onStop, onProblem, modelPicker, disabled = false }, ref) {
+>(function Composer({ working, selectionNote, onSend, onStop, onProblem, modelPicker, disabled = false, initial, editing = false, onCancel, captureContext }, ref) {
   const { t } = useTranslation()
   const { projectId } = useProjectContext()
+  const { signal } = useAbortController()
   const [uploading, setUploading] = useState(false)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initial?.text || '')
+  const [preparedFiles, setPreparedFiles] = useState(initial?.files || [])
+  const [references, setReferences] = useState<ReferenceAttachment[]>(initial?.references || [])
   const [focused, setFocused] = useState(false)
   const [images, setImages] = useState<File[]>([])
   const picker = useRef<HTMLInputElement>(null)
@@ -58,9 +65,9 @@ const Composer = forwardRef<
       onProblem(ui("支持图片、PDF、TXT 和 Markdown 参考资料。"))
     } else if (files.some(file => file.size > (file.type.startsWith('image/') ? MAX_IMAGE_BYTES : 8 * 1024 * 1024))) {
       onProblem(ui("图片需小于 2 MB，参考资料需小于 8 MB。"))
-    } else if (images.length + files.length > 10) {
+    } else if (images.length + preparedFiles.length + references.length + files.length > 10) {
       onProblem(ui("每条消息最多附加 10 个文件。"))
-    } else if ([...images, ...files].filter(file => file.type.startsWith('image/')).reduce((size, file) => size + file.size, 0) > 6 * 1024 * 1024) {
+    } else if ([...images, ...files].filter(file => file.type.startsWith('image/')).reduce((size, file) => size + file.size, 0) + preparedFiles.reduce((size, file) => size + file.url.length * .75, 0) > 6 * 1024 * 1024) {
       onProblem(ui("单条消息中的图片总大小需小于 6 MB，较大参考资料请用 PDF 上传。"))
     } else {
       setImages(current => [...current, ...files])
@@ -68,30 +75,34 @@ const Composer = forwardRef<
   }
 
   const send = async () => {
-    if (disabled || working || uploading || !text.trim()) return
+    if (disabled || uploading || !hasDraft) return
+    const context = initial?.context || captureContext?.()
     setUploading(true)
     try {
-    const references = []
-    const files = []
+    const uploadedReferences = [...references]
+    const files = [...preparedFiles]
     for (const file of images) {
       const dataURL = await readAsDataUrl(file)
+      if (signal.aborted) return
       if (file.type.startsWith('image/')) files.push({
         type: 'file' as const,
         mediaType: file.type,
         filename: file.name,
         url: dataURL,
       })
-      else references.push(await api('/references', {
+      else uploadedReferences.push(await api('/references', {
         projectId, name: file.name, mediaType: file.type === 'application/pdf' ? 'application/pdf' : /\.md$/i.test(file.name) ? 'text/markdown' : 'text/plain',
         data: dataURL.slice(dataURL.indexOf(',') + 1),
-      }))
+      }, signal))
     }
-    const referenceBlock = references.length ? `\n\n<reference-attachments>\n${JSON.stringify(references)}\n</reference-attachments>` : ''
-    await onSend({ text: text + referenceBlock, files })
+    if (signal.aborted) return
+    await onSend({ text, files, references: uploadedReferences, context })
     setText('')
     setImages([])
-    } catch (error) { onProblem((error as Error).message) }
-    finally { setUploading(false) }
+    setPreparedFiles([])
+    setReferences([])
+    } catch (error) { if (!signal.aborted) onProblem((error as Error).message) }
+    finally { if (!signal.aborted) setUploading(false) }
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -118,10 +129,11 @@ const Composer = forwardRef<
   }
 
   const rows = Math.min(MAX_ROWS, Math.max(2, text.split('\n').length))
+  const hasDraft = Boolean(text.trim() || images.length || preparedFiles.length || references.length)
 
   return (
     <div
-      className="rounded m-2 p-2 d-flex flex-column gap-2"
+      className={`rounded m-2 p-2 d-flex flex-column gap-2 ${editing ? 'assistant-queue-editor' : 'assistant-composer'}`}
       // Writing in the box rings it, like a focused form field
       style={
         focused
@@ -131,13 +143,23 @@ const Composer = forwardRef<
       onDragOver={event => event.dataTransfer.types.includes('Files') && event.preventDefault()}
       onDrop={onDrop}
     >
-      {(selectionNote || images.length > 0) && (
+      {(selectionNote || images.length > 0 || preparedFiles.length > 0 || references.length > 0) && (
         <div className="d-flex flex-wrap gap-1 small">
           {selectionNote && (
             <span className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
               <MaterialIcon type="code" /> {selectionNote}
             </span>
           )}
+          {preparedFiles.map((file, index) => <span key={`prepared-${index}`} className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
+            <MaterialIcon type="image" /><span>{file.filename || ui("图片")}</span>
+            <button type="button" className="btn btn-link p-0 text-reset d-inline-flex" disabled={uploading}
+              aria-label={ui("移除附件 {0}", [file.filename || ui("图片")])} onClick={() => setPreparedFiles(current => current.filter((_, at) => at !== index))}><MaterialIcon type="close" /></button>
+          </span>)}
+          {references.map((file, index) => <span key={file.id} className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
+            <MaterialIcon type="description" /><span>{file.name}</span>
+            <button type="button" className="btn btn-link p-0 text-reset d-inline-flex" disabled={uploading}
+              aria-label={ui("移除附件 {0}", [file.name])} onClick={() => setReferences(current => current.filter((_, at) => at !== index))}><MaterialIcon type="close" /></button>
+          </span>)}
           {images.map((image, index) => (
             <span className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }} key={index}>
               {image.type.startsWith('image/') ? <ImagePreview src={previews[index]} name={image.name}>
@@ -148,7 +170,8 @@ const Composer = forwardRef<
               <button
                 type="button"
                 className="btn btn-link p-0 text-reset d-inline-flex"
-                aria-label={`Remove ${image.name}`}
+                disabled={uploading}
+                aria-label={ui("移除附件 {0}", [image.name])}
                 onClick={() => setImages(images.filter((_, other) => other !== index))}
               >
                 <MaterialIcon type="close" />
@@ -158,7 +181,8 @@ const Composer = forwardRef<
         </div>
       )}
       <textarea
-        disabled={disabled}
+        disabled={disabled || uploading}
+        aria-label={editing ? ui("编辑排队消息") : ui("消息")}
         ref={ref}
         className="form-control border-0 shadow-none p-1"
         style={{ ...plain, resize: 'none', fontSize: 'var(--font-size-02)', background: 'transparent' }}
@@ -178,7 +202,7 @@ const Composer = forwardRef<
           accept="image/*,application/pdf,text/plain,text/markdown,.txt,.md"
           multiple
           hidden
-          disabled={disabled}
+          disabled={disabled || uploading}
           aria-label={ui("附加图片或参考资料")}
           onChange={event => {
             attach(Array.from(event.target.files ?? []))
@@ -191,25 +215,26 @@ const Composer = forwardRef<
             variant="ghost"
             style={{ ...flatGhost, ...plain }}
             accessibilityLabel={t('attach_image_or_pdf')}
-            disabled={disabled}
+            disabled={disabled || uploading}
             onClick={() => picker.current?.click()}
           />
         </OLTooltip>
         <span className="flex-grow-1" />
         {modelPicker}
-        {working ? (
+        {editing ? <><button type="button" className="btn btn-secondary btn-sm" disabled={uploading} onClick={onCancel}>{ui("取消编辑")}</button>
+          <button type="button" className="btn btn-primary btn-sm ms-2" disabled={disabled || !hasDraft || uploading} onClick={send}>{ui("保存")}</button></> : working && !hasDraft ? (
           <OLIconButton icon="stop_circle" variant="ghost" style={{ ...flatGhost, ...plain }} accessibilityLabel={t('stop')} onClick={onStop} />
         ) : (
           <OLIconButton
             icon="arrow_upward"
             variant="ghost"
             style={{ ...flatGhost, ...plain }}
-            accessibilityLabel={t('send')}
-            disabled={disabled || !text.trim() || uploading}
+            accessibilityLabel={working ? ui("加入队列") : t('send')}
+            disabled={disabled || !hasDraft || uploading}
             onClick={send}
           />
         )}
-        {uploading && <span role="status" className="small ms-2">{ui("正在上传参考资料…")}</span>}
+        {uploading && <span role="status" className="small ms-2">{images.length ? ui("正在上传参考资料…") : ui("正在准备消息…")}</span>}
       </div>
     </div>
   )

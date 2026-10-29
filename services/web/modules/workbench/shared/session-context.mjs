@@ -1,10 +1,9 @@
+import { interruptTools } from './chat-turn.mjs';
+
 // Restored history is readable evidence, never an instruction to resume a tool.
 export function restoredMessage(message) {
-  return { ...message, parts: message.parts.map(part => {
-    if ((part.type?.startsWith('tool-') || part.type === 'dynamic-tool') && !['output-available', 'output-error', 'output-denied'].includes(part.state))
-      return { ...part, state: 'output-error', errorText: '上次会话在此处中断，恢复记录未执行该操作。需要时请重新发起。' };
-    return part;
-  }) };
+  return interruptTools([message], 'The previous turn stopped before the tool call was complete.',
+    '上次会话在此处中断，恢复记录未执行该操作。需要时请重新发起。')[0];
 }
 
 export function mergeSessionContext(stored, incoming, offset, checkpoint) {

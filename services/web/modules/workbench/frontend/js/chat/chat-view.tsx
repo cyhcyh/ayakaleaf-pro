@@ -26,7 +26,6 @@ import useAiAccess from '../hooks/use-ai-access'
 import { useProjectActions } from '../hooks/use-project-actions'
 import { TOOLS, type Respond } from '../agent/tools'
 import { AiUnavailableError, QuotaExceededError, ToolBudgetError, ToolRefusal } from '../errors'
-import { CONTEXT_OPEN } from './message-view'
 import ConversationMessages from './conversation-messages'
 import Composer, { type Draft } from './composer'
 import StarterPrompts from './starter-prompts'
@@ -39,29 +38,13 @@ import { api, openAiSettings, type Binding } from '../personal-ai/api'
 import SessionModelPicker from '../personal-ai/session-model-picker'
 import { useLayoutContext } from '@/shared/context/layout-context'
 import { useSessionAutosave, type SavedSession, type Summary, type MessagePage } from '../personal-ai/session-state'
+import useMessageQueue from './use-message-queue'
+import MessageQueue from './message-queue'
+import type { DraftContext } from './draft'
+import { draftText, interruptTools, waitingForReview } from '../../../shared/chat-turn.mjs'
 
 // The browser offers both searches; the server adds the configured ones
 const SEARCH_TOOLS = ['web_search', 'search_docs']
-
-/** Set by the server when it summarizes turns up to and including a message. */
-type Selection = { fromLine: number; toLine: number; content: string }
-
-/** Settles with work, or rejects as soon as the signal aborts. */
-function untilAborted<T>(work: Promise<T>, signal: AbortSignal) {
-  return new Promise<T>((resolve, reject) => {
-    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
-    work.then(resolve, reject)
-  })
-}
-
-function contextBlock(path: string, selection: Selection[]) {
-  const lines = [CONTEXT_OPEN, `Open file: ${path}`]
-  for (const range of selection) {
-    lines.push(`Selected lines ${range.fromLine}-${range.toLine}:`, range.content)
-  }
-  lines.push('</editor-context>')
-  return lines.join('\n')
-}
 
 export default function ChatView({ chatId, view, initial, registerFlush }: { chatId: string; view: EditorView; initial?: SavedSession; registerFlush?: (flush: () => Promise<void>) => (() => void) }) {
   const { projectId } = useProjectContext()
@@ -88,6 +71,14 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
 
   const [problem, setProblem] = useState<string | boolean>(false)
   const [quotaHit, setQuotaHit] = useState(false)
+  const [limitHit, setLimitHit] = useState(false)
+  const queue = useMessageQueue(initial?.outbox)
+  const turnComplete = useRef(false)
+  const dispatching = useRef(false)
+  const generation = useRef(0)
+  const [transitioning, setTransitioning] = useState(false)
+  const [turnVersion, setTurnVersion] = useState(0)
+  const stopping = useRef<Promise<void> | null>(null)
   const [summary, setSummary] = useState<Summary | null>(initial?.summary || null)
   const summaryRef = useRef<Summary | null>(initial?.summary || null)
   const [binding, setBinding] = useState<Binding | null>(initial?.binding || null)
@@ -109,10 +100,9 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
     } catch (error) { if (!signal.aborted) setHistoryError((error as Error).message); throw error }
     finally { loadingPage.current = false; if (!signal.aborted) setLoadingOlder(false) }
   }, [chatId, projectId, olderBefore, signal])
-  // The open file the model was last told about
-  const toldPath = useRef<string | null>(null)
   // Browser tools still running, and whether the user stopped the reply
   const running = useRef(new Set<AbortController>())
+  const jobs = useRef(new Set<Promise<unknown>>())
   const [toolsRunning, setToolsRunning] = useState(0)
   const stopped = useRef(false)
 
@@ -202,14 +192,23 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       }
     },
     onError(error) {
+      turnComplete.current = false
+      queue.pause()
       if (error instanceof QuotaExceededError) {
         setQuotaHit(true)
       } else if (error instanceof ToolBudgetError) {
-        setProblem(error.message)
+        setLimitHit(true)
       } else {
         debugConsole.error(error)
         setProblem(error.message || true)
       }
+    },
+    onFinish({ isAbort, isError, isDisconnect, finishReason }) {
+      // A tool step is followed by the SDK's automatic continuation. It is
+      // never the boundary at which another queued user message can run.
+      turnComplete.current = !isAbort && !isError && !isDisconnect && finishReason !== 'tool-calls'
+      if (isError || isDisconnect) queue.pause()
+      setTurnVersion(value => value + 1)
     },
     async onToolCall({ toolCall }) {
       if (toolCall.dynamic) return
@@ -223,9 +222,9 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       running.current.add(controller)
       setToolsRunning(running.current.size)
       try {
-        const output = await untilAborted(
-          Promise.resolve().then(() =>
-            tool.run!(toolCall.input, {
+        const work = Promise.resolve().then(() => {
+          controller.signal.throwIfAborted()
+          return tool.run!(toolCall.input, {
               view,
               openPath: path,
               actions: actionsRef.current,
@@ -234,9 +233,10 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
               toolCallId: toolCall.toolCallId,
               signal: controller.signal,
             })
-          ),
-          controller.signal
-        )
+        })
+        jobs.current.add(work)
+        let output
+        try { output = await work } finally { jobs.current.delete(work) }
         addToolOutput({ tool: toolCall.toolName, toolCallId: toolCall.toolCallId, output: output ?? null } as any)
       } catch (error) {
         const aborted = controller.signal.aborted
@@ -250,7 +250,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
               ? error.message
               : String(error),
         } as any)
-        if (!aborted && !(error instanceof ToolRefusal)) setProblem(true)
+        if (!aborted && !(error instanceof ToolRefusal)) { queue.pause(); setProblem(true) }
       } finally {
         signal.removeEventListener('abort', abort)
         running.current.delete(controller)
@@ -258,37 +258,44 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       }
     },
   })
-  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding)
+  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding, queue.items, queue.current)
   const displayedMessages = useMemo(() => [...olderMessages, ...messages], [olderMessages, messages])
 
-  // A new chat must not keep running when the panel goes away
-  const stopRef = useRef(stop)
-  stopRef.current = stop
-  useEffect(
-    () => () => {
-      stopRef.current()
-    },
-    []
-  )
-
-  const respond = useCallback<Respond>(output => addToolOutput(output as any), [addToolOutput])
+  const responseGeneration = generation.current
+  const respond = useCallback<Respond>(output => {
+    if (!stopped.current && responseGeneration === generation.current) addToolOutput(output as any)
+  }, [addToolOutput, responseGeneration])
 
   const stopReply = useCallback(() => {
+    if (stopping.current) return stopping.current
     stopped.current = true
+    turnComplete.current = false
+    queue.pause()
+    generation.current++
+    setTransitioning(true)
     running.current.forEach(controller => controller.abort())
-    stop()
     reviewId.current = null
-    api('/reviews/stop', { projectId, chatId }).catch(() => {})
-  }, [stop, projectId, chatId])
+    const work = (async () => {
+      await stop()
+      // File creation and already-submitted writes may have to finish. Wait
+      // for their real results before starting a steering turn.
+      await Promise.allSettled([...jobs.current])
+      await api('/reviews/stop', { projectId, chatId }, AbortSignal.timeout(5000)).catch(() => {})
+      setMessages(current => interruptTools(current, ui("工具调用已中断，尚未执行。")))
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })().finally(() => { dispatching.current = false; stopping.current = null; setTransitioning(false) })
+    stopping.current = work
+    return work
+  }, [stop, setMessages, projectId, chatId, queue.pause])
   const leave = useRef(stopReply)
   leave.current = stopReply
-  useEffect(() => registerFlush?.(async () => { leave.current(); await persistence.flush() }), [registerFlush, persistence.flush])
+  useEffect(() => () => { leave.current() }, [])
+  useEffect(() => registerFlush?.(async () => { await leave.current(); await persistence.flush() }), [registerFlush, persistence.flush])
   useEffect(() => {
     const prepare = (event: Event) => {
       const detail = (event as CustomEvent).detail
       if (detail.scope === 'all' || detail.projectId === projectId) {
-        leave.current()
-        detail.waitUntil(persistence.flush().catch(() => {}))
+        detail.waitUntil(leave.current().then(() => persistence.flush()).catch(() => {}))
       }
     }
     window.addEventListener('personal-ai:history-will-clear', prepare)
@@ -296,7 +303,7 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
   }, [projectId, persistence.flush])
 
   const { editorSelection } = useEditorSelectionContext()
-  const selection: Selection[] = useMemo(() => {
+  const selection: DraftContext['selection'] = useMemo(() => {
     const { doc } = view.state
     return (editorSelection?.ranges ?? [])
       .filter((range: any) => !range.empty)
@@ -307,27 +314,33 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
       })
   }, [editorSelection, view])
 
-  const send = useCallback(
-    async (draft: Draft) => {
-      if (!canChat) return
+  const captureContext = useCallback(() => ({ path, selection }), [path, selection])
+  const dispatch = useCallback(
+    async (draft: Draft, id?: string, allowApproval = true) => {
+      if (signal.aborted || !canChat || dispatching.current) throw new Error(ui("请等待当前操作结束后重试。"))
+      dispatching.current = true
+      const epoch = ++generation.current
       setProblem(false)
-      stopped.current = false
+      setLimitHit(false)
+      setQuotaHit(false)
+      turnComplete.current = false
+      setTransitioning(true)
+      try {
       const pending = messages.at(-1)?.parts.find((part: any) => part.type === 'tool-request_review' && part.state === 'input-available') as any
       let approval: unknown = { approved: false, reason: ui("用户尚未确认，继续讨论要求。") }
-      if (pending && /^(同意|确认|可以|开始|好的|好|同意审阅|开始审阅|同意审阅并添加评论|可以开始|按这个范围开始|yes|approve|go ahead|start)[。.!！\s]*$/i.test(draft.text.trim())) {
-        try {
+      if (allowApproval && pending && /^(同意|确认|可以|开始|好的|好|同意审阅|开始审阅|同意审阅并添加评论|可以开始|按这个范围开始|yes|approve|go ahead|start)[。.!！\s]*$/i.test(draft.text.trim())) {
           const result = await approve(pending.input, projectId, chatId)
           reviewId.current = result.reviewId
           approval = result
-        } catch (error) { setProblem((error as Error).message); return }
       }
+      if (epoch !== generation.current) throw new Error(ui("操作已停止。"))
       // An edit still waiting for Apply or Reject would reach the model as a
       // call without a result, which the gateway refuses
       setMessages(current =>
-        current.map(message => ({
+        interruptTools(current, ui("工具调用已中断，尚未执行。")).map((message: UIMessage) => ({
           ...message,
           parts: message.parts.map(part =>
-            pending && isToolUIPart(part) && part.type === 'tool-request_review' && part.state === 'input-available'
+            pending && isToolUIPart(part) && part.type === 'tool-request_review' && part.toolCallId === pending.toolCallId
               ? { ...part, state: 'output-available' as const, output: approval }
               : isToolUIPart(part) && part.type === 'tool-propose_edit' && part.state === 'input-available'
               ? {
@@ -339,17 +352,51 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
           ),
         }))
       )
-      // The context goes with the first message, whenever text is selected
-      // and when another file is open than the model was last told
-      const withContext =
-        toldPath.current !== path || selection.length > 0
-          ? `${draft.text}\n\n${contextBlock(path, selection)}`
-          : draft.text
-      toldPath.current = path
-      sendMessage({ text: withContext, files: draft.files })
+      stopped.current = false
+      const text = draftText({ ...draft, context: draft.context || captureContext() })
+      const work = id
+        ? sendMessage({ id, role: 'user', parts: [{ type: 'text', text }, ...draft.files] })
+        : sendMessage({ text, files: draft.files })
+      void work.catch(() => { queue.pause() }).finally(() => {
+        if (epoch === generation.current) { dispatching.current = false; setTurnVersion(value => value + 1) }
+      })
+      } catch (error) { dispatching.current = false; queue.pause(); throw error }
+      finally { setTransitioning(false) }
     },
-    [canChat, path, selection, sendMessage, setMessages, messages, projectId, chatId]
+    [canChat, captureContext, sendMessage, setMessages, messages, projectId, chatId, queue.pause, signal]
   )
+
+  const working = status === 'submitted' || status === 'streaming' || toolsRunning > 0 || transitioning
+  const reviewWaiting = Boolean(waitingForReview(messages))
+  useEffect(() => { if (reviewWaiting) queue.pause() }, [reviewWaiting, queue.pause])
+  const send = useCallback(async (draft: Draft) => {
+    if (working || dispatching.current) {
+      queue.enqueue(draft, captureContext())
+      await persistence.flush().catch(() => { queue.pause() })
+    }
+    else await dispatch(draft)
+  }, [working, queue.enqueue, queue.pause, captureContext, dispatch, persistence.flush])
+  useEffect(() => { if (persistence.error) queue.pause() }, [persistence.error, queue.pause])
+  useEffect(() => {
+    if (working || !['ready', 'error'].includes(status) || !canChat || reviewWaiting || !turnComplete.current || queue.paused || queue.editing || !queue.items.length) return
+    const timer = setTimeout(() => {
+      if (dispatching.current || queue.pausedRef.current || queue.editingRef.current) return
+      const item = queue.current.current[0]
+      if (!item) return
+      dispatch(item, item.id, false).then(() => queue.remove(item.id)).catch(error => { queue.pause(); setProblem(error.message) })
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [working, status, canChat, reviewWaiting, turnVersion, queue.items, queue.paused, queue.editing, dispatch, queue.remove, queue.pause, queue.current, queue.pausedRef, queue.editingRef])
+  const steer = async (id: string) => {
+    try {
+      await stopReply()
+      const item = queue.current.current.find(item => item.id === id)
+      if (!item) return
+      await dispatch(item, item.id, false)
+      queue.remove(id)
+      queue.pause(false)
+    } catch (error) { queue.pause(); setProblem((error as Error).message) }
+  }
 
   const selectionNote = selection.length
     ? `${path.split('/').pop()}: ${selection.map(r => (r.fromLine === r.toLine ? r.fromLine : `${r.fromLine}-${r.toLine}`)).join(', ')}`
@@ -374,7 +421,9 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
   }
 
   return (
-    <ReviewChatContext.Provider value={{ projectId, chatId, onApproved: id => { reviewId.current = id } }}>
+    <ReviewChatContext.Provider value={{ projectId, chatId, onApproved: id => {
+      if (!stopped.current && responseGeneration === generation.current) reviewId.current = id
+    } }}>
     {/* Match the editor panel's body text size. */}
     <div className="d-flex flex-column h-100" style={{ ...plain, fontSize: 'var(--font-size-02)' }}>
       <div
@@ -395,13 +444,20 @@ export default function ChatView({ chatId, view, initial, registerFlush }: { cha
         {problem && !quotaHit && (
           typeof problem === 'string' ? <ChatNotice type="error" text={problem} /> : <ChatFailedNotice />
         )}
+        {limitHit && <div className="assistant-turn-limit" role="status"><p>{ui("本轮工具调用已达上限。可以继续当前任务，已有结果会保留。")}</p>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!canChat || working} onClick={() => dispatch({ text: ui("继续当前任务。"), files: [] }, undefined, false).then(() => queue.pause(false)).catch(error => setProblem(error.message))}>{ui("继续当前任务")}</button></div>}
+        <MessageQueue items={queue.items} paused={queue.paused} editing={queue.editing} disabled={transitioning} canSteer={canChat}
+          canResume={canChat && !working && !reviewWaiting && !limitHit && !quotaHit && !persistence.error}
+          onResume={() => { setProblem(false); turnComplete.current = true; queue.pause(false) }} onSteer={steer} onRemove={queue.remove}
+          onEdit={queue.edit} onSave={queue.save} onProblem={message => setProblem(message)} />
         <Composer
           disabled={!canChat}
-          working={status === 'submitted' || status === 'streaming' || toolsRunning > 0}
+          working={working}
           selectionNote={selectionNote}
           onSend={send}
           onStop={stopReply}
           onProblem={message => setProblem(message)}
+          captureContext={captureContext}
           modelPicker={<SessionModelPicker value={binding} onChange={setBinding} disabled={!permissionEnabled || status === 'submitted' || status === 'streaming' || toolsRunning > 0}
             onManage={() => { setSettingsShown(true); openAiSettings() }} />}
         />
