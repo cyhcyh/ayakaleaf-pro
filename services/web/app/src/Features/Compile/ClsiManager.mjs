@@ -692,6 +692,14 @@ async function _postToClsi(
       } else if (err.response.status === 504) {
         return { response: { compile: { status: 'timedout' } } }
       } else {
+        if (err.response.status === 500) {
+          try {
+            const body = JSON.parse(err.body || '{}')
+            if (body.compile?.status === 'compile-image-missing') {
+              return { response: body }
+            }
+          } catch {}
+        }
         throw new OError('CLSI returned non-success code', {
           projectId,
           userId,

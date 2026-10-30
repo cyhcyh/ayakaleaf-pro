@@ -605,6 +605,7 @@ export const LocalCompileProvider: FC<React.PropsWithChildren> = ({
           break
 
         case 'clsi-maintenance':
+        case 'compile-image-missing':
         case 'compile-in-progress':
         case 'exited':
         case 'failure':

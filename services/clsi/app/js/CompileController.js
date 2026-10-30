@@ -110,7 +110,10 @@ function compile(req, res, next) {
                 'timeout running compile'
               )
             } else if (error) {
-              status = 'error'
+              status =
+                error.code === 'COMPILE_IMAGE_MISSING'
+                  ? 'compile-image-missing'
+                  : 'error'
               code = 500
               logger.error(
                 { err: error, projectId: request.project_id },

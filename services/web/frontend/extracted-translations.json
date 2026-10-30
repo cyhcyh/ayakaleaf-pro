@@ -370,6 +370,8 @@
   "compile_error_at_line": "",
   "compile_error_entry_description": "",
   "compile_error_handling": "",
+  "compile_image_missing": "",
+  "compile_image_missing_restart": "",
   "compile_larger_projects": "",
   "compile_mode": "",
   "compile_terminated_by_user": "",

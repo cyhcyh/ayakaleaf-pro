@@ -333,6 +333,21 @@ describe('CompileController', () => {
       })
     })
 
+    it('returns the missing image status while preserving HTTP 500', ctx => {
+      const error = Object.assign(new Error('No such image: texlive:test'), {
+        code: 'COMPILE_IMAGE_MISSING',
+      })
+      ctx.CompileManager.doCompileWithLock = sinon
+        .stub()
+        .callsArgWith(3, error)
+      ctx.CompileController.compile(ctx.req, ctx.res)
+
+      ctx.res.status.calledWith(500).should.equal(true)
+      ctx.res.send.firstCall.args[0].compile.status.should.equal(
+        'compile-image-missing'
+      )
+    })
+
     describe('with too many compile requests error', () => {
       beforeEach(ctx => {
         const error = new Errors.TooManyCompileRequestsError(

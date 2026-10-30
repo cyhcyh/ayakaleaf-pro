@@ -363,6 +363,14 @@ const DockerRunner = {
     function createAndStartContainer() {
       dockerode.createContainer(options, (error, container) => {
         if (error != null) {
+          // A missing container also returns 404; only classify the image error
+          // returned by container creation, not other Docker failures.
+          if (
+            error.statusCode === 404 &&
+            /\bNo such image:/i.test(error.json?.message || error.message || '')
+          ) {
+            error.code = 'COMPILE_IMAGE_MISSING'
+          }
           return callback(error)
         }
         startExistingContainer()

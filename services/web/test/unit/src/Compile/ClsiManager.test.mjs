@@ -325,6 +325,58 @@ describe('ClsiManager', function () {
   })
 
   describe('sendRequest', function () {
+    describe('with an unsuccessful CLSI response', function () {
+      function sendRequest(ctx) {
+        return ctx.ClsiManager.promises.sendRequest(
+          null,
+          ctx.project._id,
+          ctx.user_id,
+          { compileBackendClass: 'free', compileGroup: 'standard', timeout: 100 }
+        )
+      }
+
+      function failRequest(ctx, status, body) {
+        ctx.FetchUtils.fetchStringWithResponse.rejects(
+          new RequestFailedError(
+            `http://${CLSI_HOST}/compile`,
+            { method: 'POST' },
+            { status },
+            body
+          )
+        )
+      }
+
+      it('forwards the dedicated missing image status', async function (ctx) {
+        failRequest(ctx, 500, JSON.stringify({
+          compile: {
+            status: 'compile-image-missing',
+            error: 'No such image: texlive:test',
+            outputFiles: [],
+          },
+        }))
+        const result = await sendRequest(ctx)
+        expect(result.status).to.equal('compile-image-missing')
+        expect(result.outputFiles).to.deep.equal([])
+        expect(result).not.to.have.property('error')
+      })
+
+      for (const body of [
+        JSON.stringify({ compile: { status: 'error', error: 'Docker failed' } }),
+        'Not JSON',
+        'null',
+      ]) {
+        it(`preserves generic server failures: ${body}`, async function (ctx) {
+          failRequest(ctx, 500, body)
+          await expect(sendRequest(ctx)).to.be.rejected
+        })
+      }
+
+      it('preserves unavailable responses', async function (ctx) {
+        failRequest(ctx, 503, '{}')
+        expect((await sendRequest(ctx)).status).to.equal('unavailable')
+      })
+    })
+
     describe('with a successful compile', function () {
       const buildId = '18fbe9e7564-30dcb2f71250c690'
 

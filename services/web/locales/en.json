@@ -428,6 +428,8 @@
   "close_tabs_to_the_right": "Close tabs to the right",
   "clsi_maintenance": "The compile servers are down for maintenance, and will be back shortly.",
   "clsi_unavailable": "Sorry, the compile server for your project was temporarily unavailable. Please try again in a few moments.",
+  "compile_image_missing": "TeX Live compilation image missing",
+  "compile_image_missing_restart": "Restart the Rogerleaf application container. The required image will download automatically during startup. Wait for the download to finish, then compile again.",
   "code": "Code",
   "code_check_failed_explanation": "Your code has errors that need to be fixed before the auto-compile can run",
   "collaborate_online_and_offline": "Collaborate online and offline, using your own workflow",

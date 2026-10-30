@@ -108,6 +108,15 @@ function PdfPreviewError({
         )
       )
 
+    case 'compile-image-missing':
+      return (
+        includeErrors && (
+          <ErrorLogEntry title={t('compile_image_missing')}>
+            {t('compile_image_missing_restart')}
+          </ErrorLogEntry>
+        )
+      )
+
     case 'clsi-maintenance':
       return (
         includeErrors && (

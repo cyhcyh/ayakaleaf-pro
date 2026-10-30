@@ -728,6 +728,58 @@ describe('DockerRunner', () => {
       })
     })
 
+    describe('when creating the container fails', () => {
+      for (const test of [
+        { statusCode: 404, message: 'No such image: texlive:test', missing: true },
+        {
+          statusCode: 404,
+          message: '(HTTP code 404) no such image - No such image: texlive:test',
+          missing: true,
+        },
+        { statusCode: 404, message: 'No such network: missing', missing: false },
+        { statusCode: 500, message: 'No such image: texlive:test', missing: false },
+        { statusCode: 403, message: 'permission denied', missing: false },
+      ]) {
+        it(`classifies ${test.statusCode}: ${test.message}`, ctx => {
+          const error = Object.assign(new Error(test.message), {
+            statusCode: test.statusCode,
+          })
+          ctx.container.inspect = sinon.stub().yields({ statusCode: 404 })
+          ctx.createContainer.yields(error)
+
+          ctx.DockerRunner.startContainer(
+            ctx.options,
+            ctx.volumes,
+            ctx.attachStreamHandler,
+            ctx.callback
+          )
+
+          expect(ctx.callback.calledOnceWith(error)).to.equal(true)
+          expect(error.code).to.equal(
+            test.missing ? 'COMPILE_IMAGE_MISSING' : undefined
+          )
+          expect(ctx.DockerRunner.attachToContainer.called).to.equal(false)
+        })
+      }
+
+      it('recognizes the structured Docker error message', ctx => {
+        const error = Object.assign(new Error('Docker request failed'), {
+          statusCode: 404,
+          json: { message: 'No such image: texlive:test' },
+        })
+        ctx.container.inspect = sinon.stub().yields({ statusCode: 404 })
+        ctx.createContainer.yields(error)
+        ctx.DockerRunner.startContainer(
+          ctx.options,
+          ctx.volumes,
+          ctx.attachStreamHandler,
+          ctx.callback
+        )
+        expect(error.code).to.equal('COMPILE_IMAGE_MISSING')
+        expect(ctx.callback.calledOnceWith(error)).to.equal(true)
+      })
+    })
+
     describe('when the container is already running', () => {
       beforeEach(ctx => {
         const error = new Error(

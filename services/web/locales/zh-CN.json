@@ -294,6 +294,8 @@
   "close": "关闭",
   "clsi_maintenance": "编译服务器停机维护，将很快恢复正常。",
   "clsi_unavailable": "抱歉，项目的编译服务器暂时不可用。请稍后再试。",
+  "compile_image_missing": "缺少 TeX Live 编译镜像",
+  "compile_image_missing_restart": "请重启 Rogerleaf 应用容器。系统会在启动时自动重新下载所需镜像，请等待下载完成后再编译。",
   "code_check_failed_explanation": "您的代码有问题，无法自动编译",
   "collaborate_online_and_offline": "使用自己的工作流进行在线和离线协作",
   "collaboration": "合作",
