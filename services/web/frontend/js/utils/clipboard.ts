@@ -1,5 +1,7 @@
 /** Copy text without requiring a secure context. Never report a failed copy as success. */
 export async function copyTextToClipboard(text: string): Promise<boolean> {
+  // A tooltip may blur the button while the clipboard permission request runs.
+  const active = document.activeElement
   if (navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text)
@@ -11,7 +13,6 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 
   if (typeof document.execCommand !== 'function') return false
 
-  const active = document.activeElement
   const selection = window.getSelection()
   const anchorNode = selection?.anchorNode
   const anchorOffset = selection?.anchorOffset ?? 0
@@ -44,9 +45,10 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   })
 
   try {
-    // Stay inside an open modal so its focus trap does not interrupt the copy.
+    // A modal's focus trap can be nested inside its outer dialog element.
     const container =
-      active?.closest('[role="dialog"], dialog') ?? document.body
+      active?.closest('.focus-trap-container, [role="dialog"], dialog') ??
+      document.body
     container.appendChild(temporary)
     temporary.focus({ preventScroll: true })
     temporary.select()

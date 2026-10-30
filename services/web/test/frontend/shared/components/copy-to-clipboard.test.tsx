@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import sinon from 'sinon'
 import { CopyToClipboard } from '@/shared/components/copy-to-clipboard'
+import FocusTrap from '@/shared/components/focus-trap'
 import i18nReady from '@/i18n'
 
 describe('<CopyToClipboard /> compatibility', function () {
@@ -82,4 +83,64 @@ describe('<CopyToClipboard /> compatibility', function () {
     expect(legacyCopy).not.to.have.been.called
     expect(screen.getByText('check')).to.exist
   })
+
+  for (const permission of ['unavailable', 'denied']) {
+    for (const path of ['edit-token#edit-prefix', 'read/view-token#view-prefix']) {
+      it(`copies the exact sharing link inside a modal focus trap when the API is ${permission}: ${path}`, async function () {
+        if (permission === 'denied') {
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {
+              writeText: sinon
+                .stub()
+                .rejects(new DOMException('denied', 'NotAllowedError')),
+            },
+          })
+        }
+        const link = `http://example.test/${path}`
+        let copied = ''
+        let copySource = ''
+        // A copy command can report success after the focus trap has moved
+        // focus away. Verify the selected field's content, not only its result.
+        legacyCopy.callsFake(() => {
+          const active = document.activeElement
+          copySource = active?.outerHTML || ''
+          if (active instanceof HTMLTextAreaElement) {
+            copied = active.value.slice(
+              active.selectionStart,
+              active.selectionEnd
+            )
+          }
+          return true
+        })
+        render(
+          <div role="dialog">
+            <FocusTrap
+              active
+              focusTrapOptions={{
+                initialFocus: false,
+                returnFocusOnDeactivate: false,
+                tabbableOptions: { displayCheck: 'none' },
+              }}
+            >
+              <CopyToClipboard
+                content={link}
+                tooltipId="sharing-copy-test"
+                kind="button"
+              />
+            </FocusTrap>
+          </div>
+        )
+        const button = screen.getByRole('button', { name: 'Copy' })
+        button.focus()
+        await act(async () => {
+          fireEvent.click(button)
+        })
+        expect(copied, copySource).to.equal(link)
+        expect(legacyCopy).to.have.been.calledOnceWithExactly('copy')
+        expect(screen.getByRole('dialog').querySelector('textarea')).to.equal(null)
+        expect(screen.getByText('check')).to.exist
+      })
+    }
+  }
 })
