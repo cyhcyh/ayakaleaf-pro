@@ -4,7 +4,7 @@ import Setting from '@/features/ide-settings/components/setting'
 import { useProjectContext } from '@/shared/context/project-context'
 import { OLModal, OLModalHeader, OLModalTitle, OLModalBody, OLModalFooter } from '@/shared/components/ol/ol-modal'
 import { api } from './api'
-import { prepareHistoryClear, historyCleared } from './history-events'
+import { prepareHistoryClear, historyCleared, historyClearFailed } from './history-events'
 
 export default function DataSettings() {
   const { projectId } = useProjectContext()
@@ -30,7 +30,7 @@ export default function DataSettings() {
       await api('/history/clear', { projectId, scope })
       historyCleared({ projectId, scope })
       setConfirm(false); setCount(0); setNotice(ui("历史会话已清空。"))
-    } catch (error) { setError((error as Error).message) } finally { setBusy(false) }
+    } catch (error) { historyClearFailed({ projectId, scope }); setError((error as Error).message) } finally { setBusy(false) }
   }
   return <div className="pa-native-settings">
     <Setting controlId="pa-history-scope" label={ui("清除范围")} description={ui("只清除你自己的历史会话。")}>

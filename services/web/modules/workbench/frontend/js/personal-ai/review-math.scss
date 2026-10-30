@@ -1,0 +1,39 @@
+.rl-review-comment-math {
+  min-width: 0;
+  width: 100%;
+
+  .review-panel-comment-body {
+    display: block;
+  }
+}
+
+.rl-review-math {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px;
+  overflow: auto hidden;
+  vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: normal;
+
+  .katex {
+    font-size: 1.05em;
+    color: inherit;
+    white-space: nowrap;
+  }
+
+  .katex-display {
+    margin: 0;
+    text-align: left;
+
+    > .katex {
+      display: inline-block;
+      text-align: left;
+    }
+  }
+}
+
+.rl-review-math-display {
+  display: block;
+  margin: 6px 0;
+}

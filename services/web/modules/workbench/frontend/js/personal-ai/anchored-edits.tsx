@@ -36,6 +36,7 @@ function OpenEdits() {
   const tabsEnabled = useAreTabsEnabled()
   const style = useReviewPanelStyles()
   const state = useEdits(projectId)
+  const visibleItems = state.items.filter(item => item.state !== 'superseded')
   const actions = useEditActions()
   const path = currentDocumentId ? pathInFolder(currentDocumentId) : null
   const [filter, setFilter] = useState(() => state.items.some(item => item.id === state.focusId && item.state !== 'pending') ? 'done' : 'pending')
@@ -44,8 +45,8 @@ function OpenEdits() {
   const inner = useRef<HTMLDivElement>(null)
   const revealId = useRef<string | null>(null)
   const hovered = useRef<AnyOperation | null>(null)
-  const pending = state.items.filter(item => item.state === 'pending').length
-  const items = state.items.filter(item => filter === 'all' || (filter === 'pending' ? item.state === 'pending' : item.state !== 'pending'))
+  const pending = visibleItems.filter(item => item.state === 'pending').length
+  const items = visibleItems.filter(item => filter === 'all' || (filter === 'pending' ? item.state === 'pending' : item.state !== 'pending'))
   const previousFocus = useRef(state.focusId)
   useEffect(() => {
     if (previousFocus.current === state.focusId) return

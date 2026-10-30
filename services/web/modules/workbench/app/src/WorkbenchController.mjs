@@ -25,6 +25,7 @@ import { condenseOldToolOutputs, compactHistory } from './ContextCompaction.mjs'
 import { researchTools, REVIEW_INSTRUCTIONS } from './personal-ai/ResearchTools.mjs'
 import { compactPersonalHistory } from './personal-ai/Compression.mjs'
 import { listEdits } from './personal-ai/Edits.mjs'
+import { registerChatRun } from './personal-ai/ActiveChatRuns.mjs'
 import {
   isQuotaEnabled,
   getRemainingTokens,
@@ -66,6 +67,10 @@ function hasValidAttachments(messages) {
  */
 async function chat(req, res) {
   const userId = SessionManager.getLoggedInUserId(req.session)
+  const abort = new AbortController()
+  const releaseRun = registerChatRun(userId, req.body?.projectId, req.body?.id, abort)
+  res.once('close', () => { abort.abort(); releaseRun() })
+  if (res.destroyed) { abort.abort(); releaseRun(); return }
 
   if (!isConfigured()) {
     logger.warn(
@@ -119,7 +124,7 @@ async function chat(req, res) {
   // Server-side search tools can run alongside browser document tools.
   const webSearch = enabledTools.includes('web_search') && isWebSearchConfigured()
   const docsSearch = enabledTools.includes('search_docs') && isDocsSearchConfigured()
-  const tools = { ...CLIENT_TOOLS, ...(req.body.projectId && researchTools(userId, req.body.projectId)) }
+  const tools = { ...CLIENT_TOOLS, ...(req.body.projectId && researchTools(userId, req.body.projectId, req.body.id)) }
   if (webSearch) tools.web_search = WEB_SEARCH_TOOL
   if (docsSearch) tools.search_docs = DOCS_SEARCH_TOOL
 
@@ -145,8 +150,6 @@ async function chat(req, res) {
   let history = condensed
   let historySummary = summary
   let compaction = null
-  const abort = new AbortController()
-  res.once('close', () => abort.abort())
   try {
     compaction = req.body.projectId
       ? await compactPersonalHistory({ messages: condensed, summary, previous: req.body.compaction, userId, system, tools, signal: abort.signal })

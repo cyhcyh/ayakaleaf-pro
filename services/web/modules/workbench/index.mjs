@@ -13,7 +13,7 @@ Modules.hooks.attach('projectExpired', expireProject)
 //   AI_API_KEY   — key for that gateway
 //   AI_MODEL     — default model for chat and error suggestions
 //   AI_IMAGE_MODEL — optional; model on the same gateway for chats with images
-//   AI_MAX_STEPS — optional; tool calls per user message, across requests (default 100)
+//   AI_MAX_STEPS — optional; tool calls per user message, across requests (default 500)
 //   AI_PROXY_URL — optional; route gateway calls through an HTTP proxy
 //                  (like the GITHUB_/PAPERS_ proxy env vars)
 //   AI_TOKEN_QUOTA — optional; per-user tokens per period for chat and error fixes
@@ -27,7 +27,7 @@ Settings.workbenchAi = {
   apiKey: process.env.AI_API_KEY,
   model: process.env.AI_MODEL,
   imageModel: process.env.AI_IMAGE_MODEL,
-  maxSteps: parseInt(process.env.AI_MAX_STEPS || '', 10) || 100,
+  maxSteps: parseInt(process.env.AI_MAX_STEPS || '', 10) || 500,
   proxyUrl: process.env.AI_PROXY_URL,
   tokenQuota: parseInt(process.env.AI_TOKEN_QUOTA || '', 10) || 0,
   tokenQuotaPeriod:

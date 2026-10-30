@@ -1,4 +1,4 @@
-import { FC, useCallback, useRef, useState } from 'react'
+import { FC, useCallback, useMemo, useRef, useState } from 'react'
 import {
   CommentId,
   ReviewPanelCommentThreadMessage,
@@ -15,6 +15,7 @@ import { useUserContext } from '@/shared/context/user-context'
 import ReviewPanelEntryUser from './review-panel-entry-user'
 import { usePermissionsContext } from '@/features/ide-react/context/permissions-context'
 import { PreventSelectingEntry } from './review-panel-prevent-selecting'
+import { commentMath } from '@modules/workbench/shared/comment-math.mjs'
 
 export const ReviewPanelMessage: FC<{
   message: ReviewPanelCommentThreadMessage
@@ -43,6 +44,10 @@ export const ReviewPanelMessage: FC<{
   const hasSubmittedRef = useRef(false)
   const user = useUserContext()
   const permissions = usePermissionsContext()
+  const hasMath = useMemo(
+    () => commentMath(message.content).some(token => token.type === 'math'),
+    [message.content]
+  )
 
   const isCommentAuthor = Boolean(message.user && user.id === message.user.id)
   const canEdit = isCommentAuthor && permissions.comment
@@ -79,7 +84,9 @@ export const ReviewPanelMessage: FC<{
   }, [onDelete])
 
   return (
-    <div className="review-panel-comment">
+    <div
+      className={`review-panel-comment${hasMath ? ' rl-review-comment-math' : ''}`}
+    >
       <div className="review-panel-entry-header">
         <div>
           <ReviewPanelEntryUser user={message.user} />
@@ -145,6 +152,7 @@ export const ReviewPanelMessage: FC<{
           checkNewLines
           content={message.content}
           translate="no"
+          math
         />
       )}
 

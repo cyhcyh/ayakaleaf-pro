@@ -20,3 +20,49 @@ index 6c5c6f1..bb6b7d1 100644
      }
      function getBinarySync(file) {
        if (file == wasmBinaryFile && wasmBinary) {
+diff --git a/web/pdf_viewer.mjs b/web/pdf_viewer.mjs
+--- a/web/pdf_viewer.mjs
++++ b/web/pdf_viewer.mjs
+@@ -5862,6 +5862,7 @@
+     document.addEventListener("selectionchange", () => {
+       const selection = document.getSelection();
+       if (selection.rangeCount === 0) {
++        prevRange = null;
+         this.#textLayers.forEach(reset);
+         return;
+       }
+@@ -5880,6 +5881,11 @@
+         } else {
+           reset(endDiv, textLayerDiv);
+         }
++      }
++      // Other editors may use Shadow DOM. Do not retain their selections.
++      if (activeTextLayers.size === 0) {
++        prevRange = null;
++        return;
+       }
+       isFirefox ??= getComputedStyle(this.#textLayers.values().next().value).getPropertyValue("-moz-user-select") === "none";
+       if (isFirefox) {
+diff --git a/legacy/web/pdf_viewer.mjs b/legacy/web/pdf_viewer.mjs
+--- a/legacy/web/pdf_viewer.mjs
++++ b/legacy/web/pdf_viewer.mjs
+@@ -10527,6 +10527,7 @@
+     document.addEventListener("selectionchange", () => {
+       const selection = document.getSelection();
+       if (selection.rangeCount === 0) {
++        prevRange = null;
+         this.#textLayers.forEach(reset);
+         return;
+       }
+@@ -10545,6 +10546,11 @@
+         } else {
+           reset(endDiv, textLayerDiv);
+         }
++      }
++      // Other editors may use Shadow DOM. Do not retain their selections.
++      if (activeTextLayers.size === 0) {
++        prevRange = null;
++        return;
+       }
+       isFirefox ??= getComputedStyle(this.#textLayers.values().next().value).getPropertyValue("-moz-user-select") === "none";
+       if (isFirefox) {

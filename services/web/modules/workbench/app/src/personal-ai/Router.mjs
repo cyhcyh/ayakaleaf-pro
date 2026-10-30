@@ -44,6 +44,7 @@ const handler = (run) => async (req, res) => {
     res.json(await run(req, res));
   } catch (error) {
     res.status(error.status || 400).json({
+      ...(typeof error.code === 'string' && error.code.startsWith('edit_') && { code: error.code, details: error.details }),
       error:
         localize(error instanceof z.ZodError ? "提交的配置格式不正确" : error.message, req.language),
     });

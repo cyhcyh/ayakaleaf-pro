@@ -387,6 +387,13 @@
   > input { accent-color: var(--green-60); flex-shrink: 0; }
   &:has(details[open]) { min-height: 110px; align-items: flex-start; }
 }
+.pa-history-working {
+  display: inline-block; flex-shrink: 0; width: 14px; height: 14px;
+  border: 2px solid var(--content-positive-themed); border-right-color: transparent; border-radius: 50%;
+  animation: pa-history-spin .8s linear infinite;
+}
+@keyframes pa-history-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pa-history-working { animation-duration: 2s; } }
 .pa-history-select { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 6px 0;
   > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   small { display: block; color: var(--content-secondary-themed); font-size: 11px; margin-top: 4px; }

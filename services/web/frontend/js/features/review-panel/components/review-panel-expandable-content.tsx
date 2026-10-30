@@ -9,6 +9,8 @@ import {
   parseMentions,
   sliceMentionSegments,
 } from '@/shared/utils/parse-mentions'
+import { ReviewMath } from '@modules/workbench/frontend/js/personal-ai/review-math'
+import { commentMathLimit } from '@modules/workbench/shared/comment-math.mjs'
 
 export const ExpandableContent = memo<{
   className?: string
@@ -18,6 +20,7 @@ export const ExpandableContent = memo<{
   checkNewLines?: boolean
   inline?: boolean
   translate?: 'yes' | 'no'
+  math?: boolean
 }>(function ExpandableContent({
   content,
   className,
@@ -26,28 +29,42 @@ export const ExpandableContent = memo<{
   checkNewLines = true,
   inline = false,
   translate,
+  math = false,
 }) {
   const { t } = useTranslation()
   const contentRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)
-  const limit = checkNewLines
+  const textLimit = checkNewLines
     ? Math.min(
         contentLimit,
         indexOfNthLine(content, newLineCharsLimit) ?? Infinity
       )
     : contentLimit
+  const limit = useMemo(
+    () => (math ? commentMathLimit(content, textLimit) : textLimit),
+    [math, content, textLimit]
+  )
 
   const isOverflowing = content.length > limit
 
   const segments = useMemo(() => parseMentions(content), [content])
 
-  const renderedContent = segments
-    ? renderSegments(
-        isExpanded ? segments : sliceMentionSegments(segments, limit)
-      )
-    : isExpanded
-      ? content
-      : content.slice(0, limit)
+  const renderedContent = segments ? (
+    renderSegments(
+      isExpanded ? segments : sliceMentionSegments(segments, limit),
+      math
+    )
+  ) : isExpanded ? (
+    math ? (
+      <ReviewMath text={content} />
+    ) : (
+      content
+    )
+  ) : math ? (
+    <ReviewMath text={content.slice(0, limit)} />
+  ) : (
+    content.slice(0, limit)
+  )
 
   const handleShowMore = useCallback(() => {
     setIsExpanded(true)
@@ -104,14 +121,14 @@ export const ExpandableContent = memo<{
   )
 })
 
-function renderSegments(segments: MentionSegment[]) {
+function renderSegments(segments: MentionSegment[], math: boolean) {
   return segments.map((segment, i) => {
     if (segment.type === 'mention') {
       return (
         <MentionBadge key={`${i}-${segment.userId}`} userId={segment.userId} />
       )
     }
-    return segment.value
+    return math ? <ReviewMath key={i} text={segment.value} /> : segment.value
   })
 }
 

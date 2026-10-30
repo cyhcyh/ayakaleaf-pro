@@ -6,9 +6,11 @@ import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import { api } from './api'
 import type { SessionItem } from './session-state'
 import './style.scss'
+import { prepareHistoryClear, historyCleared, historyClearFailed } from './history-events'
 
-export default function HistoryPicker({ projectId, currentId, beforeChange, onSelect, onNew }: {
-  projectId: string; currentId?: string; beforeChange: () => Promise<void>; onSelect: (id: string) => Promise<void>; onNew: (skipFlush?: boolean) => Promise<void>
+export default function HistoryPicker({ projectId, currentId, workingIds = [], disabled = false, onRename, onSelect, onNew }: {
+  projectId: string; currentId?: string; workingIds?: string[]; disabled?: boolean
+  onRename: (id: string, title: string) => Promise<void>; onSelect: (id: string) => Promise<void>; onNew: (skipFlush?: boolean) => Promise<void>
 }) {
   const button = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
@@ -36,6 +38,16 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
     return () => { clearTimeout(timer); abort.abort() }
   }, [open, query, projectId])
   useEffect(() => {
+    if (!open || batch || rename || deleting) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const abort = new AbortController()
+    const refresh = () => {
+      if (!timer) timer = setTimeout(() => { timer = undefined; load(null, abort.signal).catch(error => { if (!abort.signal.aborted) setError(error.message) }) }, 400)
+    }
+    window.addEventListener('personal-ai:sessions', refresh)
+    return () => { clearTimeout(timer); abort.abort(); window.removeEventListener('personal-ai:sessions', refresh) }
+  }, [open, query, projectId, batch, rename, deleting])
+  useEffect(() => {
     if (!open) return
     const outside = (event: PointerEvent) => { if (!menu.current?.contains(event.target as Node) && !button.current?.contains(event.target as Node)) setOpen(false) }
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); button.current?.focus() } }
@@ -50,7 +62,7 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next })
   return <>
     <OLTooltip id="assistant-history" description={ui("历史会话")} overlayProps={{ placement: 'bottom' }}>
-    <OLIconButton ref={button} className="rail-panel-header-button-subdued" size="sm" icon="history" accessibilityLabel={ui("历史会话")} aria-expanded={open} aria-haspopup="dialog" onClick={() => {
+    <OLIconButton ref={button} disabled={disabled} className="rail-panel-header-button-subdued" size="sm" icon="history" accessibilityLabel={ui("历史会话")} aria-expanded={open} aria-haspopup="dialog" onClick={() => {
       if (!open) { const rect = button.current!.getBoundingClientRect(); setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 388)), top: rect.bottom + 6 }); setError(''); setDeleting(false); setRename(null) }
       setOpen(!open)
     }} /></OLTooltip>
@@ -60,8 +72,7 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
         <button className="btn btn-secondary btn-sm" aria-pressed={batch} onClick={() => { setBatch(!batch); setSelected(new Set()); setDeleting(false) }}>{ui("批量管理")}</button></div>
       {error && <p className="pa-inline-error" role="alert">{error}</p>}
       {rename && <form className="pa-history-rename" onSubmit={event => { event.preventDefault(); execute(async () => {
-        if (rename.id === currentId) await beforeChange(); await api(`/sessions/${rename.id}/rename`, { projectId, title: rename.title });
-        if (rename.id === currentId) await onSelect(rename.id)
+        await onRename(rename.id, rename.title)
         setRename(null); await load()
       }) }}><label>{ui("会话名称")}<input className="form-control" value={rename.title} maxLength={100} onChange={event => setRename({ ...rename, title: event.target.value })} /></label>
         <div className="pa-actions"><button className="btn btn-primary btn-sm" disabled={busy || !rename.title.trim()}>{ui("保存名称")}</button><button type="button" className="btn btn-secondary btn-sm" onClick={() => setRename(null)}>{ui("取消")}</button></div></form>}
@@ -71,6 +82,7 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
           {batch && <input type="checkbox" aria-label={ui("选择会话 {0}", [item.title])} checked={selected.has(item.id)} onChange={() => toggle(item.id)} />}
           <button className="pa-history-select" disabled={busy} onClick={() => batch ? toggle(item.id) : execute(async () => { if (item.id !== currentId) await onSelect(item.id); setOpen(false) })}>
             <span>{item.title}</span>{item.snippet && <span className="pa-history-snippet">{item.snippet}</span>}<small>{new Date(item.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></button>
+          {workingIds.includes(item.id) && <span className="pa-history-working" role="status" aria-label={ui("正在工作")} title={ui("正在工作")} />}
           {!batch && <details className="pa-session-actions"><summary aria-label={ui("管理会话 {0}", [item.title])}>⋮</summary><div>
             <button onClick={() => setRename({ id: item.id, title: item.title })}>{ui("重命名")}</button><button onClick={() => { setSelected(new Set([item.id])); setDeleting(true) }}>{ui("删除")}</button>
           </div></details>}
@@ -79,8 +91,12 @@ export default function HistoryPicker({ projectId, currentId, beforeChange, onSe
       </div>
       {deleting ? <footer className="pa-history-confirm"><p>{ui("删除所选 ")}{selected.size}{ui(" 个会话？项目正文、评论和 AI 修改记录会保留。")}</p><div className="pa-actions">
         <button className="btn btn-danger btn-sm" disabled={busy || !selected.size} onClick={() => execute(async () => {
-          if (currentId && selected.has(currentId)) await beforeChange(); await api('/sessions/delete', { projectId, ids: [...selected] });
-          if (currentId && selected.has(currentId)) await onNew(true)
+          const range = { projectId, scope: 'project' as const, ids: [...selected] }
+          try {
+            await prepareHistoryClear(range)
+            await api('/sessions/delete', { projectId, ids: range.ids })
+            historyCleared(range)
+          } catch (error) { historyClearFailed(range); throw error }
           setSelected(new Set()); setDeleting(false); await load()
         })}>{ui("确认删除 ")}{selected.size}{ui(" 项")}</button><button className="btn btn-secondary btn-sm" onClick={() => setDeleting(false)}>{ui("取消")}</button></div></footer>
         : batch && <footer><span>{ui("已选 ")}{selected.size}{ui(" 项")}</span><button className="pa-text-action" onClick={() => setSelected(selected.size === items.length ? new Set() : new Set(items.map(item => item.id)))}>{selected.size === items.length ? ui("取消选择") : ui("全选已显示")}</button><button className="btn btn-outline-danger btn-sm" disabled={!selected.size || selected.size > 100 || busy} onClick={() => setDeleting(true)}>{ui("删除所选")}</button></footer>}

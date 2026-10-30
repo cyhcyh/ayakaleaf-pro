@@ -52,7 +52,7 @@ export async function api<T = any>(path: string, body?: unknown, signal?: AbortS
   const response = await apiResponse(path, body, signal);
   const result = await response.json();
   if (!response.ok)
-    throw new Error(result.error ? ui(result.error) : ui("请求失败（HTTP {0}）", [response.status]));
+    throw Object.assign(new Error(result.error ? ui(result.error) : ui("请求失败（HTTP {0}）", [response.status])), { code: result.code, details: result.details });
   return result;
 }
 

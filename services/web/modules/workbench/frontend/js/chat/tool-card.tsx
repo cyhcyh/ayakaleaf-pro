@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react'
 import MaterialIcon from '@/shared/components/material-icon'
 import { faint, muted } from './themed'
+import { readEditFailure } from '../../../shared/edit-recovery.mjs'
 
 function StateMark({ state }: { state: string }) {
   switch (state) {
@@ -48,7 +49,7 @@ export default function ToolCard({
       </div>
       {state === 'output-error' && errorText && (
         <div className="ms-4" style={muted}>
-          {errorText}
+          {name === 'propose_edit' ? readEditFailure(errorText)?.message || errorText : errorText}
         </div>
       )}
       {children}

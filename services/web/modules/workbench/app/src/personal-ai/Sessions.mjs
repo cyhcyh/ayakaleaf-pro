@@ -9,10 +9,11 @@ import { messagesPage } from './SessionMessages.mjs';
 import { validateSessionBinding } from './Runtime.mjs';
 import { selectionSchema } from './Pure.mjs';
 import { outboxSchema } from './QueueSchema.mjs';
+import { stopChatRuns } from './ActiveChatRuns.mjs';
 
 const message = z.object({
   order: z.number().int().min(0).max(1000000),
-  message: z.object({ id: z.string().min(1).max(150), role: z.enum(['user', 'assistant', 'system']), parts: z.array(z.object({ type: z.string().min(1).max(100) }).passthrough()).max(300) }).passthrough()
+  message: z.object({ id: z.string().min(1).max(150), role: z.enum(['user', 'assistant', 'system']), parts: z.array(z.object({ type: z.string().min(1).max(100) }).passthrough()).max(5000) }).passthrough()
     .refine(value => Buffer.byteLength(JSON.stringify(value)) <= 9 * 1024 * 1024, '单条消息内容过大'),
 });
 export const saveSessionSchema = z.object({
@@ -65,13 +66,18 @@ export async function createSession(userId, projectId) {
   return { id: row._id, projectId, title: row.title, revision: 0, messages: [], messageOffset: 0, olderBefore: null, summary: null, binding: null, outbox: [] };
 }
 
-export async function loadSession(userId, projectId, id, paged = false) {
-  const row = await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) });
-  if (!row) throw missing();
+export async function activateSession(userId, projectId, id) {
   await projectWrite(projectId, async session => {
     if (!await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) }, { session })) throw missing();
     await (await collection('ActiveSessions')).updateOne({ _id: `${userId}:${projectId}` }, { $set: { sessionId: id, userId: String(userId), projectId } }, { upsert: true, session });
   });
+  return { ok: true };
+}
+
+export async function loadSession(userId, projectId, id, paged = false) {
+  const row = await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) });
+  if (!row) throw missing();
+  await activateSession(userId, projectId, id);
   const page = paged ? await messagesPage(userId, projectId, id) : {
     messages: (await (await collection('Messages')).find({ sessionId: id, userId: String(userId), projectId }).sort({ order: 1, _id: 1 }).toArray()).map(row => restoredMessage(row.message)),
     messageOffset: 0, olderBefore: null,
@@ -125,7 +131,8 @@ export async function renameSession(userId, projectId, id, title) {
   const result = await (await collection('Sessions')).updateOne({ _id: id, ...scope(userId, projectId) },
     { $set: { title: z.string().trim().min(1).max(100).parse(title), autoTitle: false, updatedAt: new Date() }, $inc: { revision: 1 } }, { session });
   if (!result.matchedCount) throw missing();
-  return { ok: true };
+  const row = await (await collection('Sessions')).findOne({ _id: id, ...scope(userId, projectId) }, { session });
+  return { ok: true, revision: row.revision };
   });
 }
 
@@ -140,7 +147,8 @@ export async function clearHistory(userId, projectId, range) {
   const filter = historyScope(userId, projectId, range);
   const session = Mongoose.connection.getClient().startSession();
   try {
-    return await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
+      stopChatRuns(userId, range === 'project' ? projectId : undefined);
       const projects = await (await collection('Sessions')).distinct('projectId', filter, { session });
       await (await collection('ProjectState')).updateMany({ _id: { $in: projects } }, { $inc: { revision: 1 } }, { session });
       const result = await (await collection('Sessions')).updateMany({ ...filter, deleted: false },
@@ -152,6 +160,8 @@ export async function clearHistory(userId, projectId, range) {
         : { $or: [{ userId: String(userId) }, { _id: { $regex: `^${String(userId)}:` } }] }, { session });
       return { deleted: result.modifiedCount };
     });
+    stopChatRuns(userId, range === 'project' ? projectId : undefined);
+    return result;
   } finally { await session.endSession(); }
 }
 
@@ -160,13 +170,16 @@ export async function deleteSessions(userId, projectId, ids) {
   const store = await collection('Sessions');
   const messages = await collection('Messages');
   const reviews = await collection('Reviews');
-  return await projectWrite(projectId, async transaction => {
+  const result = await projectWrite(projectId, async transaction => {
       const owned = await store.find({ _id: { $in: identifiers }, ...scope(userId, projectId) }, { session: transaction }).toArray();
       if (owned.length !== new Set(identifiers).size) throw missing();
+      stopChatRuns(userId, projectId, identifiers);
       await store.updateMany({ _id: { $in: identifiers }, ...scope(userId, projectId) },
         { $set: { deleted: true, title: '', summary: null, outbox: [], hasQueued: false, updatedAt: new Date() }, $inc: { revision: 1 } }, { session: transaction });
       await messages.deleteMany({ sessionId: { $in: identifiers }, userId: String(userId), projectId }, { session: transaction });
       await reviews.updateMany({ chatId: { $in: identifiers }, userId: String(userId), projectId }, { $set: { stopped: true } }, { session: transaction });
       return { deleted: identifiers.length };
   });
+  stopChatRuns(userId, projectId, identifiers);
+  return result;
 }

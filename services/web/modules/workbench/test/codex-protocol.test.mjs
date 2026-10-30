@@ -3,6 +3,8 @@ import test from 'node:test'
 import { streamText, stepCountIs, tool } from 'ai'
 import { z } from 'zod'
 import { codexModel } from '../app/src/personal-ai/CodexModel.mjs'
+import { CLIENT_TOOLS, convertWorkbenchMessages } from '../app/src/WorkbenchTools.mjs'
+import { encodeEditFailure } from '../shared/edit-recovery.mjs'
 
 function events(output, text = '') {
   const response = { id: 'resp_fixture', model: 'gpt-5.4', status: 'completed', output: [output], usage: { input_tokens: 5, output_tokens: 3, total_tokens: 8 } }
@@ -58,3 +60,32 @@ test('Codex translation delivers successive text chunks including complete formu
   for await (const text of response.textStream) received.push(text);
   assert.deepEqual(received, pieces);
 });
+
+test('Codex accepts null optional edit fields without requiring a placeholder UUID', async () => {
+  let received
+  const input = { path: 'main.tex', startLine: 1, endLine: 1, oldText: 'Source.', newText: 'Draft.', replacesEditId: null, keepSeparate: null }
+  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only' }, async () => events({
+    type: 'function_call', id: 'fc_edit', call_id: 'call_edit', name: 'propose_edit', arguments: JSON.stringify(input), status: 'completed',
+  }))('gpt-5.4')
+  const result = streamText({ model, prompt: 'Suggest a new edit.', tools: { propose_edit: {
+    ...CLIENT_TOOLS.propose_edit, execute: async value => { received = value; return { queued: true } },
+  } }, stopWhen: stepCountIs(1) })
+  await result.text
+  assert.deepEqual(received, input)
+})
+
+test('Codex stateless replay preserves actionable edit failure codes and valid tool arguments', async () => {
+  const input = { path: 'main.tex', startLine: 1, endLine: 1, oldText: 'Source.', newText: 'Draft.', replacesEditId: '00000000-0000-0000-0000-000000000000' }
+  const messages = await convertWorkbenchMessages([
+    { id: 'user', role: 'user', parts: [{ type: 'text', text: 'Continue the old suggestion.' }] },
+    { id: 'assistant', role: 'assistant', parts: [{ type: 'tool-propose_edit', toolCallId: 'call_edit', input, state: 'output-error',
+      errorText: encodeEditFailure({ code: 'edit_target_not_found', message: 'Find the suggestion first.', details: { action: 'find_edit_suggestions' } }) }] },
+  ])
+  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only' }, async (_, init) => {
+    const body = JSON.parse(init.body)
+    assert.ok(body.input.some(item => item.type === 'function_call' && JSON.parse(item.arguments).oldText === input.oldText))
+    assert.ok(body.input.some(item => item.type === 'function_call_output' && item.output.includes('edit_target_not_found') && item.output.includes('find_edit_suggestions')))
+    return events({ type: 'message', id: 'msg_recover', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: 'Find the suggestion.', annotations: [] }] }, 'Find the suggestion.')
+  })('gpt-5.4')
+  assert.equal(await streamText({ model, messages, tools: CLIENT_TOOLS }).text, 'Find the suggestion.')
+})

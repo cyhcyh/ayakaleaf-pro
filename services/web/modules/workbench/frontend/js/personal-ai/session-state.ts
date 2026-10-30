@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
 import { api, type Binding } from './api'
 import type { QueuedMessage } from '../chat/draft'
+import { sessionSaved } from './history-events'
 
 export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[] }
 export type MessagePage = { messages: UIMessage[]; messageOffset: number; olderBefore: number | null }
@@ -67,7 +68,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
           savedSummary.current = summaryText
           savedBinding.current = bindingText
         }
-        window.dispatchEvent(new Event('personal-ai:sessions'))
+        sessionSaved(projectId)
       } catch (error) {
         if (alive.current) setError((error as Error).message)
         throw error
@@ -79,6 +80,18 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
   }, [initial?.id, projectId, outboxRef])
   const flushRef = useRef(flush)
   flushRef.current = flush
+  const rename = useCallback((title: string) => {
+    if (!initial) return Promise.resolve()
+    // Renaming increments the same revision as autosave. Serialize it with
+    // streaming saves rather than restarting or reloading a live conversation.
+    const work = queue.current.catch(() => {}).then(async () => {
+      const result = await api<{ revision: number }>(`/sessions/${initial.id}/rename`, { projectId, title })
+      revision.current = result.revision
+      sessionSaved(projectId)
+    })
+    queue.current = work
+    return work
+  }, [initial?.id, projectId])
   useEffect(() => {
     if (!initial || timer.current) return
     timer.current = setTimeout(() => { timer.current = undefined; flush().catch(() => {}) }, streaming ? 1500 : 300)
@@ -100,5 +113,5 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
       flushRef.current().catch(() => {})
     }
   }, [initial?.id])
-  return { flush, saving, error }
+  return { flush, rename, saving, error }
 }

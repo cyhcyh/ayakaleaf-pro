@@ -38,8 +38,13 @@ export function useEditActions() {
     throw new Error(ui("编辑器尚未加载该文件，请稍后重试"))
   }
   const locate = async (id: string) => {
-    const record = await ensureEdit(projectId, id)
-    focusEdit(projectId, id)
+    let record = await ensureEdit(projectId, id)
+    const visited = new Set<string>()
+    while (record.supersededBy && !visited.has(record.id)) {
+      visited.add(record.id)
+      record = await ensureEdit(projectId, record.supersededBy)
+    }
+    focusEdit(projectId, record.id)
     openTab('ai-modifications')
     const editor = await open(record)
     const before = ['accepted'].includes(record.state) ? record.input.newText : record.input.oldText

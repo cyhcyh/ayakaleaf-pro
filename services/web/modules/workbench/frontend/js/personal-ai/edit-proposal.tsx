@@ -6,7 +6,7 @@ import { ReviewChatContext } from './review-tools'
 import { ensureEdit, useEdits } from './edits-store'
 import { useEditActions } from './use-edit-actions'
 
-export const editStateNames = { pending: ui("待确认"), accepted: ui("已应用"), rejected: ui("已拒绝"), undone: ui("已撤销") }
+export const editStateNames = { pending: ui("待确认"), accepted: ui("已应用"), rejected: ui("已拒绝"), undone: ui("已撤销"), superseded: ui("已更新") }
 
 export default function PersonalEditProposal({ part, respond }: { part: EditPart & { output?: { editId?: string } }; respond: Respond }) {
   const context = useContext(ReviewChatContext)!

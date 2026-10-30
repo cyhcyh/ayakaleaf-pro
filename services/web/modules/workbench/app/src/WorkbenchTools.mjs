@@ -74,6 +74,8 @@ export const CLIENT_TOOLS = {
       oldText: z.string().describe('The current text of those lines, exactly.'),
       newText: z.string().describe('The text to put in their place.'),
       reason: z.string().optional().describe('Why, in one short sentence.'),
+      replacesEditId: z.string().nullable().optional().describe('Real pending edit ID returned by find_edit_suggestions when the user asks to continue that suggestion, including one from an earlier conversation. Omit or send null for a new suggestion. Never invent or use a placeholder UUID. oldText must match current source, not an unapplied draft.'),
+      keepSeparate: z.boolean().nullable().optional().describe('True only when the user wants a separate alternative for the same passage. Omit or send null/false otherwise.'),
     }),
   }),
 

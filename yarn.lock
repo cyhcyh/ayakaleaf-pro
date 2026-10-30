@@ -24229,13 +24229,13 @@ __metadata:
 
 "pdfjs-dist@patch:pdfjs-dist@npm%3A5.1.91#~/.yarn/patches/pdfjs-dist-npm-5.1.91.patch":
   version: 5.1.91
-  resolution: "pdfjs-dist@patch:pdfjs-dist@npm%3A5.1.91#~/.yarn/patches/pdfjs-dist-npm-5.1.91.patch::version=5.1.91&hash=572b81"
+  resolution: "pdfjs-dist@patch:pdfjs-dist@npm%3A5.1.91#~/.yarn/patches/pdfjs-dist-npm-5.1.91.patch::version=5.1.91&hash=b306c8"
   dependencies:
     "@napi-rs/canvas": "npm:^0.1.67"
   dependenciesMeta:
     "@napi-rs/canvas":
       optional: true
-  checksum: 10c0/fad356c6fa399f27897cc7111637a415c01035c62d406c121520c595eb88452b4859205df8ab34f4d1fc3921fa632af045900ced1123f0514972fb91acf60501
+  checksum: 10c0/ffab31b80e424b6c77b17f1dd3a33558c16944a843259aecfcb84b8a06de221ba9345aeced2027fd14a140a6dc3bc07b3d29123b38ade1e0b0784cf0d4f04e38
   languageName: node
   linkType: hard
 

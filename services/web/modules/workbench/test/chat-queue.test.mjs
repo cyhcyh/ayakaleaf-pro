@@ -78,3 +78,11 @@ test('100 tool calls share one budget across continuations and a new user turn s
   assert.ok(createToolCallLimit(messages, 100).exhausted());
   assert.ok(!createToolCallLimit([...messages, { role: 'user', parts: [{ type: 'text', text: 'Continue' }] }], 100).exhausted());
 });
+
+test('a 500-call budget allows call 500 and stops before call 501', () => {
+  const user = { role: 'user', parts: [{ type: 'text', text: 'Review the project.' }] };
+  const parts = Array.from({ length: 500 }, (_, at) => ({ type: 'tool-get_file', toolCallId: `call-${at}`, state: 'output-available' }));
+  assert.ok(!createToolCallLimit([user, { role: 'assistant', parts: parts.slice(0, 499) }], 500).exhausted());
+  assert.ok(createToolCallLimit([user, { role: 'assistant', parts }], 500).exhausted());
+  assert.ok(!createToolCallLimit([user, { role: 'assistant', parts }, user], 500).exhausted());
+});

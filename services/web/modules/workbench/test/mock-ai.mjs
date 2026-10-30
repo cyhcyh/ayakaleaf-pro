@@ -11,6 +11,44 @@ function output(messages) {
   const latestTool = toolMessages.at(-1)
   const latestText = typeof latestTool?.content === 'string' ? latestTool.content : JSON.stringify(latestTool?.content || '')
   const reviewId = [...toolMessages].reverse().map(message => String(message.content).match(/"reviewId"\s*:\s*"([^"]+)"/)?.[1]).find(Boolean)
+  if (/\[REPAIR:/.test(userText || '')) {
+    const turn = messages.slice(messages.findLastIndex(message => message.role === 'user') + 1)
+    const results = turn.filter(message => message.role === 'tool').map(message => {
+      let value = message.content
+      for (let at = 0; at < 2 && typeof value === 'string'; at++) { try { value = JSON.parse(value) } catch { break } }
+      return value
+    })
+    const oldText = '\\documentclass{article}'
+    if (userText.includes('[REPAIR:BAD_ID]') || userText.includes('[REPAIR:RECOVER]') && !results.length)
+      return { tool: 'propose_edit', input: { path: 'main.tex', startLine: 1, endLine: 1, oldText,
+        newText: oldText + '\n% Invalid ID fixture', replacesEditId: '00000000-0000-0000-0000-000000000000' } }
+    const found = results.find(value => Array.isArray(value?.items))
+    if (!found) return { tool: 'find_edit_suggestions', input: { path: 'main.tex', quote: null } }
+    if (userText.includes('[REPAIR:DISCOVER]')) return { text: `Found ${found.items.length} pending suggestions.` }
+    if (results.some(value => value?.editId)) return { text: '旧建议已更新，等待你在 AI 修改面板接受。' }
+    if (!found.items.length) return { text: '没有找到可续改的待确认建议。' }
+    const source = results.find(value => Array.isArray(value?.lines))
+    if (!source) return { tool: 'get_file', input: { path: 'main.tex' } }
+    return { tool: 'propose_edit', input: { path: 'main.tex', startLine: 1, endLine: 1,
+      oldText: source.lines[0].content, newText: source.lines[0].content + '\n% Continued from an older suggestion',
+      reason: '继续完善旧建议，保留当前正文，等待确认。', replacesEditId: found.items[0].id, keepSeparate: false } }
+  }
+  if (/\[BG:EDIT:/.test(userText || '')) {
+    const turn = messages.slice(messages.findLastIndex(message => message.role === 'user') + 1)
+    const results = turn.filter(message => message.role === 'tool')
+    if (!results.length) return { tool: 'get_file', input: { path: 'main.tex' } }
+    const result = JSON.parse(String(results.at(-1).content))
+    if (result.editId) return { text: '已更新待确认建议，请在 AI 修改面板核对。' }
+    const revision = userText.match(/\[BG:EDIT:(\d+)\]/)?.[1] || '1'
+    return { tool: 'propose_edit', input: { path: 'main.tex', startLine: 1, endLine: 1,
+      oldText: result.lines[0].content, newText: result.lines[0].content + `\n% Revision ${revision}`,
+      reason: `将这段话调整为第 ${revision} 稿。` } }
+  }
+  if (/\[BG:CREATE\]/.test(userText || '')) {
+    const turn = messages.slice(messages.findLastIndex(message => message.role === 'user') + 1)
+    if (!turn.some(message => message.role === 'tool')) return { tool: 'new_file', input: { path: 'background-note.tex' } }
+    return { text: '后台文件已创建，当前编辑器位置保持不变。' }
+  }
   if (/\[QUEUE:/.test(userText || '')) {
     const turn = messages.slice(messages.findLastIndex(message => message.role === 'user') + 1)
     const results = turn.filter(message => message.role === 'tool')
@@ -53,7 +91,7 @@ function output(messages) {
     }
     return { tool: 'get_file', input: { path: 'main.tex' } }
   }
-  if (/\[TEST:REVIEW\]|请.*审阅/.test(userText || '')) {
+  if (/\[TEST:REVIEW\]|\[TEST:REVIEW_MATH\]|请.*审阅/.test(userText || '')) {
     if (latestText.includes('"added":true')) return { text: '审阅完成，已将一条具体意见添加为原生评论，可在审阅面板回复或解决。' }
     if (reviewId && latestText.includes('"lineCount"')) {
       let quote = '\\section{Introduction}'
@@ -61,7 +99,10 @@ function output(messages) {
         const parsed = JSON.parse(latestText)
         quote = parsed.lines?.find(line => line.content.includes('\\section'))?.content || parsed.lines?.find(line => line.content.trim())?.content || quote
       } catch {}
-      return { tool: 'add_review_comment', input: { reviewId, path: 'main.tex', quote, content: '建议在引言中明确论文的研究问题，并说明主要结论与已有工作的关系。' } }
+      const content = userText.includes('[TEST:REVIEW_MATH]')
+        ? '建议说明 $L=D-A$ 中各符号的含义。\\(x_i\\) 表示第 i 个样本。\n\n可补充以下等式的适用条件：\n$$\n\\sum_{i=1}^{n} x_i = 0\n$$\n请核对 \\[\\frac{a+b}{c+d}\\] 的分母是否为零。\n长公式：$$\\underbrace{a_1+a_2+a_3+a_4+a_5+a_6+a_7+a_8+a_9+a_{10}+a_{11}+a_{12}+a_{13}+a_{14}+a_{15}+a_{16}}_{\\text{all terms}} = S$$\n这段说明用于检查展开、收起与评论定位。普通金额 $5 和 $10 应保持文字显示。代码 `$x$` 应原样显示。不支持的命令 $\\missingMacro{x}$ 也应显示原文。'
+        : '建议在引言中明确论文的研究问题，并说明主要结论与已有工作的关系。'
+      return { tool: 'add_review_comment', input: { reviewId, path: 'main.tex', quote, content } }
     }
     if (reviewId) return { tool: 'get_file', input: { path: 'main.tex' } }
     if (latestText.includes('"approved":false')) return { text: '尚未开始审阅，也没有添加评论。我们可以继续讨论审阅要求。' }
@@ -100,6 +141,7 @@ http.createServer(async (req, res) => {
     record.queuePrompt = [...(body.messages || [])].reverse().find(message => message.role === 'user')?.content
     calls.push(record)
     const result = output(body.messages || [])
+    if (String(record.queuePrompt).includes('[BG:CREATE]') && result.tool) await new Promise(resolve => setTimeout(resolve, 1800))
     if (String(record.queuePrompt).includes('[QUEUE:FAIL]')) {
       await new Promise(resolve => setTimeout(resolve, 600))
       res.writeHead(503, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: { message: 'Synthetic queue service failure' } }))

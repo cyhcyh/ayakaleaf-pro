@@ -14,6 +14,8 @@ import { boxed } from '../chat/themed'
 import { REVIEW_TOOLS } from '../personal-ai/review-tools'
 import { api } from '../personal-ai/api'
 import { putEdit, type EditRecord } from '../personal-ai/edits-store'
+import { ToolRefusal } from '../errors'
+import { encodeEditFailure } from '../../../shared/edit-recovery.mjs'
 
 export type ToolOutput =
   | { tool: string; toolCallId: string; output: unknown }
@@ -28,6 +30,8 @@ export type ToolRun = {
   view: EditorView
   // Project path of the document the view shows
   openPath: string
+  diagnosticsEnabled?: boolean
+  isActive?: () => boolean
   actions: ProjectActions
   signal: AbortSignal
 }
@@ -65,6 +69,9 @@ async function readLines(
 
 export const TOOLS: Record<string, ToolSpec> = {
   ...REVIEW_TOOLS,
+  find_edit_suggestions: {
+    label: ({ path }) => ui("查找 {0} 的待确认建议", [path]),
+  },
   get_lines: {
     label: ({ path, start, end }) => `Read line ${range(start, end)} of ${path}`,
     run: ({ path, start, end }, context) => readLines(context, path, start, end),
@@ -83,7 +90,8 @@ export const TOOLS: Record<string, ToolSpec> = {
 
   get_problems: {
     label: () => 'Check the compile log',
-    run(input, { view, openPath, actions }) {
+    run(input, { view, openPath, actions, diagnosticsEnabled = true }) {
+      if (!diagnosticsEnabled) return actions.lastCompile()
       const { doc } = view.state
       const lint: { fromLine: number; toLine: number; severity: string; message: string }[] = []
       forEachDiagnostic(view.state, (diagnostic, from, to) => {
@@ -107,7 +115,7 @@ export const TOOLS: Record<string, ToolSpec> = {
 
   new_file: {
     label: ({ path }) => `Create ${path}`,
-    run: ({ path }, { actions }) => actions.newFile(path),
+    run: ({ path }, { actions, signal, isActive }) => actions.newFile(path, { signal, shouldOpen: isActive }),
   },
 
   get_file: {
@@ -118,7 +126,12 @@ export const TOOLS: Record<string, ToolSpec> = {
   propose_edit: {
     label: ({ startLine, endLine }) => `Edit line ${range(startLine, endLine)}`,
     async run(input, { projectId, chatId, toolCallId, signal }) {
-      const record = await api<EditRecord>('/edits', { projectId, chatId, toolCallId, input }, signal)
+      let record: EditRecord
+      try { record = await api<EditRecord>('/edits', { projectId, chatId, toolCallId, input }, signal) }
+      catch (error) {
+        if ((error as any).code?.startsWith('edit_')) throw new ToolRefusal(encodeEditFailure(error))
+        throw error
+      }
       putEdit(projectId, record)
       return { editId: record.id, state: record.state, queued: true, message: ui("建议已加入 AI 修改，用户接受后才会应用。") }
     },

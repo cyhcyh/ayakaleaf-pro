@@ -409,5 +409,19 @@
   "待发送内容过大，请减少附件后重试。": "The queue is too large. Remove some attachments and try again.",
   "正在准备消息…": "Preparing message…",
   "保存": "Save",
-  "工具调用已中断，尚未执行。": "Tool call stopped before execution."
+  "工具调用已中断，尚未执行。": "Tool call stopped before execution.",
+  "正在工作": "Working",
+  "已更新": "Updated",
+  "原建议已变化，或与本次修改不是同一处正文，请重新核对": "The previous suggestion changed or targets a different passage. Check the source and try again.",
+  "查找 {0} 的待确认建议": "Find pending suggestions for {0}",
+  "要续改的建议不存在，请先查找待确认建议并使用返回的 ID": "The suggestion was not found. Find pending suggestions and use a returned ID.",
+  "这条建议已有新版，请核对最新版后再修改": "This suggestion has been updated. Check the latest suggestion before revising it.",
+  "这条建议已处理，请根据当前正文生成新建议": "This suggestion has been processed. Read the current source and create a new suggestion.",
+  "这条建议正在处理，请等待操作完成后再试": "This suggestion is being processed. Wait for the operation to finish.",
+  "正文已变化或无法唯一定位，请重新读取原文后再修改": "The source changed or cannot be located uniquely. Read the current source before revising it.",
+  "旧建议属于另一个文件，请核对要续改的建议": "The previous suggestion belongs to another file. Check which suggestion you want to revise.",
+  "旧建议对应的原文已变化，请重新读取正文并核对修改位置": "The original passage changed. Read the source and check the suggestion's location.",
+  "本次修改与旧建议不在同一处正文，请重新核对": "This edit targets a different passage. Check the previous suggestion.",
+  "同一条修改建议重复失败，已暂停本轮。请核对目标后再继续。": "The same suggestion failed repeatedly. This turn is paused. Check the target before continuing.",
+  "这里有多条独立建议，请先查找并明确要续改哪一条": "There are multiple independent suggestions here. Find them and specify which one to revise."
 }

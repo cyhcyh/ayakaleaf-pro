@@ -48,7 +48,7 @@ export type ProjectActions = {
   commentOnQuote: (path: string, quote: string, content: string, signal: AbortSignal) => Promise<unknown>
   listFiles: () => string[]
   readFile: (path: string, signal: AbortSignal) => Promise<string>
-  newFile: (path: string) => Promise<void>
+  newFile: (path: string, options?: { signal?: AbortSignal; shouldOpen?: () => boolean }) => Promise<void>
   lastCompile: () => CompileReport
   compile: (signal: AbortSignal) => Promise<CompileReport>
   setCompiler: ReturnType<typeof useProjectSettingsContext>['setCompiler']
@@ -120,7 +120,8 @@ export function useProjectActions(): ProjectActions {
   )
 
   const newFile = useCallback(
-    async (path: string) => {
+    async (path: string, options?: { signal?: AbortSignal; shouldOpen?: () => boolean }) => {
+      options?.signal?.throwIfAborted()
       const parts = path.replace(/\/$/, '').split('/')
       const name = parts.pop()
       if (!name) throw new ToolRefusal('The path needs a file name.')
@@ -137,7 +138,7 @@ export function useProjectActions(): ProjectActions {
       })
       // The file tree learns about the new doc over the socket first
       await sleep(1000)
-      await openDoc(doc as any)
+      if (!options?.signal?.aborted && options?.shouldOpen?.() !== false) await openDoc(doc as any)
     },
     [findEntityByPath, openDoc, projectId]
   )
