@@ -42,5 +42,13 @@
   .assistant-queue-editor { margin: 5px !important; }
 }
 .assistant-composer { position: relative; background: var(--bg-primary-themed); }
+.assistant-composer .badge.assistant-selection-badge {
+  max-width: 100%;
+  min-width: 0;
+  .material-symbols { flex-shrink: 0; }
+  .assistant-selection-label { display: flex; min-width: 0; }
+  .assistant-selection-filename { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .assistant-selection-lines { flex-shrink: 0; white-space: nowrap; }
+}
 .assistant-turn-limit { margin: 8px; padding: 10px; border: 1px solid var(--border-divider-themed); border-radius: 8px; color: var(--content-secondary-themed); font-size: var(--font-size-01); }
 .assistant-turn-limit p { margin-bottom: 8px; }

@@ -32,7 +32,7 @@ const Composer = forwardRef<
   HTMLTextAreaElement,
   {
     working: boolean
-    selectionNote?: string
+    selectionNote?: { path: string; lines: string }
     onSend: (draft: Draft) => void | Promise<void>
     onStop: () => void
     onProblem: (message: string | false) => void
@@ -146,8 +146,13 @@ const Composer = forwardRef<
       {(selectionNote || images.length > 0 || preparedFiles.length > 0 || references.length > 0) && (
         <div className="d-flex flex-wrap gap-1 small">
           {selectionNote && (
-            <span className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
-              <MaterialIcon type="code" /> {selectionNote}
+            <span className="badge assistant-selection-badge d-inline-flex align-items-center gap-1"
+              title={`${selectionNote.path}: ${selectionNote.lines}`} style={{ ...surface, ...plain }}>
+              <MaterialIcon type="code" />
+              <span className="assistant-selection-label">
+                <span className="assistant-selection-filename">{selectionNote.path.split('/').pop()}</span>
+                <span className="assistant-selection-lines">: {selectionNote.lines}</span>
+              </span>
             </span>
           )}
           {preparedFiles.map((file, index) => <span key={`prepared-${index}`} className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>

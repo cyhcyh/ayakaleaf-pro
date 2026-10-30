@@ -65,6 +65,33 @@ describe('AI message queue', function () {
     expect(stop).not.to.have.been.called
   })
 
+  for (const name of [
+    'NP_hardness_of_additive_approximation_for_generalized_Turan_problems.tex',
+    '关于广义图论问题的研究论文第一章主要结果与证明的详细修订版本.tex',
+  ]) {
+    for (const working of [false, true]) {
+      it(`keeps line ranges separate and preserves complete context for ${name} while working=${working}`, async function () {
+        const path = `chapters/${name}`
+        const selection = [
+          { fromLine: 17, toLine: 18, content: 'Selected source, including $L=D-A$.' },
+          { fromLine: 120, toLine: 123, content: 'Another complete selection.' },
+        ]
+        const fullContext = { path, selection }
+        const lines = '17-18, 120-123'
+        const send = sinon.stub().resolves()
+        render(<Composer working={working} selectionNote={{ path, lines }} captureContext={() => fullContext}
+          onSend={send} onStop={() => {}} onProblem={() => {}} />, { wrapper })
+        expect(screen.getByTitle(`${path}: ${lines}`).textContent).to.include(name)
+        expect(screen.getByText(`: ${lines}`)).to.exist
+        fireEvent.change(screen.getByRole('textbox', { name: ui('消息') }), { target: { value: 'Please check the selection.' } })
+        await act(async () => fireEvent.click(screen.getByRole('button', { name: working ? ui('加入队列') : 'Send' })))
+        expect(send).to.have.been.calledOnce
+        expect(send.firstCall.args[0].context).to.deep.equal(fullContext)
+        expect(send.firstCall.args[0].text).to.equal('Please check the selection.')
+      })
+    }
+  }
+
   it('allows attachment-only queueing and preserves draft text when submission fails', async function () {
     const reference = { id: '33333333-3333-4333-8333-333333333333', name: 'reference.pdf', mediaType: 'application/pdf' }
     const send = sinon.stub().rejects(new Error('Queue save failed'))

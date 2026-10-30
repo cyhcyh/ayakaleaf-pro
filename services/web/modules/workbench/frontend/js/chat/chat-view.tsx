@@ -463,7 +463,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   if (!active) return null
 
   const selectionNote = selection.length
-    ? `${path.split('/').pop()}: ${selection.map(r => (r.fromLine === r.toLine ? r.fromLine : `${r.fromLine}-${r.toLine}`)).join(', ')}`
+    ? { path, lines: selection.map(r => (r.fromLine === r.toLine ? r.fromLine : `${r.fromLine}-${r.toLine}`)).join(', ') }
     : undefined
 
   let body
