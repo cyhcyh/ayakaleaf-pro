@@ -61,7 +61,7 @@ export default function ConversationMessages({ messages, streaming, respond, sum
         const message = messages[item.index]
         return <div key={item.key} ref={virtual.measureElement} data-index={item.index} data-message-id={message.id} className="pa-conversation-message" style={{ transform: `translateY(${item.start}px)` }}>
           <MessageView message={message} streaming={streaming && item.index === messages.length - 1} respond={respond} />
-          {message.id === summary?.upToMessageId && <p className="pa-compaction-marker">{ui("以上对话已整理为摘要，完整记录仍可查看。")}</p>}
+          {message.id === summary?.upToMessageId && <p className="pa-compaction-marker">{summary.partial ? ui("此前部分步骤已整理为摘要，完整记录仍可查看。") : ui("以上对话已整理为摘要，完整记录仍可查看。")}</p>}
         </div>
       })}
     </div>

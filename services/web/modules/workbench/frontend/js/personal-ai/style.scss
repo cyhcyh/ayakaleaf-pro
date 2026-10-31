@@ -491,6 +491,8 @@
 .pa-conversation-message { position: absolute; top: 0; left: 0; width: 100%; padding: 0 8px 16px; display: flex; flex-direction: column; gap: 8px; }
 .pa-conversation-history { position: absolute; top: 0; left: 0; width: 100%; height: 32px; display: flex; justify-content: center; align-items: center; color: var(--content-secondary-themed); font-size: 12px; }
 .pa-compaction-marker { font-size: 12px; text-align: center; color: var(--content-secondary-themed); border-top: 1px solid var(--border-divider-themed); padding-top: 8px; }
+.pa-context-status { display: flex; align-items: center; gap: 8px; padding: 6px 12px; color: var(--content-secondary-themed); font-size: 12px; }
+.pa-context-status .spinner-border { width: 12px; height: 12px; border-width: 2px; flex: 0 0 auto; }
 .pa-edits-anchored { --pa-edits-toolbar-height: 38px; order: -1; flex-shrink: 0; position: relative; width: var(--review-panel-width); height: 100%; font-family: var(--font-sans); font-size: var(--font-size-01); line-height: 1.5; color: var(--content-primary-themed); background: var(--bg-secondary-themed); border-right: 1px solid var(--border-divider-themed); }
 .pa-edits-anchor-inner { --pa-edits-header-height: 0px; min-height: max(100%, var(--review-panel-height)); width: var(--review-panel-width); position: relative; background: var(--bg-secondary-themed); }
 .pa-edits-anchor-inner:has(> .review-panel-header) { --pa-edits-header-height: var(--review-panel-header-height); }

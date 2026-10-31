@@ -423,5 +423,17 @@
   "旧建议对应的原文已变化，请重新读取正文并核对修改位置": "The original passage changed. Read the source and check the suggestion's location.",
   "本次修改与旧建议不在同一处正文，请重新核对": "This edit targets a different passage. Check the previous suggestion.",
   "同一条修改建议重复失败，已暂停本轮。请核对目标后再继续。": "The same suggestion failed repeatedly. This turn is paused. Check the target before continuing.",
-  "这里有多条独立建议，请先查找并明确要续改哪一条": "There are multiple independent suggestions here. Find them and specify which one to revise."
+  "这里有多条独立建议，请先查找并明确要续改哪一条": "There are multiple independent suggestions here. Find them and specify which one to revise.",
+  "正在整理上下文…": "Organizing context…",
+  "优先保留这些消息，空间不足时自动整理较早内容。工具调用和结果一起处理。": "Keep these messages when space allows. Summarize older content as needed, keeping tool calls and results together.",
+  "优先保留开头消息，空间不足时纳入摘要。": "Keep initial messages when space allows. Include them in the summary as needed.",
+  "会话摘要对应的步骤已变化，请重新打开会话": "The steps covered by this summary changed. Reopen the conversation.",
+  "上下文预算过小，请增加模型上下文容量": "The context budget is too small. Increase the model context limit.",
+  "本次消息或最新工具结果过大，请缩短材料或分段读取": "The latest message or tool result is too large. Shorten the material or read it in smaller sections.",
+  "整理后上下文仍过大，请缩短材料或调整压缩设置": "The context is still too large after compaction. Shorten the material or adjust compression settings.",
+  "上下文整理失败，原会话和摘要已保留，请重试": "Context compaction failed. Your conversation and previous summary were kept. Try again.",
+  "摘要仍过长，请降低摘要长度上限或增加压缩模型容量": "The summary is still too long. Lower the summary length limit or increase the compression model context limit.",
+  "上下文或摘要预算过小，请调整压缩设置": "The context or summary budget is too small. Adjust compression settings.",
+  "AI 服务暂时不可用，请稍后重试。": "The AI service is temporarily unavailable. Try again later.",
+  "此前部分步骤已整理为摘要，完整记录仍可查看。": "Earlier steps were summarized. The full history is still available."
 }

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { codexModel } from '../app/src/personal-ai/CodexModel.mjs'
 import { CLIENT_TOOLS, convertWorkbenchMessages } from '../app/src/WorkbenchTools.mjs'
 import { encodeEditFailure } from '../shared/edit-recovery.mjs'
+import { createContextMeter } from '../app/src/personal-ai/ContextUsage.mjs'
 
 function events(output, text = '') {
   const response = { id: 'resp_fixture', model: 'gpt-5.4', status: 'completed', output: [output], usage: { input_tokens: 5, output_tokens: 3, total_tokens: 8 } }
@@ -20,6 +21,21 @@ function events(output, text = '') {
   ]
   return new Response(frames.map(frame => `data: ${JSON.stringify(frame)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } })
 }
+
+test('Codex response usage can establish and restore a personal context anchor', async () => {
+  const model = codexModel({ baseURL: 'https://chatgpt.com/backend-api/codex', apiKey: 'fixture-only' }, async () => events({
+    type: 'message', id: 'msg_usage', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: 'Done', annotations: [] }],
+  }, 'Done'))('gpt-5.4')
+  const result = streamText({ model, prompt: 'Continue.' })
+  assert.equal(await result.text, 'Done')
+  const messages = [{ id: 'user', role: 'user', parts: [{ type: 'text', text: 'Continue.' }] },
+    { id: 'assistant', role: 'assistant', parts: [{ type: 'text', text: 'Done' }] }]
+  const meter = createContextMeter()
+  meter.observe(messages, await result.totalUsage, 'codex')
+  assert.equal(meter.measure(messages, 1000, 'codex'), 8)
+  const restored = createContextMeter(structuredClone(meter.snapshot(messages)))
+  assert.equal(restored.measure(structuredClone(messages), 1000, 'codex'), 8)
+})
 
 test('Codex streams text and replays tool results without stored response references', async () => {
   const calls = []

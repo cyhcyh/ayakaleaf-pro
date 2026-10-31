@@ -33,6 +33,7 @@ export async function resolveConfig(userId, feature = "chat", override) {
       ...Settings.workbenchAi,
       enabled: true,
       kind: "codex",
+      connectionId: connection.id,
       baseURL: connection.baseURL,
       apiKey: tokens.access_token,
       headers: headers(tokens),

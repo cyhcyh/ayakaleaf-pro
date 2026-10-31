@@ -91,6 +91,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const editFailures = useMemo(createEditRetryGuard, [])
   const haltRepeatedEdit = useRef<() => Promise<void>>(async () => {})
   const [summary, setSummary] = useState<Summary | null>(initial?.summary || null)
+  const [compacting, setCompacting] = useState(false)
   const summaryRef = useRef<Summary | null>(initial?.summary || null)
   const [binding, setBinding] = useState<Binding | null>(initial?.binding || null)
   const hasAccess = defaultAccess || (permissionEnabled && Boolean(binding))
@@ -161,7 +162,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
         // Turns the server summarized are replaced by the summary
         prepareSendMessagesRequest({ id, messages, trigger, messageId }) {
           const kept = summaryRef.current
-          const from = kept ? messages.findIndex(m => m.id === kept.upToMessageId) + 1 : 0
+          const from = kept?.upToMessageId ? messages.findIndex(m => m.id === kept.upToMessageId) + (kept.partial ? 0 : 1) : 0
           const protectedIds = new Set(kept?.protectedFirstIds || [])
           return {
             body: {
@@ -202,12 +203,14 @@ export default function ChatView({ chatId, view, initial, active = true, registe
     sendAutomaticallyWhen: options =>
       !stopped.current && lastAssistantMessageIsCompleteWithToolCalls(options),
     onData(part) {
+      if (part.type === 'data-context-status') setCompacting(Boolean((part.data as { active: boolean }).active))
       if (part.type === 'data-compaction') {
         summaryRef.current = part.data as Summary
         setSummary(part.data as Summary)
       }
     },
     onError(error) {
+      setCompacting(false)
       turnComplete.current = false
       queue.pause()
       running.current.forEach(controller => controller.abort())
@@ -221,6 +224,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
       }
     },
     onFinish({ isAbort, isError, isDisconnect, finishReason }) {
+      setCompacting(false)
       // A tool step is followed by the SDK's automatic continuation. It is
       // never the boundary at which another queued user message can run.
       turnComplete.current = !isAbort && !isError && !isDisconnect && finishReason !== 'tool-calls'
@@ -298,6 +302,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   }, [addToolOutput, responseGeneration])
 
   const stopReply = useCallback(() => {
+    setCompacting(false)
     if (stopping.current) return stopping.current
     stopped.current = true
     turnComplete.current = false
@@ -505,6 +510,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
           !hasTokensLeft && tokenResetDate > now && <QuotaNotice resetsAt={tokenResetDate} />
         ))}
       <div data-chat-input="">
+        {compacting && <div className="pa-context-status" role="status" aria-live="polite"><span className="spinner-border spinner-border-sm" aria-hidden="true" />{ui("正在整理上下文…")}</div>}
         {problem && !quotaHit && (
           typeof problem === 'string' ? <ChatNotice type="error" text={problem} /> : <ChatFailedNotice />
         )}

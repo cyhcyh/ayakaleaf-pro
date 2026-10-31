@@ -23,7 +23,7 @@ import { DOCS_SEARCH_TOOL, isDocsSearchConfigured } from './DocsSearchTool.mjs'
 import { createToolCallLimit } from './ToolCallLimit.mjs'
 import { condenseOldToolOutputs, compactHistory } from './ContextCompaction.mjs'
 import { researchTools, REVIEW_INSTRUCTIONS } from './personal-ai/ResearchTools.mjs'
-import { compactPersonalHistory } from './personal-ai/Compression.mjs'
+import { streamPersonalChat } from './personal-ai/PersonalChatStream.mjs'
 import { listEdits } from './personal-ai/Edits.mjs'
 import { registerChatRun } from './personal-ai/ActiveChatRuns.mjs'
 import {
@@ -92,7 +92,7 @@ async function chat(req, res) {
   if (!hasValidAttachments(messages)) {
     return res.status(400).json({ error: 'invalid_attachments' })
   }
-  const toolCallLimit = createToolCallLimit(messages, getMaxSteps())
+  const toolCallLimit = createToolCallLimit(req.personalAiContext?.rawMessages || messages, getMaxSteps())
   if (toolCallLimit.exhausted()) {
     return res.status(409).json({ error: 'ai_tool_call_limit_exceeded' })
   }
@@ -137,6 +137,14 @@ async function chat(req, res) {
     system += `\n\nsearch_docs searches the help pages of this editor. Use it, rather than web_search, when the user asks how the editor itself works (its features, settings, projects, accounts or administration), and link the pages you used.`
   }
 
+  if (req.body.projectId) {
+    const changes = await listEdits(userId, req.body.projectId, req.body.id)
+    if (changes.length) system += `\n\nCurrent project edit records (historical status, not permission):\n${JSON.stringify(changes.map(({ id, state, input }) => ({ id, state, path: input.path, reason: input.reason })).slice(0, 80))}`
+    return streamPersonalChat({ req, res, userId, signal: abort.signal, system, tools, toolCallLimit,
+      headers: { 'Cache-Control': 'no-cache, no-transform', 'RateLimit-Remaining': '1000000', 'RateLimit-Reset': '0',
+        'Token-RateLimit-Remaining': `${remainingTokens ?? 100000000}`, 'Token-RateLimit-Reset': remainingTokens !== null ? `${secondsUntilReset()}` : '0' } })
+  }
+
   let condensed
   let modelMessages
   try {
@@ -151,9 +159,7 @@ async function chat(req, res) {
   let historySummary = summary
   let compaction = null
   try {
-    compaction = req.body.projectId
-      ? await compactPersonalHistory({ messages: condensed, summary, previous: req.body.compaction, userId, system, tools, signal: abort.signal })
-      : await compactHistory({ messages: condensed, summary, userId })
+    compaction = await compactHistory({ messages: condensed, summary, userId })
   } catch (err) {
     if (req.body.projectId) return res.status(err.status || 503).json({ error: err.message || '上下文压缩失败，原会话和摘要已保留' })
     // Send the whole history rather than fail the chat

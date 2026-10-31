@@ -62,8 +62,8 @@ export function CompressionSettings({ profile, onProfile }: { profile: Profile; 
       <BudgetSetting label={ui("助手上下文容量")} value={policy.contextWindow} actual={window} reported={chat?.contextWindow} max={2000000} onChange={contextWindow => set({ contextWindow })} />
       <BudgetSetting label={ui("压缩模型上下文容量")} value={policy.summaryContextWindow} actual={summaryWindow} reported={summary?.contextWindow} max={2000000} onChange={summaryContextWindow => set({ summaryContextWindow })} />
       <BudgetSetting label={ui("摘要长度上限")} value={policy.summaryMaxTokens} actual={output} reported={summary?.outputLimit} max={100000} onChange={summaryMaxTokens => set({ summaryMaxTokens })} />
-      {number('protectLast', ui("保留最近消息"), 1, 500, ui("按完整轮次保留对话和工具结果。"))}
-      {number('protectFirst', ui("保留开头消息"), 0, 100)}
+      {number('protectLast', ui("保留最近消息"), 1, 500, ui("优先保留这些消息，空间不足时自动整理较早内容。工具调用和结果一起处理。"))}
+      {number('protectFirst', ui("保留开头消息"), 0, 100, ui("优先保留开头消息，空间不足时纳入摘要。"))}
     </details>
   </div>
 }

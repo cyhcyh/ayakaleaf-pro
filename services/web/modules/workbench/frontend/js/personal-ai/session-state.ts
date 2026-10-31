@@ -5,7 +5,7 @@ import { api, type Binding } from './api'
 import type { QueuedMessage } from '../chat/draft'
 import { sessionSaved } from './history-events'
 
-export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[] }
+export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[]; partial?: { parts: number }; prunedToolCallIds?: string[] }
 export type MessagePage = { messages: UIMessage[]; messageOffset: number; olderBefore: number | null }
 export type SavedSession = MessagePage & { id: string; projectId: string; title: string; revision: number; summary: Summary | null; binding: Binding | null; outbox?: QueuedMessage[] }
 export type SessionItem = { id: string; title: string; updatedAt: string; revision: number; snippet?: string }

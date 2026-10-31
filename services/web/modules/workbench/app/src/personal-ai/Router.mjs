@@ -168,7 +168,9 @@ export async function chatRuntime(req, res, next) {
     if (req.body.sessionContext) {
       if (!projectId) throw new Error('会话缺少项目');
       const { prepareSessionContext } = await import('./SessionMessages.mjs');
-      Object.assign(req.body, await prepareSessionContext(user(req), projectId, req.body));
+      const { rawMessages, contextState, ...prepared } = await prepareSessionContext(user(req), projectId, req.body);
+      req.personalAiContext = { rawMessages, contextState };
+      Object.assign(req.body, prepared);
     }
     let feature = "chat";
     if (req.body.reviewId) {
