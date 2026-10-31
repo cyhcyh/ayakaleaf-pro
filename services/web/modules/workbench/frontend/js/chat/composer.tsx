@@ -3,7 +3,7 @@ import { ui } from '@modules/site-settings/frontend/js/ui'
  * Where the user writes: a growing text box, images by picker, paste or drop,
  * a note of the selected lines that go along, and send or stop.
  */
-import { forwardRef, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import OLIconButton from '@/shared/components/ol/ol-icon-button'
 import OLTooltip from '@/shared/components/ol/ol-tooltip'
@@ -13,11 +13,11 @@ import ImagePreview from './image-preview'
 import { useProjectContext } from '@/shared/context/project-context'
 import { api } from '../personal-ai/api'
 import useAbortController from '@/shared/hooks/use-abort-controller'
+import useAutosizeComposer, { MIN_COMPOSER_ROWS } from './use-autosize-composer'
 import type { Draft, DraftContext, ReferenceAttachment } from './draft'
 export type { Draft } from './draft'
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024
-const MAX_ROWS = 8
 
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -54,6 +54,9 @@ const Composer = forwardRef<
   const [focused, setFocused] = useState(false)
   const [images, setImages] = useState<File[]>([])
   const picker = useRef<HTMLInputElement>(null)
+  const input = useRef<HTMLTextAreaElement>(null)
+  useImperativeHandle(ref, () => input.current!, [])
+  useAutosizeComposer(input, text)
   // Object URLs for the previews, released when the images change or go
   const previews = useMemo(() => images.map(file => URL.createObjectURL(file)), [images])
   useEffect(() => () => previews.forEach(url => URL.revokeObjectURL(url)), [previews])
@@ -128,7 +131,6 @@ const Composer = forwardRef<
     }
   }
 
-  const rows = Math.min(MAX_ROWS, Math.max(2, text.split('\n').length))
   const hasDraft = Boolean(text.trim() || images.length || preparedFiles.length || references.length)
 
   return (
@@ -188,10 +190,10 @@ const Composer = forwardRef<
       <textarea
         disabled={disabled || uploading}
         aria-label={editing ? ui("编辑排队消息") : ui("消息")}
-        ref={ref}
+        ref={input}
         className="form-control border-0 shadow-none p-1"
-        style={{ ...plain, resize: 'none', fontSize: 'var(--font-size-02)', background: 'transparent' }}
-        rows={rows}
+        style={{ ...plain, resize: 'none', flexShrink: 0, overflowY: 'hidden', fontSize: 'var(--font-size-02)', background: 'transparent' }}
+        rows={MIN_COMPOSER_ROWS}
         placeholder={t('what_would_you_like_to_do')}
         value={text}
         onChange={event => setText(event.target.value)}
@@ -200,7 +202,7 @@ const Composer = forwardRef<
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
-      <div className="d-flex align-items-center">
+      <div className="d-flex align-items-center flex-shrink-0">
         <input
           ref={picker}
           type="file"
