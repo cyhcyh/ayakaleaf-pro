@@ -1,0 +1,42 @@
+.assistant-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--content-secondary-themed);
+  &.is-user { justify-content: flex-end; }
+  .btn { padding: 3px 5px; min-width: 26px; height: 26px; color: inherit; }
+  .material-symbols { font-size: 17px; }
+}
+.pa-conversation-message:hover .assistant-message-actions,
+.pa-conversation-message:focus-within .assistant-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none) { .assistant-message-actions { opacity: 1; pointer-events: auto; } }
+.assistant-message-editor {
+  width: 100%;
+  min-width: 0;
+  textarea {
+    width: 100%;
+    display: block;
+    resize: none;
+    border: 1px solid var(--border-primary-themed);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: inherit;
+    line-height: 1.5;
+    color: var(--content-primary-themed);
+    background: var(--bg-primary-themed);
+    &:focus { outline: 2px solid var(--border-active-themed); outline-offset: 1px; }
+  }
+  .assistant-message-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .assistant-message-attachments span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-01); color: var(--content-secondary-themed); }
+  .assistant-message-edit-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; margin-top: 10px; }
+  .assistant-message-edit-note { flex: 1 1 200px; margin: 0; font-size: var(--font-size-01); line-height: 1.5; color: var(--content-secondary-themed); }
+  .assistant-message-edit-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+  .assistant-message-edit-buttons .btn { font-size: var(--font-size-01); padding: 4px 12px; white-space: nowrap; }
+  .assistant-message-edit-error { font-size: var(--font-size-01); margin: 8px 0 0; color: var(--red-60); overflow-wrap: anywhere; }
+}

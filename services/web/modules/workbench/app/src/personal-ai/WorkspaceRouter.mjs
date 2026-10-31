@@ -5,6 +5,7 @@ import * as edits from './Edits.mjs';
 import { stopReview } from './Review.mjs';
 import { workspaceIndexes } from './WorkspaceIndexes.mjs';
 import { messagesPage, messageOffsetSchema } from './SessionMessages.mjs';
+import { editSessionMessage } from './SessionEdits.mjs';
 
 const uuid = z.string().uuid();
 export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
@@ -32,6 +33,7 @@ export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
   });
   get('/sessions/:id/messages', async req => await messagesPage(user(req), await project(req), uuid.parse(req.params.id), messageOffsetSchema.parse(req.query.before)));
   post('/sessions/:id/save', async req => await sessions.saveSession(user(req), await project(req), uuid.parse(req.params.id), req.body));
+  post('/sessions/:id/edit-message', async req => await editSessionMessage(user(req), await project(req), uuid.parse(req.params.id), req.body));
   post('/sessions/:id/activate', async req => await sessions.activateSession(user(req), await project(req), uuid.parse(req.params.id)));
   post('/sessions/:id/rename', async req => await sessions.renameSession(user(req), await project(req), uuid.parse(req.params.id), req.body.title));
   post('/sessions/delete', async req => await sessions.deleteSessions(user(req), await project(req), req.body.ids));

@@ -47,7 +47,7 @@ export function streamPersonalChat({ req, res, userId, signal, system, tools, to
       } finally { slot(snapshots, index).resolve(); }
     },
     async execute({ writer }) {
-      const saved = req.body.sessionContext ? await beginContextRun(userId, req.body.projectId, req.body.id, runId) : undefined;
+      const saved = req.body.sessionContext ? await beginContextRun(userId, req.body.projectId, req.body.id, runId, req.body.historyVersion || 0) : undefined;
       signal.throwIfAborted();
       context = await personalContext({ userId, messages: raw, model, system, tools, signal,
         previous: saved?.checkpoint || req.body.compaction || (req.body.summary ? { summary: req.body.summary, upToMessageId: '' } : null), saved,

@@ -34,3 +34,29 @@ export function revealEditDelta(cardTop, cardHeight, visibleTop, visibleBottom) 
   if (cardTop < visibleTop || cardHeight > visibleBottom - visibleTop) return cardTop - visibleTop;
   return Math.max(0, cardTop + cardHeight - visibleBottom);
 }
+
+// Match review-panel navigation: any visible part of a card hides both
+// buttons. Callers pass only cards from the active file/status filter.
+export function offscreenEditTargets(cards, visibleTop, visibleBottom) {
+  const none = { above: null, below: null };
+  if (visibleBottom <= visibleTop) return none;
+  let above, below;
+  for (const card of cards) {
+    const bottom = card.top + card.height;
+    if (bottom > visibleTop && card.top < visibleBottom) return none;
+    if (bottom <= visibleTop && (!above || bottom > above.top + above.height)) above = card;
+    if (card.top >= visibleBottom && (!below || card.top < below.top)) below = card;
+  }
+  return { above: above?.id ?? null, below: below?.id ?? null };
+}
+
+export function groupEditsByFile(items) {
+  const files = new Map();
+  for (const item of items) {
+    const path = item.input.path;
+    if (!files.has(path)) files.set(path, []);
+    files.get(path).push(item);
+  }
+  return [...files].sort(([a], [b]) => a.localeCompare(b)).map(([path, entries]) => ({ path,
+    items: entries.sort((a, b) => a.input.startLine - b.input.startLine) }));
+}

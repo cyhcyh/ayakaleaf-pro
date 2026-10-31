@@ -7,7 +7,8 @@ import OLButton from '@/shared/components/ol/ol-button'
 const MoreCommentsButton: FC<{
   onClick: () => void
   direction: 'upward' | 'downward'
-}> = ({ onClick, direction }) => {
+  label?: string
+}> = ({ onClick, direction, label }) => {
   const { t } = useTranslation()
 
   return (
@@ -19,7 +20,7 @@ const MoreCommentsButton: FC<{
     >
       <OLButton variant="secondary" size="sm" onClick={onClick}>
         <MaterialIcon type={`arrow_${direction}_alt`} />
-        {t('more_comments')}
+        {label ?? t('more_comments')}
       </OLButton>
     </div>
   )

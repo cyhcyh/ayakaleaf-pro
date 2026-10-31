@@ -45,6 +45,7 @@ import { draftText, interruptTools, waitingForReview } from '../../../shared/cha
 import { createEditRetryGuard, readEditFailure } from '../../../shared/edit-recovery.mjs'
 import type { RuntimeState, SessionRuntime } from './use-session-runtimes'
 import { matchesHistory } from '../personal-ai/history-events'
+import { messageBody } from '../../../shared/message-content.mjs'
 
 // The browser offers both searches; the server adds the configured ones
 const SEARCH_TOOLS = ['web_search', 'search_docs']
@@ -86,6 +87,11 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const dispatching = useRef(false)
   const generation = useRef(0)
   const [transitioning, setTransitioning] = useState(false)
+  const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null)
+  const [editSending, setEditSending] = useState(false)
+  const [messageEditError, setMessageEditError] = useState('')
+  const replacing = useRef(false)
+  const sessionPosition = useRef({ messageOffset: initial?.messageOffset || 0, historyVersion: initial?.historyVersion || 0 })
   const [turnVersion, setTurnVersion] = useState(0)
   const stopping = useRef<Promise<void> | null>(null)
   const editFailures = useMemo(createEditRetryGuard, [])
@@ -102,15 +108,18 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [historyError, setHistoryError] = useState('')
   const loadingPage = useRef(false)
+  const historyLoadVersion = useRef(0)
   const loadOlder = useCallback(async () => {
     if (olderBefore === null || loadingPage.current) return
     loadingPage.current = true; setLoadingOlder(true); setHistoryError('')
+    const loadVersion = historyLoadVersion.current
     try {
       const result = await api<MessagePage>(`/sessions/${chatId}/messages?projectId=${projectId}&before=${olderBefore}`, undefined, signal)
+      if (loadVersion !== historyLoadVersion.current) return
       setOlderMessages(current => [...result.messages, ...current])
       setOlderBefore(result.olderBefore)
-    } catch (error) { if (!signal.aborted) setHistoryError((error as Error).message); throw error }
-    finally { loadingPage.current = false; if (!signal.aborted) setLoadingOlder(false) }
+    } catch (error) { if (!signal.aborted && loadVersion === historyLoadVersion.current) setHistoryError((error as Error).message); throw error }
+    finally { if (loadVersion === historyLoadVersion.current) { loadingPage.current = false; if (!signal.aborted) setLoadingOlder(false) } }
   }, [chatId, projectId, olderBefore, signal])
   // Browser tools still running, and whether the user stopped the reply
   const running = useRef(new Set<AbortController>())
@@ -172,7 +181,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
               trigger,
               messageId,
               messages: initial ? messages : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
-              ...(initial && { sessionContext: true, messageOffset: initial.messageOffset || 0, binding: bindingRef.current }),
+              ...(initial && { sessionContext: true, ...sessionPosition.current, binding: bindingRef.current }),
               summary: kept?.summary,
               compaction: kept || undefined,
               enabledTools: SEARCH_TOOLS,
@@ -183,10 +192,10 @@ export default function ChatView({ chatId, view, initial, active = true, registe
           const response = await fetch(input, init)
           readQuotaRef.current(response)
           if (response.status === 403) throw new AiUnavailableError()
-          if (response.status === 409) throw new ToolBudgetError()
           if (response.status === 429) throw new QuotaExceededError()
           if (!response.ok) {
             const detail = await response.json().catch(() => ({}))
+            if (response.status === 409 && detail.error === 'ai_tool_call_limit_exceeded') throw new ToolBudgetError()
             throw new Error(detail.error || ui("AI 请求失败（HTTP {0}）", [response.status]))
           }
           return response
@@ -195,7 +204,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
     []
   )
 
-  const { messages, setMessages, sendMessage, addToolOutput, stop, status } = useChat({
+  const { messages, setMessages, sendMessage, regenerate, addToolOutput, stop, status } = useChat({
     id: chatId,
     messages: initial?.messages,
     transport,
@@ -293,7 +302,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
       }
     },
   })
-  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding, queue.items, queue.current)
+  const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding, queue.items, queue.current, sessionPosition)
   const displayedMessages = useMemo(() => [...olderMessages, ...messages], [olderMessages, messages])
 
   const responseGeneration = generation.current
@@ -363,9 +372,59 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   }, [editorSelection, view])
 
   const captureContext = useCallback(() => ({ path, selection }), [path, selection])
+  const beginMessageEdit = useCallback((message: UIMessage) => {
+    if (replacing.current || suspended.current) return
+    setEditingMessage({ id: message.id, text: messageBody(message) })
+    setMessageEditError('')
+  }, [])
+  const changeMessageEdit = useCallback((text: string) => {
+    setEditingMessage(current => current && { ...current, text })
+    setMessageEditError('')
+  }, [])
+  const cancelMessageEdit = useCallback(() => {
+    if (!replacing.current) { setEditingMessage(null); setMessageEditError('') }
+  }, [])
+  const resendEditedMessage = async () => {
+    if (!editingMessage || replacing.current || suspended.current || !canChat) return
+    replacing.current = true
+    setEditSending(true)
+    setMessageEditError('')
+    try {
+      await stopReply()
+      await persistence.flush()
+      const result = await persistence.editMessage(editingMessage.id, editingMessage.text)
+      if (signal.aborted || suspended.current) return
+      historyLoadVersion.current++
+      loadingPage.current = false
+      setLoadingOlder(false)
+      summaryRef.current = result.summary
+      setSummary(result.summary)
+      setOlderMessages([])
+      setOlderBefore(result.olderBefore)
+      setHistoryError('')
+      setMessages(result.messages)
+      setEditingMessage(null)
+      setProblem(false)
+      setQuotaHit(false)
+      setLimitHit(false)
+      editFailures.reset()
+      const original = result.messages.at(-1)
+      const snapshot = original?.parts.find(part => part.type === 'text' && part.text.includes('<editor-context>'))
+      const originalPath = snapshot?.type === 'text' ? snapshot.text.match(/<editor-context>\s*Open file: ([^\n]*)/)?.[1] : undefined
+      turnContext.current = originalPath ? { path: originalPath, selection: [] } : null
+      stopped.current = false
+      turnComplete.current = false
+      const epoch = ++generation.current
+      dispatching.current = true
+      void regenerate({ messageId: editingMessage.id }).catch(() => { queue.pause() }).finally(() => {
+        if (epoch === generation.current) { dispatching.current = false; setTurnVersion(value => value + 1) }
+      })
+    } catch (error) { setMessageEditError((error as Error).message) }
+    finally { replacing.current = false; setEditSending(false) }
+  }
   const dispatch = useCallback(
     async (draft: Draft, id?: string, allowApproval = true) => {
-      if (signal.aborted || suspended.current || !canChat || dispatching.current) throw new Error(ui("请等待当前操作结束后重试。"))
+      if (signal.aborted || suspended.current || replacing.current || !canChat || dispatching.current) throw new Error(ui("请等待当前操作结束后重试。"))
       dispatching.current = true
       editFailures.reset()
       const epoch = ++generation.current
@@ -416,11 +475,11 @@ export default function ChatView({ chatId, view, initial, active = true, registe
     [canChat, captureContext, sendMessage, setMessages, messages, projectId, chatId, queue.pause, signal]
   )
 
-  const working = status === 'submitted' || status === 'streaming' || toolsRunning > 0 || transitioning
+  const working = status === 'submitted' || status === 'streaming' || toolsRunning > 0 || transitioning || editSending
   const reviewWaiting = Boolean(waitingForReview(messages))
   useEffect(() => { if (reviewWaiting) queue.pause() }, [reviewWaiting, queue.pause])
   const send = useCallback(async (draft: Draft) => {
-    if (suspended.current) throw new Error(ui("请等待当前操作结束后重试。"))
+    if (suspended.current || replacing.current) throw new Error(ui("请等待当前操作结束后重试。"))
     if (working || dispatching.current) {
       queue.enqueue(draft, captureContext())
       await persistence.flush().catch(() => { queue.pause() })
@@ -451,7 +510,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
 
   const runtimeState = useRef<RuntimeState>({ working: false, retain: true })
   runtimeState.current = { working: working && !deleting,
-    retain: deleting || working || dispatching.current || reviewWaiting || queue.items.length > 0 || Boolean(persistence.error) }
+    retain: deleting || working || dispatching.current || reviewWaiting || queue.items.length > 0 || Boolean(editingMessage) || Boolean(persistence.error) }
   const suspend = useCallback((value: boolean) => { suspended.current = value; setDeleting(value) }, [])
   useEffect(() => registerRuntime?.(chatId, {
     flush: persistence.flush,
@@ -486,7 +545,10 @@ export default function ChatView({ chatId, view, initial, active = true, registe
     )
   } else {
     body = <ConversationMessages messages={displayedMessages} streaming={status === 'streaming'} respond={respond} summary={summary}
-      hasOlder={olderBefore !== null} loadingOlder={loadingOlder} historyError={historyError} loadOlder={loadOlder} />
+      hasOlder={olderBefore !== null} loadingOlder={loadingOlder} historyError={historyError} loadOlder={loadOlder} historyVersion={sessionPosition.current.historyVersion}
+      editing={editingMessage} editBusy={editSending} editError={messageEditError} editingDisabled={!canChat || deleting || editSending || Boolean(editingMessage)}
+      resendDisabled={!canChat || deleting}
+      onEdit={initial ? beginMessageEdit : undefined} onEditChange={changeMessageEdit} onEditCancel={cancelMessageEdit} onResend={resendEditedMessage} />
   }
 
   return (
@@ -494,7 +556,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
       if (!stopped.current && responseGeneration === generation.current) reviewId.current = id
     } }}>
     {/* Match the editor panel's body text size. */}
-    <div className="d-flex flex-column h-100" style={{ ...plain, fontSize: 'var(--font-size-02)' }}>
+    <div className="pa-chat-view d-flex flex-column h-100" style={{ ...plain, fontSize: 'var(--font-size-02)' }}>
       <div
         className={`flex-grow-1 ${messages.length ? 'd-flex flex-column overflow-hidden' : 'overflow-auto p-2'}`}
         // A flex item is as tall as its content unless allowed to shrink
@@ -516,19 +578,19 @@ export default function ChatView({ chatId, view, initial, active = true, registe
         )}
         {limitHit && <div className="assistant-turn-limit" role="status"><p>{ui("本轮工具调用已达上限。可以继续当前任务，已有结果会保留。")}</p>
           <button type="button" className="btn btn-secondary btn-sm" disabled={!canChat || working} onClick={() => dispatch({ text: ui("继续当前任务。"), files: [] }, undefined, false).then(() => queue.pause(false)).catch(error => setProblem(error.message))}>{ui("继续当前任务")}</button></div>}
-        <MessageQueue items={queue.items} paused={queue.paused} editing={queue.editing} disabled={transitioning} canSteer={canChat}
+        <MessageQueue items={queue.items} paused={queue.paused} editing={queue.editing} disabled={transitioning || editSending} canSteer={canChat}
           canResume={canChat && !working && !reviewWaiting && !limitHit && !quotaHit && !persistence.error}
           onResume={() => { setProblem(false); turnComplete.current = true; queue.pause(false) }} onSteer={steer} onRemove={queue.remove}
           onEdit={queue.edit} onSave={queue.save} onProblem={message => setProblem(message)} />
         <Composer
-          disabled={!canChat || deleting}
+          disabled={!canChat || deleting || editSending}
           working={working}
           selectionNote={selectionNote}
           onSend={send}
           onStop={stopReply}
           onProblem={message => setProblem(message)}
           captureContext={captureContext}
-          modelPicker={<SessionModelPicker value={binding} onChange={setBinding} disabled={!permissionEnabled || status === 'submitted' || status === 'streaming' || toolsRunning > 0}
+          modelPicker={<SessionModelPicker value={binding} onChange={setBinding} disabled={!permissionEnabled || editSending || status === 'submitted' || status === 'streaming' || toolsRunning > 0}
             onManage={() => { setSettingsShown(true); openAiSettings() }} />}
         />
         {/* One line, or a break after the first sentence */}

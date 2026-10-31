@@ -2,14 +2,21 @@
  * One message of the chat. The user's own text without the editor context
  * that was sent along, the assistant's text, reasoning and tool calls.
  */
-import { memo } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
+import { ui } from '@modules/site-settings/frontend/js/ui'
+import { copyTextToClipboard } from '@/utils/clipboard'
+import OLIconButton from '@/shared/components/ol/ol-icon-button'
+import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import type { UIMessage } from 'ai'
 import { TOOLS, type Respond } from '../agent/tools'
 import Markdown from './markdown'
 import Thinking from './thinking'
 import ToolCard from './tool-card'
-import { boxed, plain, surface } from './themed'
+import { boxed, flatGhost, plain, surface } from './themed'
 import ImagePreview from './image-preview'
+import MessageEditor from './message-editor'
+import { messageBody } from '../../../shared/message-content.mjs'
+import './message-actions.scss'
 
 export const CONTEXT_OPEN = '<editor-context>'
 
@@ -87,14 +94,43 @@ export default memo(function MessageView({
   message,
   streaming,
   respond,
+  editText, editBusy = false, editError = '', editingDisabled = false, resendDisabled = false, onEdit, onEditChange, onEditCancel, onResend,
 }: {
   message: UIMessage
   streaming: boolean
   respond: Respond
+  editText?: string; editBusy?: boolean; editError?: string; editingDisabled?: boolean; resendDisabled?: boolean
+  onEdit?: (message: UIMessage) => void; onEditChange?: (text: string) => void; onEditCancel?: () => void; onResend?: () => void
 }) {
-  return message.role === 'user' ? (
-    <UserMessage message={message} />
-  ) : (
-    <AssistantMessage message={message} streaming={streaming} respond={respond} />
-  )
+  const [copied, setCopied] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const alive = useRef(true)
+  const copyId = useId(), editId = useId()
+  useEffect(() => { alive.current = true; return () => { alive.current = false; clearTimeout(timer.current) } }, [])
+  const copy = async () => {
+    const success = await copyTextToClipboard(messageBody(message))
+    if (!alive.current) return
+    setCopied(success); setFailed(!success)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => { setCopied(false); setFailed(false) }, 2000)
+  }
+  if (editText !== undefined) return <MessageEditor message={message} text={editText} busy={editBusy} error={editError} resendDisabled={resendDisabled}
+    onChange={onEditChange!} onCancel={onEditCancel!} onResend={onResend!} />
+  const user = message.role === 'user'
+  const hasText = message.parts.some(part => part.type === 'text' && Boolean(part.text))
+  return <>
+    {user ? <UserMessage message={message} /> : <AssistantMessage message={message} streaming={streaming} respond={respond} />}
+    <div className={`assistant-message-actions${user ? ' is-user' : ''}`}>
+      {hasText && <OLTooltip id={copyId} description={failed ? ui('复制失败，请选中文字后复制。') : copied ? ui('已复制') : ui('复制消息')}>
+        <OLIconButton icon={copied ? 'check' : 'content_copy'} size="sm" variant="ghost" style={flatGhost}
+          accessibilityLabel={ui('复制消息')} onClick={copy} />
+      </OLTooltip>}
+      {user && onEdit && <OLTooltip id={editId} description={ui('编辑消息')}>
+        <OLIconButton icon="edit" size="sm" variant="ghost" style={flatGhost} accessibilityLabel={ui('编辑消息')}
+          disabled={editingDisabled} onClick={() => onEdit(message)} />
+      </OLTooltip>}
+      <span className="visually-hidden" role="status">{failed ? ui('复制失败，请选中文字后复制。') : copied ? ui('已复制') : ''}</span>
+    </div>
+  </>
 })

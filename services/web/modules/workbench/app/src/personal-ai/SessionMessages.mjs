@@ -31,10 +31,14 @@ export async function messagesPage(userId, projectId, id, before) {
 export async function prepareSessionContext(userId, projectId, input) {
   const id = z.string().uuid().parse(input.id);
   const row = await sessionRow(userId, projectId, id);
+  if ((row.historyVersion || 0) !== (input.historyVersion || 0))
+    throw Object.assign(new Error('会话已在其他页面更新，请重新打开会话后继续'), { status: 409 });
   const offset = messageOffsetSchema.parse(input.messageOffset);
   const incoming = z.array(z.object({ id: z.string().min(1).max(150), role: z.enum(['user', 'assistant', 'system']), parts: z.array(z.object({ type: z.string() }).passthrough()) }).passthrough()).parse(input.messages);
   if (new Set(incoming.map(message => message.id)).size !== incoming.length) throw new Error('消息 ID 重复，请重新打开会话');
-  const checkpoint = row.contextState?.checkpoint || (input.compaction ? checkpointSchema.parse(input.compaction) : row.summary);
+  // An explicit null is authoritative too: editing covered history clears the
+  // old summary, so a late client snapshot must not reintroduce it.
+  const checkpoint = row.contextState ? row.contextState.checkpoint : (input.compaction ? checkpointSchema.parse(input.compaction) : row.summary);
   const store = await collection('Messages');
   const filter = { sessionId: id, userId: String(userId), projectId };
   const cutoff = checkpoint?.upToMessageId && await store.findOne({ ...filter, 'message.id': checkpoint.upToMessageId }, { projection: { order: 1 } });

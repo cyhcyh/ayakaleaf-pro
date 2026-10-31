@@ -83,11 +83,12 @@ export function createContextMeter(saved, estimate = estimateTokens) {
   };
 }
 
-export async function beginContextRun(userId, projectId, chatId, runId) {
+export async function beginContextRun(userId, projectId, chatId, runId, historyVersion = 0) {
   const { collection } = await import('./ProfileStore.mjs');
-  const row = await (await collection('Sessions')).findOneAndUpdate({ _id: chatId, userId: String(userId), projectId, deleted: false },
+  const row = await (await collection('Sessions')).findOneAndUpdate({ _id: chatId, userId: String(userId), projectId, deleted: false,
+    ...(historyVersion ? { historyVersion } : { $or: [{ historyVersion: 0 }, { historyVersion: { $exists: false } }] }) },
     { $set: { contextRunId: runId } }, { returnDocument: 'after', includeResultMetadata: false, projection: { contextState: 1 } });
-  if (!row) throw Object.assign(new Error('会话不存在或已被删除'), { code: 'context_compaction' });
+  if (!row) throw Object.assign(new Error('会话已变化或已删除，请重新打开会话后继续'), { code: 'context_compaction' });
   return row.contextState;
 }
 

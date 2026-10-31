@@ -7,10 +7,10 @@ import { sessionSaved } from './history-events'
 
 export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[]; partial?: { parts: number }; prunedToolCallIds?: string[] }
 export type MessagePage = { messages: UIMessage[]; messageOffset: number; olderBefore: number | null }
-export type SavedSession = MessagePage & { id: string; projectId: string; title: string; revision: number; summary: Summary | null; binding: Binding | null; outbox?: QueuedMessage[] }
+export type SavedSession = MessagePage & { id: string; projectId: string; title: string; revision: number; historyVersion?: number; summary: Summary | null; binding: Binding | null; outbox?: QueuedMessage[] }
 export type SessionItem = { id: string; title: string; updatedAt: string; revision: number; snippet?: string }
 
-export function useSessionAutosave(initial: SavedSession | undefined, projectId: string, messages: UIMessage[], summary: Summary | null, streaming: boolean, binding: Binding | null, outbox: QueuedMessage[], outboxRef: { current: QueuedMessage[] }) {
+export function useSessionAutosave(initial: SavedSession | undefined, projectId: string, messages: UIMessage[], summary: Summary | null, streaming: boolean, binding: Binding | null, outbox: QueuedMessage[], outboxRef: { current: QueuedMessage[] }, position: { current: { messageOffset: number; historyVersion: number } }) {
   const latest = useRef({ messages, summary, binding })
   latest.current = { messages, summary, binding }
   const revision = useRef(initial?.revision || 0)
@@ -21,15 +21,16 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
   const timer = useRef<ReturnType<typeof setTimeout>>()
   const queue = useRef<Promise<void>>(Promise.resolve())
   const alive = useRef(true)
+  const rewriting = useRef(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const flush = useCallback(() => {
     clearTimeout(timer.current)
     timer.current = undefined
     const save = async () => {
-      if (!initial) return
+      if (!initial || rewriting.current) return
       const current = latest.current
-      const changed = current.messages.map((message, order) => ({ message, order: order + (initial.messageOffset || 0) }))
+      const changed = current.messages.map((message, order) => ({ message, order: order + position.current.messageOffset }))
         .filter(item => snapshots.current.get(item.message.id) !== item.message).map(item => ({ ...item, snapshot: JSON.stringify(item.message) }))
       const summaryText = JSON.stringify(current.summary)
       const bindingText = JSON.stringify(current.binding)
@@ -51,7 +52,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
         if (batch.length) batches.push(batch)
         if (!batches.length && !queueChanged) batches.push([])
         for (const batch of batches) {
-          const result = await api<{ revision: number }>(`/sessions/${initial.id}/save`, { projectId, revision: revision.current,
+          const result = await api<{ revision: number }>(`/sessions/${initial.id}/save`, { projectId, revision: revision.current, historyVersion: position.current.historyVersion,
             messages: batch.map(({ snapshot, ...item }) => item), summary: current.summary, binding: current.binding })
           revision.current = result.revision
           batch.forEach(item => snapshots.current.set(item.message.id, item.message))
@@ -61,7 +62,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
         // Queue attachments can be large. Send them separately from message
         // batches to stay below the existing request-size limit.
         if (queueChanged) {
-          const result = await api<{ revision: number }>(`/sessions/${initial.id}/save`, { projectId, revision: revision.current,
+          const result = await api<{ revision: number }>(`/sessions/${initial.id}/save`, { projectId, revision: revision.current, historyVersion: position.current.historyVersion,
             messages: [], summary: current.summary, binding: current.binding, outbox: queued })
           revision.current = result.revision
           savedOutbox.current = queued
@@ -77,7 +78,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
     const work = queue.current.catch(() => {}).then(save)
     queue.current = work
     return work
-  }, [initial?.id, projectId, outboxRef])
+  }, [initial?.id, projectId, outboxRef, position])
   const flushRef = useRef(flush)
   flushRef.current = flush
   const rename = useCallback((title: string) => {
@@ -92,6 +93,28 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
     queue.current = work
     return work
   }, [initial?.id, projectId])
+  const editMessage = useCallback(async (messageId: string, text: string) => {
+    if (!initial || rewriting.current) throw new Error(ui("请等待当前操作结束后重试。"))
+    clearTimeout(timer.current)
+    timer.current = undefined
+    rewriting.current = true
+    const work = queue.current.catch(() => {}).then(async () => {
+      const result = await api<SavedSession>(`/sessions/${initial.id}/edit-message`, { projectId, revision: revision.current,
+        historyVersion: position.current.historyVersion, messageId, text })
+      revision.current = result.revision
+      position.current = { messageOffset: result.messageOffset, historyVersion: result.historyVersion || 0 }
+      snapshots.current = new Map(result.messages.map(message => [message.id, message]))
+      latest.current = { messages: result.messages, summary: result.summary, binding: result.binding }
+      savedSummary.current = JSON.stringify(result.summary)
+      savedBinding.current = JSON.stringify(result.binding)
+      savedOutbox.current = outboxRef.current
+      setError('')
+      sessionSaved(projectId)
+      return result
+    })
+    queue.current = work.then(() => {}, () => {})
+    try { return await work } finally { rewriting.current = false }
+  }, [initial?.id, projectId, outboxRef, position])
   useEffect(() => {
     if (!initial || timer.current) return
     timer.current = setTimeout(() => { timer.current = undefined; flush().catch(() => {}) }, streaming ? 1500 : 300)
@@ -113,5 +136,5 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
       flushRef.current().catch(() => {})
     }
   }, [initial?.id])
-  return { flush, rename, saving, error }
+  return { flush, rename, editMessage, saving, error }
 }

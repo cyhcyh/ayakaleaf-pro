@@ -11,14 +11,18 @@ import { useEditorOpenDocContext } from '@/features/ide-react/context/editor-ope
 import { useFileTreePathContext } from '@/features/file-tree/contexts/file-tree-path'
 import { useCodeMirrorStateContext, useCodeMirrorViewContext } from '@/features/source-editor/components/codemirror-context'
 import { useReviewPanelStyles } from '@/features/review-panel/hooks/use-review-panel-styles'
+import ReviewPanelMoreCommentsButton from '@/features/review-panel/components/review-panel-more-comments-button'
+import { EditorSelection } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { highlightRanges, clearHighlightRanges } from '@/features/source-editor/extensions/ranges'
 import type { AnyOperation } from '../../../../../types/change'
 import useEventListener from '@/shared/hooks/use-event-listener'
 import { locateAnchoredEdit } from '../../../shared/edit-anchor.mjs'
-import { layoutEditCards, revealEditDelta } from '../../../shared/edit-panel-layout.mjs'
+import { layoutEditCards, revealEditDelta, offscreenEditTargets } from '../../../shared/edit-panel-layout.mjs'
 import { focusEdit, refreshEdits, updateEdits, useEdits } from './edits-store'
 import { useEditActions } from './use-edit-actions'
 import EditCard from './edits-panel'
+import EditsOverview from './edits-overview'
 
 export default function AnchoredEdits() {
   const rail = useRailContext()
@@ -41,6 +45,7 @@ function OpenEdits() {
   const path = currentDocumentId ? pathInFolder(currentDocumentId) : null
   const [filter, setFilter] = useState(() => state.items.some(item => item.id === state.focusId && item.state !== 'pending') ? 'done' : 'pending')
   const [overview, setOverview] = useState(false)
+  const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set())
   const entries = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const revealId = useRef<string | null>(null)
@@ -55,6 +60,10 @@ function OpenEdits() {
     // Explicit navigation from chat or source may target a different status.
     // Applying an action to the same card never changes the selected filter.
     if (item && filter !== 'all' && ((filter === 'pending') !== (item.state === 'pending'))) setFilter(item.state === 'pending' ? 'pending' : 'done')
+    if (item) setCollapsedFiles(current => {
+      if (!current.has(item.input.path)) return current
+      const next = new Set(current); next.delete(item.input.path); return next
+    })
   }, [state.focusId, state.items, filter])
   const located = useMemo(() => {
     const content = cmState.doc.toString()
@@ -63,6 +72,9 @@ function OpenEdits() {
         item.input.startLine, item.lastAnchor || item.proposalAnchor) }] } catch { return [] }
     }).sort((a, b) => a.at - b.at)
   }, [state.items, filter, path, cmState.doc])
+  const [more, setMore] = useState<{ scope: typeof located; above: string | null; below: string | null } | null>(null)
+  const navigationContext = useRef({ located, overview, doc: cmState.doc })
+  navigationContext.current = { located, overview, doc: cmState.doc }
   const reposition = useCallback(() => {
     if (!entries.current || !inner.current || overview) return
     view.requestMeasure({ key: 'personal-ai-edit-positions', read(editor) {
@@ -80,8 +92,11 @@ function OpenEdits() {
       })
       const layout = layoutEditCards(cards, state.focusId, header + toolbar + 6)
       const selected = cards.find(card => card.id === revealId.current)
+      const visibleTop = viewport.top + header + toolbar + 6, visibleBottom = viewport.bottom - footer - 6
+      const targets = offscreenEditTargets(cards.map(card => ({ ...card, top: origin + layout.positions.get(card.id)! })), visibleTop, visibleBottom)
       return { elements, layout, height: Math.max(editor.contentDOM.clientHeight, layout.bottom + footer + 8),
-        delta: selected ? revealEditDelta(origin + layout.positions.get(selected.id)!, selected.height, viewport.top + header + toolbar + 6, viewport.bottom - footer - 6) : 0 }
+        targets, visibleTop, visibleBottom,
+        delta: selected ? revealEditDelta(origin + layout.positions.get(selected.id)!, selected.height, visibleTop, visibleBottom) : 0 }
     }, write(next) {
       if (!next || !inner.current) return
       for (const [id, top] of next.layout.positions) {
@@ -90,6 +105,10 @@ function OpenEdits() {
         element.style.visibility = 'visible'
       }
       inner.current.style.minHeight = `${next.height}px`
+      inner.current.style.setProperty('--pa-more-edits-top', `${next.visibleTop + 8}px`)
+      inner.current.style.setProperty('--pa-more-edits-bottom', `${window.innerHeight - next.visibleBottom + 8}px`)
+      setMore(previous => previous?.scope === located && previous.above === next.targets.above && previous.below === next.targets.below
+        ? previous : { scope: located, ...next.targets })
       if (revealId.current) {
         revealId.current = null
         if (next.delta) view.scrollDOM.scrollTop += next.delta
@@ -98,7 +117,7 @@ function OpenEdits() {
   }, [view, located, overview, state.focusId, cmState.doc])
   const layoutRef = useRef(reposition)
   layoutRef.current = reposition
-  useLayoutEffect(() => { if (overview) inner.current?.style.removeProperty('min-height') }, [overview])
+  useLayoutEffect(() => { setMore(null); if (overview) inner.current?.style.removeProperty('min-height') }, [overview])
   useEffect(reposition, [reposition, cmState])
   useEventListener('editor:geometry-change', reposition)
   useEventListener('editor:viewport-changed', reposition)
@@ -120,6 +139,40 @@ function OpenEdits() {
     if (hovered.current) { view.dispatch(clearHighlightRanges(hovered.current)); hovered.current = null }
   }, [view])
   useEffect(() => clearHover, [clearHover, currentDocumentId])
+  const navigateMore = (direction: 'above' | 'below') => {
+    if (overview || !inner.current || !entries.current) return
+    const scope = located
+    view.requestMeasure({ key: 'personal-ai-more-edit-navigation', read(editor) {
+      if (!inner.current || !entries.current || editor.state.doc !== cmState.doc) return null
+      const viewport = editor.scrollDOM.getBoundingClientRect()
+      const header = (inner.current.querySelector('.review-panel-header') as HTMLElement | null)?.offsetHeight || 0
+      const toolbar = (inner.current.querySelector('.pa-edits-anchor-toolbar') as HTMLElement).offsetHeight
+      const footer = (inner.current.querySelector('.pa-edits-anchor-footer') as HTMLElement).offsetHeight
+      const allowed = new Set(scope.map(entry => entry.item.id))
+      const cards = [...entries.current.querySelectorAll<HTMLElement>('.pa-edit-card')].filter(element => allowed.has(element.dataset.editId!)).map(element => {
+        const bounds = element.getBoundingClientRect()
+        return { id: element.dataset.editId!, top: bounds.top, height: bounds.height }
+      })
+      const target = offscreenEditTargets(cards, viewport.top + header + toolbar + 6, viewport.bottom - footer - 6)[direction]
+      return scope.find(entry => entry.item.id === target) || null
+    }, write(target) {
+      if (!target) return
+      // Dispatch after CodeMirror's measurement phase. Recheck the scope in
+      // case a status/file change happened while the measurement was queued.
+      requestAnimationFrame(() => {
+        const current = navigationContext.current
+        if (!inner.current || current.overview || current.located !== scope || current.doc !== cmState.doc || view.state.doc !== cmState.doc) return
+        clearHover()
+        setMore(null)
+        revealId.current = target.item.id
+        focusEdit(projectId, target.item.id)
+        view.dispatch({ selection: EditorSelection.cursor(target.at), effects: EditorView.scrollIntoView(target.at, { y: 'center' }) })
+        view.focus()
+        requestAnimationFrame(() => layoutRef.current())
+      })
+    } })
+  }
+  const navigation = !overview && more?.scope === located ? more : null
   const hover = (item: typeof state.items[number]) => {
     clearHover()
     if (item.input.path !== path) return
@@ -155,14 +208,20 @@ function OpenEdits() {
         <div className="pa-edits-anchor-toolbar"><div className="pa-edits-filters" role="group" aria-label={ui("筛选 AI 修改")}>
           {([['all', ui("全部")], ['pending', ui("待确认")], ['done', ui("已处理")]] as const).map(([value, name]) => <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{name}</button>)}
         </div></div>
+        {navigation?.above && <ReviewPanelMoreCommentsButton direction="upward" label={ui("更多修改")} onClick={() => navigateMore('above')} />}
         {(state.error || (!overview && !located.length)) && <div className="pa-edits-anchor-status">
           {state.error && <div className="pa-anchored-error" role="alert">{state.error}<button className="pa-text-action" onClick={() => refreshEdits(projectId).catch(() => {})}>{ui("刷新记录")}</button></div>}
           {!overview && !located.length && <div className="pa-edits-empty"><p>{state.loading ? ui("正在读取修改…") : ui("当前文件没有可定位的修改")}</p><button className="pa-text-action" onClick={() => setOverview(true)}>{ui("查看全部文件")}</button></div>}
         </div>}
-        {overview ? <div className="pa-edits-overview-items">{items.map(item => card(item))}{!items.length && <p className="pa-muted p-3">{ui("暂无修改建议。")}</p>}</div>
+        {overview ? <EditsOverview items={items} collapsed={collapsedFiles} renderCard={item => card(item)} onToggle={path => setCollapsedFiles(current => {
+          const next = new Set(current)
+          if (next.has(path)) next.delete(path); else next.add(path)
+          return next
+        })} />
           : <div ref={entries} className="pa-edits-anchor-entries">
             {located.map(({ item, at }) => card(item, at))}
           </div>}
+        {navigation?.below && <ReviewPanelMoreCommentsButton direction="downward" label={ui("更多修改")} onClick={() => navigateMore('below')} />}
         <div className="pa-edits-anchor-footer" role="group" aria-label={ui("修改范围")}><button aria-pressed={!overview} onClick={() => setOverview(false)}>{ui("当前文件")}</button><button aria-pressed={overview} onClick={() => setOverview(true)}>{ui("全部文件")}</button></div>
       </div>
     </div>, view.scrollDOM)}

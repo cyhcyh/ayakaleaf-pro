@@ -17,7 +17,7 @@ export default function useAutosizeComposer(
     const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
     const border =
       parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)
-    const panel = input.closest('[data-chat-input]')?.parentElement
+    const panel = input.closest('[data-chat-input]')?.parentElement || input.closest('.pa-chat-view')
     const availableHeight = (panel?.clientHeight || window.innerHeight) * 0.4
     const maxRows = Math.max(
       MIN_COMPOSER_ROWS,
@@ -57,7 +57,7 @@ export default function useAutosizeComposer(
   useLayoutEffect(() => {
     const input = inputRef.current
     if (!input) return
-    const panel = input.closest('[data-chat-input]')?.parentElement
+    const panel = input.closest('[data-chat-input]')?.parentElement || input.closest('.pa-chat-view')
     let width = input.offsetWidth
     let panelHeight = panel?.clientHeight || window.innerHeight
     const observer = new ResizeObserver(() => {

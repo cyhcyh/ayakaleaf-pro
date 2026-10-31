@@ -179,6 +179,6 @@ export async function chatRuntime(req, res, next) {
     }
     await withUserAi(user(req), feature, next, req.body.sessionContext ? req.body.binding : undefined);
   } catch (error) {
-    res.status(error.status || 400).json({ error: error.message });
+    res.status(error.status || 400).json({ error: localize(error.message, req.language) });
   }
 }

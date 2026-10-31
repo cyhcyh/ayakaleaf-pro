@@ -18,6 +18,7 @@ const message = z.object({
 });
 export const saveSessionSchema = z.object({
   revision: z.number().int().min(0),
+  historyVersion: z.number().int().min(0).default(0),
   messages: z.array(message).max(500),
   summary: checkpointSchema.nullable().optional(),
   binding: selectionSchema.nullable().optional(),
@@ -88,7 +89,7 @@ export async function loadSession(userId, projectId, id, paged = false) {
   const delivered = outbox.length ? await (await collection('Messages')).distinct('message.id', {
     sessionId: id, userId: String(userId), projectId, 'message.role': 'user', 'message.id': { $in: outbox.map(item => item.id) },
   }) : [];
-  return { id, projectId, title: row.title, revision: row.revision, ...page, summary: row.contextState?.checkpoint || row.summary, binding: row.binding || null,
+  return { id, projectId, title: row.title, revision: row.revision, historyVersion: row.historyVersion || 0, ...page, summary: row.contextState ? row.contextState.checkpoint : row.summary, binding: row.binding || null,
     outbox: outbox.filter(item => !delivered.includes(item.id)) };
 }
 
@@ -100,7 +101,7 @@ export async function saveSession(userId, projectId, id, body) {
   return await projectWrite(projectId, async transaction => {
       const row = await store.findOne({ _id: id, ...scope(userId, projectId) }, { session: transaction });
       if (!row) throw missing();
-      if (row.revision !== input.revision) throw conflict();
+      if (row.revision !== input.revision || (row.historyVersion || 0) !== input.historyVersion) throw conflict();
       const firstUser = input.messages.find(item => item.message.role === 'user');
       const title = row.autoTitle && !row.named && firstUser
         ? firstUser.message.parts.filter(p => p.type === 'text').map(p => String(p.text || '').split('<editor-context>')[0].split('<reference-attachments>')[0]).join(' ').trim().slice(0, 60) || row.title

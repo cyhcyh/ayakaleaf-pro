@@ -435,5 +435,16 @@
   "摘要仍过长，请降低摘要长度上限或增加压缩模型容量": "The summary is still too long. Lower the summary length limit or increase the compression model context limit.",
   "上下文或摘要预算过小，请调整压缩设置": "The context or summary budget is too small. Adjust compression settings.",
   "AI 服务暂时不可用，请稍后重试。": "The AI service is temporarily unavailable. Try again later.",
-  "此前部分步骤已整理为摘要，完整记录仍可查看。": "Earlier steps were summarized. The full history is still available."
+  "此前部分步骤已整理为摘要，完整记录仍可查看。": "Earlier steps were summarized. The full history is still available.",
+  "复制消息": "Copy message",
+  "复制失败，请选中文字后复制。": "Copy failed. Select the text and copy it manually.",
+  "编辑已发送的消息": "Edit sent message",
+  "重新发送将替换这条及之后的对话。": "Resending replaces this message and the conversation after it.",
+  "项目文件不会回退。": "Project files will not be reverted.",
+  "重新发送": "Resend",
+  "正在发送…": "Sending…",
+  "只能编辑自己发送的消息": "You can only edit your own messages.",
+  "消息不能为空": "The message cannot be empty.",
+  "会话已变化或已删除，请重新打开会话后继续": "The conversation changed or was deleted. Reopen it to continue.",
+  "更多修改": "More edits"
 }

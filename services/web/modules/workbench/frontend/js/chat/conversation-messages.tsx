@@ -6,9 +6,13 @@ import type { Respond } from '../agent/tools'
 import type { Summary } from '../personal-ai/session-state'
 import MessageView from './message-view'
 
-export default function ConversationMessages({ messages, streaming, respond, summary, hasOlder, loadingOlder, historyError, loadOlder }: {
+export default function ConversationMessages({ messages, streaming, respond, summary, hasOlder, loadingOlder, historyError, loadOlder,
+  editing, editBusy, editError, editingDisabled, resendDisabled, onEdit, onEditChange, onEditCancel, onResend, historyVersion = 0 }: {
   messages: UIMessage[]; streaming: boolean; respond: Respond; summary: Summary | null;
   hasOlder: boolean; loadingOlder: boolean; historyError: string; loadOlder: () => Promise<void>
+  editing?: { id: string; text: string } | null; editBusy?: boolean; editError?: string; editingDisabled?: boolean; resendDisabled?: boolean
+  onEdit?: (message: UIMessage) => void; onEditChange?: (text: string) => void; onEditCancel?: () => void; onResend?: () => void
+  historyVersion?: number
 }) {
   const box = useRef<HTMLDivElement>(null)
   const following = useRef(true)
@@ -27,6 +31,11 @@ export default function ConversationMessages({ messages, streaming, respond, sum
     following.current = false
     try { await loadOlder() } catch { pendingAnchor.current = null }
   }, [hasOlder, loadingOlder, loadOlder])
+  useLayoutEffect(() => {
+    following.current = true
+    pendingAnchor.current = null
+  }, [historyVersion])
+  useLayoutEffect(() => { if (editing) following.current = false }, [editing?.id])
   useLayoutEffect(() => {
     const anchor = pendingAnchor.current
     if (!anchor) return
@@ -60,7 +69,9 @@ export default function ConversationMessages({ messages, streaming, respond, sum
       {virtual.getVirtualItems().map(item => {
         const message = messages[item.index]
         return <div key={item.key} ref={virtual.measureElement} data-index={item.index} data-message-id={message.id} className="pa-conversation-message" style={{ transform: `translateY(${item.start}px)` }}>
-          <MessageView message={message} streaming={streaming && item.index === messages.length - 1} respond={respond} />
+          <MessageView message={message} streaming={streaming && item.index === messages.length - 1} respond={respond}
+            editText={editing?.id === message.id ? editing.text : undefined} editBusy={editBusy} editError={editError}
+            editingDisabled={editingDisabled} resendDisabled={resendDisabled} onEdit={onEdit} onEditChange={onEditChange} onEditCancel={onEditCancel} onResend={onResend} />
           {message.id === summary?.upToMessageId && <p className="pa-compaction-marker">{summary.partial ? ui("此前部分步骤已整理为摘要，完整记录仍可查看。") : ui("以上对话已整理为摘要，完整记录仍可查看。")}</p>}
         </div>
       })}
