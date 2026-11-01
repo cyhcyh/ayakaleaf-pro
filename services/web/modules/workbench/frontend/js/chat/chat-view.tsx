@@ -593,16 +593,15 @@ export default function ChatView({ chatId, view, initial, active = true, registe
           modelPicker={<SessionModelPicker value={binding} onChange={setBinding} disabled={!permissionEnabled || editSending || status === 'submitted' || status === 'streaming' || toolsRunning > 0}
             onManage={() => { setSettingsShown(true); openAiSettings() }} />}
         />
-        {/* One line, or a break after the first sentence */}
+        {/* Share the existing footer line so autosave never moves the composer. */}
         <p
           className="d-flex flex-wrap justify-content-center mb-2"
           style={{ ...faint, fontSize: 'var(--font-size-01)', columnGap: '0.5ch' }}
         >
-          <span className="text-nowrap">{ui("请核对回答和修改建议。")}</span>
+          <span className="text-nowrap" role={persistence.saving ? 'status' : undefined}>{persistence.saving ? ui("正在保存会话…") : ui("请核对回答和修改建议。")}</span>
         </p>
       </div>
       {persistence.error && <div className="pa-save-error" role="alert">{ui("会话尚未保存：")}{persistence.error}<button className="pa-text-action" onClick={() => persistence.flush().catch(() => {})}>{ui("重试保存")}</button></div>}
-      {persistence.saving && <small className="pa-muted text-center pb-1" role="status">{ui("正在保存会话…")}</small>}
     </div>
     </ReviewChatContext.Provider>
   )
