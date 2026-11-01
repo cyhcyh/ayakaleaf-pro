@@ -7,6 +7,8 @@ import { promisify } from "node:util";
 import { collection } from "./ProfileStore.mjs";
 import { projectWrite } from './WorkspaceLifecycle.mjs';
 import { readPublicURL, plainHTML } from "./PublicWeb.mjs";
+import { webpageLinks, linkPage } from './WebLinks.mjs';
+import { WebReadError } from './WebReadErrors.mjs';
 import ProjectLocator from "../../../../../app/src/Features/Project/ProjectLocator.mjs";
 import ProjectEntityHandler from "../../../../../app/src/Features/Project/ProjectEntityHandler.mjs";
 import ProjectZipStreamManager from "../../../../../app/src/Features/Downloads/ProjectZipStreamManager.mjs";
@@ -198,20 +200,25 @@ export async function readReference(
   };
 }
 
-export async function readWebpage(url, page, offset, signal) {
+export async function readWebpage(url, page, offset, signal, { linkOffset = 0, linksOnly = false } = {}) {
   const response = await readPublicURL(url, signal);
+  const htmlPage = /(?:text\/html|application\/xhtml\+xml)/i.test(response.type);
   if (
     response.type.includes("application/pdf") ||
     response.data.subarray(0, 5).toString() === "%PDF-"
-  )
+  ) {
+    if (linksOnly) return { url: response.url, ...linkPage({ links: [], unreadableLinkCount: 0 }, linkOffset) };
     return { url: response.url, ...(await pdfText(response.data, page || 1)) };
+  }
   if (
     !/text\/(html|plain)|application\/(xhtml\+xml|json|xml)/i.test(
       response.type,
     )
   )
-    throw new Error("链接未返回可阅读的网页、文本或 PDF");
+    throw new WebReadError('format');
   const html = response.data.toString("utf8");
+  if (linksOnly) return { url: response.url, title: htmlPage ? html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '' : '',
+    ...linkPage(htmlPage ? webpageLinks(html, response.url) : { links: [], unreadableLinkCount: 0 }, linkOffset) };
   const content = response.type.includes("html") ? plainHTML(html) : html;
   return {
     url: response.url,
@@ -219,6 +226,7 @@ export async function readWebpage(url, page, offset, signal) {
     text: content.slice(offset || 0, (offset || 0) + 24000),
     nextOffset:
       (offset || 0) + 24000 < content.length ? (offset || 0) + 24000 : null,
+    ...(htmlPage && linkPage(webpageLinks(html, response.url), linkOffset)),
   };
 }
 

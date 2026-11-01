@@ -2,6 +2,7 @@ import dns from "node:dns/promises";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
+import { WebReadError, webNetworkError } from './WebReadErrors.mjs';
 
 export function isPublicAddress(address) {
   if (address.toLowerCase().startsWith("::ffff:"))
@@ -26,36 +27,46 @@ export function isPublicAddress(address) {
 // TUN proxies can return benchmark addresses for every public hostname. Resolve
 // only that case through a fixed public DNS service, then pin the real address.
 export async function publicAddresses(host, signal, lookup = dns.lookup, dnsFetch = fetch) {
-  let addresses = net.isIP(host)
-    ? [{ address: host, family: net.isIP(host) }]
-    : await lookup(host, { all: true });
+  signal?.throwIfAborted();
+  let addresses;
+  try {
+    addresses = net.isIP(host) ? [{ address: host, family: net.isIP(host) }]
+      : await lookup(host, { all: true });
+  } catch (error) { throw webNetworkError(error, signal); }
   const virtual = address => /^198\.(18|19)\./.test(address) || /^2001:2:/i.test(address);
   if (!net.isIP(host) && addresses.length && addresses.every(({ address }) => virtual(address))) {
-    const response = await dnsFetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=A`, {
+    let response;
+    try { response = await dnsFetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=A`, {
       headers: { Accept: 'application/dns-json' },
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000),
-    });
-    if (!response.ok) throw new Error('公开参考链接的 DNS 解析失败');
-    const result = await response.json();
+    }); } catch (error) { throw webNetworkError(error, signal); }
+    if (!response.ok) throw new WebReadError('dns');
+    let result;
+    try { result = await response.json(); } catch (error) {
+      if (signal?.aborted) throw signal.reason;
+      throw new WebReadError('dns');
+    }
     addresses = (result.Answer || []).filter(answer => answer.type === 1)
       .map(answer => ({ address: answer.data, family: 4 }));
   }
-  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address)))
-    throw new Error('参考资料链接不能访问本机或私有网络');
+  if (!addresses.length) throw new WebReadError('dns');
+  if (addresses.some(({ address }) => !isPublicAddress(address))) throw new WebReadError('private');
   return addresses;
 }
 
 // Public reference URLs use pinned, validated DNS results on every redirect.
 // Personal model endpoints intentionally allow local/self-hosted addresses.
 export async function readPublicURL(input, signal, redirects = 0) {
-  const url = new URL(input);
+  signal?.throwIfAborted();
+  let url;
+  try { url = new URL(input); } catch { throw new WebReadError('address'); }
   if (
     !["http:", "https:"].includes(url.protocol) ||
     url.username ||
     url.password ||
     !["", "80", "443"].includes(url.port)
   ) {
-    throw new Error("参考链接需要使用公开的 HTTP/HTTPS 网页地址");
+    throw new WebReadError('address');
   }
   const host = url.hostname.replace(/^\[|\]$/g, "");
   const addresses = await publicAddresses(host, signal);
@@ -77,14 +88,18 @@ export async function readPublicURL(input, signal, redirects = 0) {
             : callback(null, pinned.address, pinned.family),
       },
       (response) => {
+        if (response.headers['cf-mitigated'] === 'challenge') {
+          response.resume(); reject(new WebReadError('challenge')); return;
+        }
         if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
           response.resume();
+          if (!response.headers.location) { reject(new WebReadError('redirect')); return; }
           resolve({ redirect: response.headers.location });
           return;
         }
         if (response.statusCode !== 200) {
           response.resume();
-          reject(new Error(`网页返回 HTTP ${response.statusCode}`));
+          reject(new WebReadError(response.statusCode === 403 ? 'forbidden' : response.statusCode === 404 ? 'missing' : 'http', [response.statusCode]));
           return;
         }
         const chunks = [];
@@ -92,7 +107,7 @@ export async function readPublicURL(input, signal, redirects = 0) {
         response.on("data", (chunk) => {
           bytes += chunk.length;
           if (bytes > 8 * 1024 * 1024) {
-            request.destroy(new Error("参考资料超过 8 MB，请下载后按需上传"));
+            request.destroy(new WebReadError('size'));
             return;
           }
           chunks.push(chunk);
@@ -108,14 +123,17 @@ export async function readPublicURL(input, signal, redirects = 0) {
       },
     );
     request.on("error", reject);
-  });
+  }).catch(error => { throw webNetworkError(error, signal); });
   if (result.redirect) {
-    if (redirects >= 4) throw new Error("参考链接重定向次数过多");
-    return await readPublicURL(
-      new URL(result.redirect, url).href,
-      signal,
-      redirects + 1,
-    );
+    if (redirects >= 4) throw new WebReadError('redirects');
+    let target;
+    try { target = new URL(result.redirect, url); } catch { throw new WebReadError('redirect'); }
+    try { return await readPublicURL(target.href, signal, redirects + 1); }
+    catch (error) {
+      if (error instanceof WebReadError && error.kind === 'dns') throw new WebReadError('redirect_dns');
+      if (error instanceof WebReadError && error.kind === 'address') throw new WebReadError('redirect');
+      throw error;
+    }
   }
   return result;
 }

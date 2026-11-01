@@ -7,6 +7,7 @@ import { recordTokenUsage } from '../TokenQuota.mjs';
 import { personalContext } from './Compression.mjs';
 import { beginContextRun, saveContextState } from './ContextUsage.mjs';
 import { localize } from '../../../../site-settings/shared/localize.mjs';
+import { webReadErrorMessage } from './WebReadErrors.mjs';
 
 const overflow = error => /context_length_exceeded|context_window_exceeded|maximum context length|context window.*exceed|too many input tokens/i
   .test(`${error?.code || ''} ${error?.message || ''} ${error?.responseBody || ''} ${error?.cause?.message || ''}`);
@@ -32,8 +33,9 @@ export function streamPersonalChat({ req, res, userId, signal, system, tools, to
   let context;
   const message = error => {
     logger.warn({ err: error, userId }, 'personal chat request failed');
-    return error?.code === 'context_compaction' ? localize(error.message, req.language)
-      : localize('AI 服务暂时不可用，请稍后重试。', req.language);
+    return webReadErrorMessage(error, req.language)
+      || (error?.code === 'context_compaction' ? localize(error.message, req.language)
+        : localize('AI 服务暂时不可用，请稍后重试。', req.language));
   };
   const stream = createUIMessageStream({
     originalMessages: raw,

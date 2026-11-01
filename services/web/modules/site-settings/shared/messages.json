@@ -446,5 +446,19 @@
   "只能编辑自己发送的消息": "You can only edit your own messages.",
   "消息不能为空": "The message cannot be empty.",
   "会话已变化或已删除，请重新打开会话后继续": "The conversation changed or was deleted. Reopen it to continue.",
-  "更多修改": "More edits"
+  "更多修改": "More edits",
+  "参考链接需要使用公开的 HTTP/HTTPS 网页地址": "Use a public HTTP or HTTPS web address.",
+  "参考资料链接不能访问本机或私有网络": "Reference links cannot access this machine or a private network.",
+  "无法解析网页地址，请检查网址。": "The web address could not be resolved. Check the URL.",
+  "网页跳转后的地址无法解析。": "The redirected web address could not be resolved.",
+  "网页返回了无效的跳转地址。": "The page returned an invalid redirect address.",
+  "参考链接重定向次数过多": "The reference link redirected too many times.",
+  "读取网页超时，请稍后重试。": "Reading the page timed out. Try again later.",
+  "无法连接网页，请稍后重试。": "The page could not be reached. Try again later.",
+  "网站拒绝了读取请求（HTTP 403）。": "The website refused the request (HTTP 403).",
+  "网站需要浏览器验证，当前工具无法直接读取。": "The website requires browser verification. This tool cannot read it directly.",
+  "网页不存在（HTTP 404），请检查地址。": "The page was not found (HTTP 404). Check the URL.",
+  "网页返回 HTTP {0}，无法读取。": "The page returned HTTP {0} and could not be read.",
+  "参考资料超过 8 MB，请下载后按需上传": "The reference is larger than 8 MB. Download it and upload the needed material.",
+  "链接未返回可阅读的网页、文本或 PDF": "The link did not return a readable web page, text file, or PDF."
 }
