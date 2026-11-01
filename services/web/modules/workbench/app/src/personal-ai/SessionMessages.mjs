@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { collection } from './ProfileStore.mjs';
 import { restoredMessage, mergeSessionContext } from '../../../shared/session-context.mjs';
+import { collectMessagePage } from '../../../shared/message-cache.mjs';
 
 const missing = () => Object.assign(new Error('会话不存在或已被删除'), { status: 404 });
 export const checkpointSchema = z.object({ summary: z.string().max(500000), upToMessageId: z.string().max(150), protectedFirstIds: z.array(z.string().max(150)).max(500).optional(),
@@ -15,17 +16,29 @@ export async function sessionRow(userId, projectId, id) {
   return row;
 }
 
-export async function messagesPage(userId, projectId, id, before) {
-  await sessionRow(userId, projectId, id);
+export async function messagesPage(userId, projectId, id, before, after, historyVersion) {
+  const session = await sessionRow(userId, projectId, id);
+  const version = session.historyVersion || 0;
+  const conflict = () => Object.assign(new Error('会话已在其他页面更新，请重新打开会话后继续'), { status: 409 });
+  if (historyVersion !== undefined && historyVersion !== version) throw conflict();
+  if (before !== undefined && after !== undefined) throw new Error('只能指定一个翻页方向');
   const store = await collection('Messages');
-  const filter = { sessionId: id, userId: String(userId), projectId, ...(before !== undefined && { order: { $lt: before } }) };
-  // A page starts at a user turn, so tool calls/results remain together.
-  const turns = await store.find({ ...filter, 'message.role': 'user' }, { projection: { order: 1 } }).sort({ order: -1 }).limit(20).toArray();
-  const start = turns.length === 20 ? turns.at(-1).order : 0;
-  const rows = await store.find({ ...filter, order: { $gte: start, ...(before !== undefined && { $lt: before }) } }).sort({ order: 1, _id: 1 }).toArray();
-  const offset = rows[0]?.order || 0;
-  const older = offset > 0 && await store.findOne({ sessionId: id, userId: String(userId), projectId, order: { $lt: offset } }, { projection: { _id: 1 } });
-  return { messages: rows.map(row => restoredMessage(row.message)), messageOffset: offset, olderBefore: older ? offset : null };
+  const scope = { sessionId: id, userId: String(userId), projectId };
+  const direction = after === undefined ? -1 : 1;
+  const cursor = store.find({ ...scope, ...(before !== undefined && { order: { $lt: before } }), ...(after !== undefined && { order: { $gt: after } }) })
+    .sort({ order: direction }).batchSize(2);
+  let rows;
+  try { rows = await collectMessagePage(cursor, direction); } finally { await cursor.close(); }
+  const offset = rows[0]?.order ?? (after !== undefined ? after + 1 : before || 0);
+  const end = rows.length ? rows.at(-1).order + 1 : offset;
+  const [older, newer, current] = await Promise.all([
+    store.findOne({ ...scope, order: { $lt: offset } }, { projection: { _id: 1 } }),
+    store.findOne({ ...scope, order: { $gte: end } }, { projection: { _id: 1 } }),
+    sessionRow(userId, projectId, id),
+  ]);
+  if ((current.historyVersion || 0) !== version) throw conflict();
+  return { messages: rows.map(row => restoredMessage(row.message)), messageOffset: offset, messageEnd: end,
+    olderBefore: older ? offset : null, newerAfter: newer ? end - 1 : null, historyVersion: version };
 }
 
 export async function prepareSessionContext(userId, projectId, input) {

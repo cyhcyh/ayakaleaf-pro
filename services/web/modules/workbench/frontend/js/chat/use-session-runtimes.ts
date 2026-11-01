@@ -26,6 +26,10 @@ export default function useSessionRuntimes() {
   }, [])
   const register = useCallback((id: string, runtime: SessionRuntime) => {
     controls.current.set(id, runtime)
+    // The mounted runtime owns its initial messages/queue now. Keeping another
+    // seed in the parent would pin old images even after its cache is trimmed.
+    setSessions(previous => previous.some(item => item.id === id && (item.messages.length || item.outbox?.length))
+      ? previous.map(item => item.id === id ? { ...item, messages: [], outbox: [] } : item) : previous)
     return () => {
       if (controls.current.get(id) === runtime) controls.current.delete(id)
     }

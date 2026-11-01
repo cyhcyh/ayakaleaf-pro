@@ -31,7 +31,8 @@ export function applyWorkspaceRoutes({ get, post, user, projectAccess }) {
     await stopReview(user(req), projectId, id);
     return result;
   });
-  get('/sessions/:id/messages', async req => await messagesPage(user(req), await project(req), uuid.parse(req.params.id), messageOffsetSchema.parse(req.query.before)));
+  get('/sessions/:id/messages', async req => await messagesPage(user(req), await project(req), uuid.parse(req.params.id),
+    messageOffsetSchema.optional().parse(req.query.before), messageOffsetSchema.optional().parse(req.query.after), messageOffsetSchema.optional().parse(req.query.historyVersion)));
   post('/sessions/:id/save', async req => await sessions.saveSession(user(req), await project(req), uuid.parse(req.params.id), req.body));
   post('/sessions/:id/edit-message', async req => await editSessionMessage(user(req), await project(req), uuid.parse(req.params.id), req.body));
   post('/sessions/:id/activate', async req => await sessions.activateSession(user(req), await project(req), uuid.parse(req.params.id)));

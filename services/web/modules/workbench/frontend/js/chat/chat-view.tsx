@@ -37,7 +37,9 @@ import { ReviewChatContext, approve } from '../personal-ai/review-tools'
 import { api, openAiSettings, type Binding } from '../personal-ai/api'
 import SessionModelPicker from '../personal-ai/session-model-picker'
 import { useLayoutContext } from '@/shared/context/layout-context'
-import { useSessionAutosave, type SavedSession, type Summary, type MessagePage } from '../personal-ai/session-state'
+import { useSessionAutosave, type SavedSession, type Summary } from '../personal-ai/session-state'
+import useConversationHistory, { type HistoryTarget } from './use-conversation-history'
+import EditingReminder from './editing-reminder'
 import useMessageQueue from './use-message-queue'
 import MessageQueue from './message-queue'
 import type { DraftContext } from './draft'
@@ -55,6 +57,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   registerRuntime?: (id: string, runtime: SessionRuntime) => (() => void)
   reportState?: (id: string, state: RuntimeState) => void
 }) {
+  const persisted = Boolean(initial)
   const { projectId } = useProjectContext()
   const { setSettingsShown } = useLayoutContext()
   const reviewId = useRef<string | null>(null)
@@ -87,7 +90,8 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const dispatching = useRef(false)
   const generation = useRef(0)
   const [transitioning, setTransitioning] = useState(false)
-  const [editingMessage, setEditingMessage] = useState<{ id: string; text: string } | null>(null)
+  const [editingMessage, setEditingMessage] = useState<(HistoryTarget & { text: string }) | null>(null)
+  const [editingVisible, setEditingVisible] = useState(false)
   const [editSending, setEditSending] = useState(false)
   const [messageEditError, setMessageEditError] = useState('')
   const replacing = useRef(false)
@@ -104,24 +108,6 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const hasAccess = defaultAccess || (permissionEnabled && Boolean(binding))
   const bindingRef = useRef(binding)
   bindingRef.current = binding
-  const [olderMessages, setOlderMessages] = useState<UIMessage[]>([])
-  const [olderBefore, setOlderBefore] = useState(initial?.olderBefore ?? null)
-  const [loadingOlder, setLoadingOlder] = useState(false)
-  const [historyError, setHistoryError] = useState('')
-  const loadingPage = useRef(false)
-  const historyLoadVersion = useRef(0)
-  const loadOlder = useCallback(async () => {
-    if (olderBefore === null || loadingPage.current) return
-    loadingPage.current = true; setLoadingOlder(true); setHistoryError('')
-    const loadVersion = historyLoadVersion.current
-    try {
-      const result = await api<MessagePage>(`/sessions/${chatId}/messages?projectId=${projectId}&before=${olderBefore}`, undefined, signal)
-      if (loadVersion !== historyLoadVersion.current) return
-      setOlderMessages(current => [...result.messages, ...current])
-      setOlderBefore(result.olderBefore)
-    } catch (error) { if (!signal.aborted && loadVersion === historyLoadVersion.current) setHistoryError((error as Error).message); throw error }
-    finally { if (loadVersion === historyLoadVersion.current) { loadingPage.current = false; if (!signal.aborted) setLoadingOlder(false) } }
-  }, [chatId, projectId, olderBefore, signal])
   // Browser tools still running, and whether the user stopped the reply
   const running = useRef(new Set<AbortController>())
   const jobs = useRef(new Set<Promise<unknown>>())
@@ -181,13 +167,13 @@ export default function ChatView({ chatId, view, initial, active = true, registe
             reviewId: reviewId.current || undefined,
             trigger,
             messageId,
-            messages: initial ? [] : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
-            ...(initial && { sessionContext: true, binding: bindingRef.current }),
+            messages: persisted ? [] : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
+            ...(persisted && { sessionContext: true, binding: bindingRef.current }),
             summary: kept?.summary,
             compaction: kept || undefined,
             enabledTools: SEARCH_TOOLS,
           }
-          return { body: initial
+          return { body: persisted
             ? await persistenceRef.current!.prepareRequest(body, messages, () => epoch === generation.current && !signal.aborted)
             : body }
         },
@@ -308,7 +294,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   })
   const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding, queue.items, queue.current, sessionPosition)
   persistenceRef.current = persistence
-  const displayedMessages = useMemo(() => [...olderMessages, ...messages], [olderMessages, messages])
+  const history = useConversationHistory(projectId, chatId, messages, sessionPosition, signal)
 
   const responseGeneration = generation.current
   const respond = useCallback<Respond>(output => {
@@ -379,16 +365,25 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const captureContext = useCallback(() => ({ path, selection }), [path, selection])
   const beginMessageEdit = useCallback((message: UIMessage) => {
     if (replacing.current || suspended.current) return
-    setEditingMessage({ id: message.id, text: messageBody(message) })
+    const target = history.targetFor(message.id)
+    if (!target) return
+    setEditingVisible(true)
+    setEditingMessage({ ...target, text: messageBody(message) })
     setMessageEditError('')
-  }, [])
+  }, [history.targetFor])
   const changeMessageEdit = useCallback((text: string) => {
     setEditingMessage(current => current && { ...current, text })
     setMessageEditError('')
   }, [])
   const cancelMessageEdit = useCallback(() => {
-    if (!replacing.current) { setEditingMessage(null); setMessageEditError('') }
-  }, [])
+    if (!replacing.current) { history.cancelLocate(); setEditingMessage(null); setMessageEditError('') }
+  }, [history.cancelLocate])
+  const returnToEditing = async () => {
+    if (!editingMessage || replacing.current || suspended.current) return
+    setMessageEditError('')
+    try { await history.locate(editingMessage) }
+    catch (error) { setMessageEditError((error as Error).message) }
+  }
   const resendEditedMessage = async () => {
     if (!editingMessage || replacing.current || suspended.current || !canChat) return
     replacing.current = true
@@ -399,14 +394,9 @@ export default function ChatView({ chatId, view, initial, active = true, registe
       await persistence.flush()
       const result = await persistence.editMessage(editingMessage.id, editingMessage.text)
       if (signal.aborted || suspended.current) return
-      historyLoadVersion.current++
-      loadingPage.current = false
-      setLoadingOlder(false)
+      history.reset()
       summaryRef.current = result.summary
       setSummary(result.summary)
-      setOlderMessages([])
-      setOlderBefore(result.olderBefore)
-      setHistoryError('')
       setMessages(result.messages)
       setEditingMessage(null)
       setProblem(false)
@@ -482,6 +472,12 @@ export default function ChatView({ chatId, view, initial, active = true, registe
 
   const working = status === 'submitted' || status === 'streaming' || toolsRunning > 0 || transitioning || editSending
   const reviewWaiting = Boolean(waitingForReview(messages))
+  useEffect(() => {
+    if (!persisted || working || dispatching.current || reviewWaiting || deleting || editingMessage || queue.editing || persistence.error) return
+    history.syncLive(messages)
+    const kept = persistence.retainTail(messages)
+    if (kept) setMessages(kept)
+  }, [persisted, messages, working, turnVersion, reviewWaiting, deleting, editingMessage, queue.editing, persistence.saving, persistence.error, persistence.retainTail, history.syncLive, setMessages])
   useEffect(() => { if (reviewWaiting) queue.pause() }, [reviewWaiting, queue.pause])
   const send = useCallback(async (draft: Draft) => {
     if (suspended.current || replacing.current) throw new Error(ui("请等待当前操作结束后重试。"))
@@ -549,11 +545,15 @@ export default function ChatView({ chatId, view, initial, active = true, registe
       />
     )
   } else {
-    body = <ConversationMessages messages={displayedMessages} streaming={status === 'streaming'} respond={respond} summary={summary}
-      hasOlder={olderBefore !== null} loadingOlder={loadingOlder} historyError={historyError} loadOlder={loadOlder} historyVersion={sessionPosition.current.historyVersion}
+    body = <ConversationMessages messages={history.messages} streaming={status === 'streaming'} working={working || compacting} respond={respond} summary={summary}
+      streamingMessageId={messages.at(-1)?.id}
+      hasOlder={history.hasOlder} hasNewer={history.hasNewer} browsing={history.browsing}
+      loading={history.loading} historyError={history.error} loadOlder={history.loadOlder} loadNewer={history.loadNewer} retryHistory={history.retry}
+      onLatest={history.reset} onReading={history.observeReading} jumpVersion={history.jumpVersion} historyVersion={sessionPosition.current.historyVersion}
       editing={editingMessage} editBusy={editSending} editError={messageEditError} editingDisabled={!canChat || deleting || editSending || Boolean(editingMessage)}
+      onEditingVisibility={setEditingVisible} focus={history.focus}
       resendDisabled={!canChat || deleting}
-      onEdit={initial ? beginMessageEdit : undefined} onEditChange={changeMessageEdit} onEditCancel={cancelMessageEdit} onResend={resendEditedMessage} />
+      onEdit={persisted ? beginMessageEdit : undefined} onEditChange={changeMessageEdit} onEditCancel={cancelMessageEdit} onResend={resendEditedMessage} />
   }
 
   return (
@@ -583,6 +583,8 @@ export default function ChatView({ chatId, view, initial, active = true, registe
         )}
         {limitHit && <div className="assistant-turn-limit" role="status"><p>{ui("本轮工具调用已达上限。可以继续当前任务，已有结果会保留。")}</p>
           <button type="button" className="btn btn-secondary btn-sm" disabled={!canChat || working} onClick={() => dispatch({ text: ui("继续当前任务。"), files: [] }, undefined, false).then(() => queue.pause(false)).catch(error => setProblem(error.message))}>{ui("继续当前任务")}</button></div>}
+        {editingMessage && (!editingVisible || history.locating) && <EditingReminder busy={editSending || deleting} locating={history.locating} error={messageEditError}
+          onReturn={returnToEditing} onCancel={cancelMessageEdit} />}
         <MessageQueue items={queue.items} paused={queue.paused} editing={queue.editing} disabled={transitioning || editSending} canSteer={canChat}
           canResume={canChat && !working && !reviewWaiting && !limitHit && !quotaHit && !persistence.error}
           onResume={() => { setProblem(false); turnComplete.current = true; queue.pause(false) }} onSteer={steer} onRemove={queue.remove}
