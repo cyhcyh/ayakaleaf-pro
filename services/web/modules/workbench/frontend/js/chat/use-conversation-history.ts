@@ -6,6 +6,7 @@ import { mergeMessagePages, trimMessageWindow } from '../../../shared/message-ca
 import { ui } from '@modules/site-settings/frontend/js/ui'
 
 export type HistoryAnchor = { id: string; visibleIds: string[] }
+export type HistoryAnchorSource = HistoryAnchor | (() => HistoryAnchor | null)
 export type HistoryTarget = { id: string; order: number; historyVersion: number }
 export type HistoryFocus = { id: string; sequence: number }
 export type HistoryLoading = 'older' | 'newer' | 'locate' | null
@@ -28,7 +29,7 @@ export default function useConversationHistory(projectId: string, chatId: string
   const [jumpVersion, setJumpVersion] = useState(0)
   const pending = useRef<AbortController | null>(null)
   const epoch = useRef(0)
-  const last = useRef<{ direction: Direction; anchor?: HistoryAnchor }>()
+  const last = useRef<{ direction: Direction; anchor?: HistoryAnchorSource }>()
   const commit = useCallback((value: Window | null) => { current.current = value; setWindow(value) }, [])
   const observeReading = useCallback((anchor: HistoryAnchor) => {
     if (current.current) return
@@ -124,7 +125,7 @@ export default function useConversationHistory(projectId: string, chatId: string
     }
   }, [projectId, chatId, position, signal, commit])
 
-  const load = useCallback(async (direction: Direction, anchor?: HistoryAnchor) => {
+  const load = useCallback(async (direction: Direction, anchor?: HistoryAnchorSource) => {
     if (pending.current || signal.aborted) return
     const newest = liveRef.current
     const base: Window = current.current || { messages: newest.messages, messageOffset: newest.offset,
@@ -135,6 +136,8 @@ export default function useConversationHistory(projectId: string, chatId: string
     signal.addEventListener('abort', cancel, { once: true })
     pending.current = controller
     const version = position.current.historyVersion, ticket = epoch.current
+    const readAnchor = () => typeof anchor === 'function' ? anchor() : anchor
+    const startedAt = readAnchor()
     last.current = { direction, anchor }
     setLoading(direction); setError('')
     try {
@@ -148,6 +151,9 @@ export default function useConversationHistory(projectId: string, chatId: string
         page = await api<MessagePage>(`/sessions/${chatId}/messages?projectId=${projectId}&${cursor}&historyVersion=${version}`, undefined, controller.signal)
       }
       if (controller.signal.aborted || ticket !== epoch.current || version !== position.current.historyVersion) return
+      // The user can keep scrolling while the page is in flight. Pin what is
+      // visible now, before replacing the DOM/cache, rather than the old edge.
+      const visible = readAnchor()
       if (!page.messages.length) {
         commit({ ...base, ...(direction === 'older' ? { olderBefore: null } : { newerAfter: null }) })
         return
@@ -158,7 +164,7 @@ export default function useConversationHistory(projectId: string, chatId: string
       // A tall viewport can show a whole cached page. Still admit the nearest
       // new turn, rather than repeatedly fetching and immediately evicting it.
       const kept = trimMessageWindow(merged.messages, merged.messageOffset, { direction,
-        keepIds: [...(anchor?.visibleIds || []), ...(adjacent ? [adjacent.id] : [])] })
+        keepIds: [...(visible?.visibleIds || []), ...(adjacent && startedAt?.id === visible?.id ? [adjacent.id] : [])] })
       const end = kept.messageOffset + kept.messages.length
       const older = kept.removedBefore || (direction === 'older' ? page.olderBefore !== null : base.olderBefore !== null)
       const newer = kept.removedAfter || (direction === 'newer' ? page.newerAfter != null : base.newerAfter !== null)
@@ -175,13 +181,14 @@ export default function useConversationHistory(projectId: string, chatId: string
   const messages = useMemo(() => {
     if (!window) return live
     const active = new Map(live.map(message => [message.id, message]))
-    return window.messages.map(message => active.get(message.id) || message)
+    const updated = window.messages.map(message => active.get(message.id) || message)
+    return updated.every((message, index) => message === window.messages[index]) ? window.messages : updated
   }, [window, live])
   return { messages, reset, observeReading, syncLive, jumpVersion, focus, targetFor, locate, cancelLocate, locating: loading === 'locate', browsing: Boolean(window), error, loading,
     hasOlder: window ? window.olderBefore !== null : position.current.messageOffset > 0,
     hasNewer: Boolean(window && (window.newerAfter !== null || window.messageEnd < position.current.messageOffset + live.length)),
-    loadOlder: useCallback((anchor?: HistoryAnchor) => load('older', anchor), [load]),
-    loadNewer: useCallback((anchor?: HistoryAnchor) => load('newer', anchor), [load]),
-    retry: useCallback((anchor?: HistoryAnchor) => last.current ? load(last.current.direction, anchor || last.current.anchor) : Promise.resolve(), [load]),
+    loadOlder: useCallback((anchor?: HistoryAnchorSource) => load('older', anchor), [load]),
+    loadNewer: useCallback((anchor?: HistoryAnchorSource) => load('newer', anchor), [load]),
+    retry: useCallback((anchor?: HistoryAnchorSource) => last.current ? load(last.current.direction, anchor || last.current.anchor) : Promise.resolve(), [load]),
   }
 }

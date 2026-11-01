@@ -43,6 +43,14 @@
   .assistant-queue-editor { margin: 5px !important; }
 }
 .assistant-composer { position: relative; background: var(--bg-primary-themed); }
+.assistant-attachment-badge.badge {
+  max-width: 100%;
+  min-width: 0;
+  .material-symbols, button { flex-shrink: 0; }
+  button { text-decoration: none; }
+  .assistant-attachment-label { min-width: 0; overflow: hidden; }
+  .assistant-attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 .assistant-composer .badge.assistant-selection-badge {
   max-width: 100%;
   min-width: 0;

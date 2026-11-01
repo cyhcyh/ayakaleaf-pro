@@ -153,4 +153,52 @@ describe('bounded conversation memory', function () {
     expect(result.current.messages.length).to.equal(42)
   })
 
+  it('pins the latest reading position when an older page arrives after the user scrolls away', async function () {
+    const live = history(80, 20), position = { current: { messageOffset: 160, historyVersion: 0 } }, controller = new AbortController()
+    let resolve!: (response: Response) => void
+    sinon.stub(globalThis, 'fetch').callsFake(() => new Promise(done => { resolve = done }))
+    const { result } = renderHook(() => useConversationHistory('project', 'session', live, position, controller.signal))
+    let visible = { id: 'u80', visibleIds: ['u80', 'a80'] }
+    let work!: Promise<void>
+    await act(async () => { work = result.current.loadOlder(() => visible) })
+    expect(result.current.loading).to.equal('older')
+    // The user crosses most of the cached page while the request is pending.
+    visible = { id: 'u99', visibleIds: ['u99', 'a99'] }
+    await act(async () => { resolve(json({ messages: history(60, 20), messageOffset: 120, olderBefore: 120, newerAfter: 159 })); await work })
+    expect(result.current.messages.some(message => message.id === 'u99')).to.equal(true)
+    expect(result.current.messages.at(-1)?.id).to.equal('a99')
+    expect(result.current.messages.length).to.be.at.most(40)
+    expect(result.current.loading).to.equal(null)
+    expect(position.current.messageOffset).to.equal(160)
+  })
+
+  it('pins the latest reading position when a newer page arrives after a reverse scroll', async function () {
+    const live = history(80, 20), position = { current: { messageOffset: 160, historyVersion: 0 } }, controller = new AbortController()
+    const fetch = sinon.stub(globalThis, 'fetch')
+    fetch.onFirstCall().resolves(json({ messages: history(60, 20), messageOffset: 120, olderBefore: 120, newerAfter: 159 }))
+    fetch.onSecondCall().resolves(json({ messages: history(40, 20), messageOffset: 80, olderBefore: 80, newerAfter: 119 }))
+    let resolve!: (response: Response) => void
+    fetch.onThirdCall().callsFake(() => new Promise(done => { resolve = done }))
+    const { result } = renderHook(() => useConversationHistory('project', 'session', live, position, controller.signal))
+    await act(async () => { await result.current.loadOlder(); await result.current.loadOlder() })
+    let visible = { id: 'a59', visibleIds: ['a59'] }
+    let work!: Promise<void>
+    await act(async () => { work = result.current.loadNewer(() => visible) })
+    visible = { id: 'a40', visibleIds: ['a40'] }
+    await act(async () => { resolve(json({ messages: history(60, 20), messageOffset: 120, olderBefore: 120, newerAfter: 159 })); await work })
+    expect(result.current.messages.some(message => message.id === 'a40')).to.equal(true)
+    expect(result.current.messages[0].id).to.equal('u40')
+    expect(result.current.messages.length).to.be.at.most(40)
+  })
+
+  it('does not rerender an old history window for unrelated streamed tokens', async function () {
+    const live = history(80, 20), position = { current: { messageOffset: 160, historyVersion: 0 } }, controller = new AbortController()
+    sinon.stub(globalThis, 'fetch').resolves(json({ messages: history(60, 20), messageOffset: 120, olderBefore: 120, newerAfter: 159 }))
+    const { result, rerender } = renderHook(({ messages }) => useConversationHistory('project', 'session', messages, position, controller.signal), { initialProps: { messages: live } })
+    await act(async () => { await result.current.loadOlder() })
+    const page = result.current.messages
+    rerender({ messages: [...live.slice(0, -1), { ...live.at(-1)!, parts: [{ type: 'text', text: 'Streaming continues in the background' }] }] })
+    expect(result.current.messages).to.equal(page)
+  })
+
 })

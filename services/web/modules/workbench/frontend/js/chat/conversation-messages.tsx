@@ -1,13 +1,13 @@
 import { ui } from '@modules/site-settings/frontend/js/ui'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { measureElement, useVirtualizer } from '@tanstack/react-virtual'
 import type { UIMessage } from 'ai'
 import type { Respond } from '../agent/tools'
 import type { Summary } from '../personal-ai/session-state'
 import MaterialIcon from '@/shared/components/material-icon'
 import OLTooltip from '@/shared/components/ol/ol-tooltip'
 import MessageView from './message-view'
-import type { HistoryAnchor, HistoryFocus, HistoryLoading } from './use-conversation-history'
+import type { HistoryAnchor, HistoryAnchorSource, HistoryFocus, HistoryLoading } from './use-conversation-history'
 import { measureConversationRows } from '../../../shared/conversation-measurements.mjs'
 import useEditingVisibility from './use-editing-visibility'
 
@@ -16,8 +16,8 @@ export default function ConversationMessages({ messages, streaming, streamingMes
   editing, editBusy, editError, editingDisabled, resendDisabled, onEdit, onEditChange, onEditCancel, onResend, onEditingVisibility, focus, historyVersion = 0 }: {
   messages: UIMessage[]; streaming: boolean; streamingMessageId?: string; working: boolean; respond: Respond; summary: Summary | null
   hasOlder: boolean; hasNewer: boolean; browsing: boolean; loading: HistoryLoading; historyError: string
-  loadOlder: (anchor?: HistoryAnchor) => Promise<void>; loadNewer: (anchor?: HistoryAnchor) => Promise<void>
-  retryHistory: (anchor?: HistoryAnchor) => Promise<void>; onLatest: () => void; onReading: (anchor: HistoryAnchor) => void; jumpVersion: number
+  loadOlder: (anchor?: HistoryAnchorSource) => Promise<void>; loadNewer: (anchor?: HistoryAnchorSource) => Promise<void>
+  retryHistory: (anchor?: HistoryAnchorSource) => Promise<void>; onLatest: () => void; onReading: (anchor: HistoryAnchor) => void; jumpVersion: number
   editing?: { id: string; text: string } | null; editBusy?: boolean; editError?: string; editingDisabled?: boolean; resendDisabled?: boolean
   onEdit?: (message: UIMessage) => void; onEditChange?: (text: string) => void; onEditCancel?: () => void; onResend?: () => void
   onEditingVisibility?: (visible: boolean) => void; focus?: HistoryFocus | null
@@ -28,14 +28,29 @@ export default function ConversationMessages({ messages, streaming, streamingMes
   const pendingAnchor = useRef<(HistoryAnchor & { top: number; focus?: boolean }) | null>(null)
   const previousIds = useRef(new Set<string>())
   const previousScroll = useRef(0)
+  const heights = useRef(new Map<string, { height: number; width: number }>())
+  const rememberHeight = useCallback((id: string, height: number) => {
+    heights.current.set(id, { height, width: box.current?.clientWidth || 0 })
+  }, [])
   const [showLatest, setShowLatest] = useState(false)
-  const virtual = useVirtualizer({ count: messages.length, getScrollElement: () => box.current, getItemKey: index => messages[index].id,
-    estimateSize: () => 160, overscan: 4, paddingStart: 36, paddingEnd: hasNewer ? 92 : 8 })
+  const [pageVersion, setPageVersion] = useState(0)
+  const virtual = useVirtualizer<HTMLDivElement, HTMLDivElement>({ count: messages.length, getScrollElement: () => box.current, getItemKey: index => messages[index].id,
+    estimateSize: index => {
+      const measured = heights.current.get(messages[index].id)
+      return measured && measured.width === box.current?.clientWidth ? measured.height : 160
+    },
+    measureElement: (element, entry, instance) => {
+      const height = measureElement(element, entry, instance)
+      if (height > 0 && element.dataset.messageId) rememberHeight(element.dataset.messageId, height)
+      return height
+    }, overscan: 4, paddingStart: 36, paddingEnd: hasNewer ? 92 : 8 })
   const total = virtual.getTotalSize()
   const items = virtual.getVirtualItems()
   const editingMounted = Boolean(editing && items.some(item => messages[item.index]?.id === editing.id))
   useEditingVisibility(box, editing?.id, editingMounted, onEditingVisibility)
   const firstId = messages[0]?.id, lastId = messages.at(-1)?.id
+  const layout = useRef({ messages, virtual })
+  layout.current = { messages, virtual }
   const captureAnchor = useCallback(() => {
     const element = box.current
     if (!element) return null
@@ -44,28 +59,43 @@ export default function ConversationMessages({ messages, streaming, streamingMes
       const rect = item.getBoundingClientRect()
       return rect.bottom > bounds.top && rect.top < bounds.bottom
     })
-    return visible.length ? { id: visible[0].dataset.messageId!, visibleIds: visible.map(item => item.dataset.messageId!), top: visible[0].getBoundingClientRect().top - bounds.top } : null
+    if (visible.length) {
+      for (const item of visible) rememberHeight(item.dataset.messageId!, item.getBoundingClientRect().height)
+      return { id: visible[0].dataset.messageId!, visibleIds: visible.map(item => item.dataset.messageId!), top: visible[0].getBoundingClientRect().top - bounds.top }
+    }
+    // A fast wheel/scrollbar gesture can outrun the virtual DOM. Use the list's
+    // existing measurements rather than losing the anchor at a page boundary.
+    const { virtual, messages } = layout.current
+    const item = virtual.getVirtualItemForOffset(element.scrollTop)
+    const message = item && messages[item.index]
+    return item && message ? { id: message.id, visibleIds: [message.id], top: item.start - element.scrollTop } : null
   }, [])
   const load = useCallback(async (direction: 'older' | 'newer' | 'retry') => {
     if (loading || pendingAnchor.current || direction === 'older' && !hasOlder || direction === 'newer' && !hasNewer) return
     pendingAnchor.current = captureAnchor()
     following.current = false
+    const readAnchor = () => {
+      pendingAnchor.current = captureAnchor() || pendingAnchor.current
+      return pendingAnchor.current
+    }
     try {
-      if (direction === 'older') await loadOlder(pendingAnchor.current || undefined)
-      else if (direction === 'newer') await loadNewer(pendingAnchor.current || undefined)
-      else await retryHistory(pendingAnchor.current || undefined)
+      if (direction === 'older') await loadOlder(readAnchor)
+      else if (direction === 'newer') await loadNewer(readAnchor)
+      else await retryHistory(readAnchor)
     } catch { pendingAnchor.current = null }
+    finally { setPageVersion(value => value + 1) }
   }, [hasOlder, hasNewer, loading, loadOlder, loadNewer, retryHistory, captureAnchor])
   useLayoutEffect(() => {
     const ids = new Set(messages.map(message => message.id))
+    for (const id of heights.current.keys()) if (!ids.has(id)) heights.current.delete(id)
     if ([...previousIds.current].some(id => !ids.has(id))) {
       virtual.measure()
-      measureConversationRows(virtual, box.current)
+      measureConversationRows(virtual, box.current, undefined, rememberHeight)
     }
     previousIds.current = ids
   }, [firstId, lastId])
   useLayoutEffect(() => {
-    if (streamingMessageId) measureConversationRows(virtual, box.current, streamingMessageId)
+    if (streamingMessageId) measureConversationRows(virtual, box.current, streamingMessageId, rememberHeight)
   }, [messages, streamingMessageId])
   useLayoutEffect(() => {
     following.current = true
@@ -90,20 +120,30 @@ export default function ConversationMessages({ messages, streaming, streamingMes
     if (!anchor || loading) return
     const index = messages.findIndex(message => message.id === anchor.id)
     if (index < 0) { pendingAnchor.current = null; return }
-    virtual.scrollToIndex(index, { align: 'start' })
+    virtual.getTotalSize()
+    const item = virtual.measurementsCache[index]
+    if (item) virtual.scrollToOffset(Math.max(0, item.start - anchor.top))
     const frame = requestAnimationFrame(() => {
+      if (pendingAnchor.current !== anchor) return
       const element = box.current
       const target = element?.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(anchor.id)}"]`)
-      if (target && element) element.scrollTop += target.getBoundingClientRect().top - element.getBoundingClientRect().top - anchor.top
+      // A newly measured long row can change the spacer height after this
+      // render. Keep the anchor until its row is actually mounted; the next
+      // range/height update retries against the committed DOM dimensions.
+      if (!target || !element) return
+      virtual.scrollToOffset(element.scrollTop + target.getBoundingClientRect().top - element.getBoundingClientRect().top - anchor.top)
       if (anchor.focus) target?.querySelector<HTMLTextAreaElement>('textarea')?.focus({ preventScroll: true })
       if (element) previousScroll.current = element.scrollTop
       if (pendingAnchor.current === anchor) pendingAnchor.current = null
     })
     return () => cancelAnimationFrame(frame)
-  }, [messages, loading, focus])
+  // Streaming updates must not restart/cancel a page's pending restoration.
+  }, [firstId, lastId, loading, focus, pageVersion, total, items[0]?.key, items.at(-1)?.key])
   useLayoutEffect(() => {
     if (!following.current || pendingAnchor.current || !messages.length) return
-    const frame = requestAnimationFrame(() => virtual.scrollToIndex(messages.length - 1, { align: 'end' }))
+    const frame = requestAnimationFrame(() => {
+      if (following.current && !pendingAnchor.current) virtual.scrollToIndex(messages.length - 1, { align: 'end' })
+    })
     return () => cancelAnimationFrame(frame)
   }, [messages, total, jumpVersion])
   const latest = () => {
@@ -115,6 +155,11 @@ export default function ConversationMessages({ messages, streaming, streamingMes
   return <div className="pa-conversation-view">
     <div ref={box} className="pa-conversation-scroll" aria-label={ui("会话消息")} onWheel={event => {
       const element = box.current!
+      if (event.deltaY < 0 && following.current) {
+        following.current = false
+        setShowLatest(true)
+        virtual.scrollToOffset(element.scrollTop)
+      }
       if (historyError || loading || pendingAnchor.current) return
       // At an edge the scroll offset does not change, so no scroll event is
       // emitted. Let another wheel gesture request the adjacent page.

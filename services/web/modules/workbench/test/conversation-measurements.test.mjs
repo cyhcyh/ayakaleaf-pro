@@ -32,3 +32,19 @@ test('streamed text measures only its active mounted row and ignores an offscree
   measureConversationRows(virtual, root, 'offscreen');
   assert.deepEqual(read, ['active']);
 });
+
+test('cached heights follow stable message ids across a page shift, including an unmounted long row', () => {
+  let ids = ['older', 'long', 'tail'];
+  const heights = new Map();
+  const remember = (id, height) => heights.set(id, height);
+  const virtual = new Virtualizer({ count: ids.length, getItemKey: index => ids[index], getScrollElement: () => null,
+    estimateSize: index => heights.get(ids[index]) || 160, scrollToFn() {}, observeElementRect() {}, observeElementOffset() {} });
+  measureConversationRows(virtual, { querySelectorAll: () => [{ dataset: { index: '1', messageId: 'long' }, getBoundingClientRect: () => ({ height: 12000 }) }] }, undefined, remember);
+  assert.equal(heights.get('long'), 12000);
+  ids = ['newer', 'older', 'long'];
+  virtual.measure();
+  assert.equal(virtual.getTotalSize(), 12320);
+  // Pruning to the current page never retains a transcript or a full history.
+  for (const id of heights.keys()) if (!ids.includes(id)) heights.delete(id);
+  assert.equal(heights.size, 1);
+});

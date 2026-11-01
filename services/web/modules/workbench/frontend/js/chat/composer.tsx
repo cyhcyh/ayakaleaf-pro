@@ -157,23 +157,23 @@ const Composer = forwardRef<
               </span>
             </span>
           )}
-          {preparedFiles.map((file, index) => <span key={`prepared-${index}`} className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
-            <MaterialIcon type="image" /><span>{file.filename || ui("图片")}</span>
+          {preparedFiles.map((file, index) => <span key={`prepared-${index}`} className="badge assistant-attachment-badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
+            <MaterialIcon type="image" /><span className="assistant-attachment-name" title={file.filename || ui("图片")}>{file.filename || ui("图片")}</span>
             <button type="button" className="btn btn-link p-0 text-reset d-inline-flex" disabled={uploading}
               aria-label={ui("移除附件 {0}", [file.filename || ui("图片")])} onClick={() => setPreparedFiles(current => current.filter((_, at) => at !== index))}><MaterialIcon type="close" /></button>
           </span>)}
-          {references.map((file, index) => <span key={file.id} className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
-            <MaterialIcon type="description" /><span>{file.name}</span>
+          {references.map((file, index) => <span key={file.id} className="badge assistant-attachment-badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }}>
+            <MaterialIcon type="description" /><span className="assistant-attachment-name" title={file.name}>{file.name}</span>
             <button type="button" className="btn btn-link p-0 text-reset d-inline-flex" disabled={uploading}
               aria-label={ui("移除附件 {0}", [file.name])} onClick={() => setReferences(current => current.filter((_, at) => at !== index))}><MaterialIcon type="close" /></button>
           </span>)}
           {images.map((image, index) => (
-            <span className="badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }} key={index}>
+            <span className="badge assistant-attachment-badge d-inline-flex align-items-center gap-1" style={{ ...surface, ...plain }} key={index}>
               {image.type.startsWith('image/') ? <ImagePreview src={previews[index]} name={image.name}>
-                <span className="d-inline-flex align-items-center gap-1" tabIndex={0}>
-                  <MaterialIcon type="image" /> {image.name}
+                <span className="assistant-attachment-label d-inline-flex align-items-center gap-1" tabIndex={0}>
+                  <MaterialIcon type="image" /><span className="assistant-attachment-name" title={image.name}>{image.name}</span>
                 </span>
-              </ImagePreview> : <span className="d-inline-flex align-items-center gap-1"><MaterialIcon type="description" />{image.name}</span>}
+              </ImagePreview> : <span className="assistant-attachment-label d-inline-flex align-items-center gap-1"><MaterialIcon type="description" /><span className="assistant-attachment-name" title={image.name}>{image.name}</span></span>}
               <button
                 type="button"
                 className="btn btn-link p-0 text-reset d-inline-flex"

@@ -103,6 +103,27 @@ describe('AI message queue', function () {
     expect(problem).to.have.been.calledWith('Queue save failed')
   })
 
+  for (const editing of [false, true]) {
+    it(`preserves complete long attachment names and removal while editing=${editing}`, async function () {
+      const references = [
+        { id: 'ref-en', name: 'NP_hardness_of_additive_approximation_for_generalized_Turan_problems_final_appendix.pdf', mediaType: 'application/pdf' },
+        { id: 'ref-zh', name: '关于广义图论问题的研究论文主要结果与证明及补充资料最终修订版本.pdf', mediaType: 'application/pdf' },
+      ]
+      const imageName = 'A_very_long_attached_image_filename_for_the_paper_preview.png'
+      const send = sinon.stub().resolves()
+      render(<Composer working editing={editing} initial={{ text: '', references,
+        files: [{ type: 'file', filename: imageName, mediaType: 'image/png', url: 'data:image/png;base64,AA==' }] }}
+        onSend={send} onStop={() => {}} onProblem={() => {}} onCancel={() => {}} />, { wrapper })
+      for (const reference of references) expect(screen.getByTitle(reference.name).textContent).to.equal(reference.name)
+      fireEvent.click(screen.getByRole('button', { name: ui('移除附件 {0}', [imageName]) }))
+      expect(screen.queryByTitle(imageName)).to.equal(null)
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: editing ? ui('保存') : ui('加入队列') })))
+      expect(send).to.have.been.calledOnce
+      expect(send.firstCall.args[0].references).to.deep.equal(references)
+      expect(send.firstCall.args[0].files).to.deep.equal([])
+    })
+  }
+
   it('does not submit while an input method is composing or Shift+Enter inserts a new line', async function () {
     const send = sinon.stub().resolves()
     render(<Composer working onSend={send} onStop={() => {}} onProblem={() => {}} />, { wrapper })
