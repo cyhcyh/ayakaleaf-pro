@@ -92,6 +92,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
   const [messageEditError, setMessageEditError] = useState('')
   const replacing = useRef(false)
   const sessionPosition = useRef({ messageOffset: initial?.messageOffset || 0, historyVersion: initial?.historyVersion || 0 })
+  const persistenceRef = useRef<ReturnType<typeof useSessionAutosave> | null>(null)
   const [turnVersion, setTurnVersion] = useState(0)
   const stopping = useRef<Promise<void> | null>(null)
   const editFailures = useMemo(createEditRetryGuard, [])
@@ -169,30 +170,33 @@ export default function ChatView({ chatId, view, initial, active = true, registe
         api: '/workbench/chat',
         headers: { 'X-Csrf-Token': getMeta('ol-csrfToken') },
         // Turns the server summarized are replaced by the summary
-        prepareSendMessagesRequest({ id, messages, trigger, messageId }) {
+        async prepareSendMessagesRequest({ id, messages, trigger, messageId }) {
           const kept = summaryRef.current
           const from = kept?.upToMessageId ? messages.findIndex(m => m.id === kept.upToMessageId) + (kept.partial ? 0 : 1) : 0
           const protectedIds = new Set(kept?.protectedFirstIds || [])
-          return {
-            body: {
-              id,
-              projectId,
-              reviewId: reviewId.current || undefined,
-              trigger,
-              messageId,
-              messages: initial ? messages : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
-              ...(initial && { sessionContext: true, ...sessionPosition.current, binding: bindingRef.current }),
-              summary: kept?.summary,
-              compaction: kept || undefined,
-              enabledTools: SEARCH_TOOLS,
-            },
+          const epoch = generation.current
+          const body = {
+            id,
+            projectId,
+            reviewId: reviewId.current || undefined,
+            trigger,
+            messageId,
+            messages: initial ? [] : messages.filter((message, index) => index >= from || protectedIds.has(message.id)),
+            ...(initial && { sessionContext: true, binding: bindingRef.current }),
+            summary: kept?.summary,
+            compaction: kept || undefined,
+            enabledTools: SEARCH_TOOLS,
           }
+          return { body: initial
+            ? await persistenceRef.current!.prepareRequest(body, messages, () => epoch === generation.current && !signal.aborted)
+            : body }
         },
         async fetch(input, init) {
           const response = await fetch(input, init)
           readQuotaRef.current(response)
           if (response.status === 403) throw new AiUnavailableError()
           if (response.status === 429) throw new QuotaExceededError()
+          if (response.status === 413) throw new Error(ui("AI 请求内容过大，请减少本条附件或文字后重试。"))
           if (!response.ok) {
             const detail = await response.json().catch(() => ({}))
             if (response.status === 409 && detail.error === 'ai_tool_call_limit_exceeded') throw new ToolBudgetError()
@@ -303,6 +307,7 @@ export default function ChatView({ chatId, view, initial, active = true, registe
     },
   })
   const persistence = useSessionAutosave(initial, projectId, messages, summary, status === 'streaming' || status === 'submitted', binding, queue.items, queue.current, sessionPosition)
+  persistenceRef.current = persistence
   const displayedMessages = useMemo(() => [...olderMessages, ...messages], [olderMessages, messages])
 
   const responseGeneration = generation.current

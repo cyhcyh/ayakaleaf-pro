@@ -4,6 +4,7 @@ import type { UIMessage } from 'ai'
 import { api, type Binding } from './api'
 import type { QueuedMessage } from '../chat/draft'
 import { sessionSaved } from './history-events'
+import { CHAT_REQUEST_BYTES, jsonBytes, pendingSessionMessages, sameSavedMessage } from '../../../shared/session-request.mjs'
 
 export type Summary = { summary: string; upToMessageId: string; protectedFirstIds?: string[]; partial?: { parts: number }; prunedToolCallIds?: string[] }
 export type MessagePage = { messages: UIMessage[]; messageOffset: number; olderBefore: number | null }
@@ -24,14 +25,19 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
   const rewriting = useRef(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const flush = useCallback(() => {
+  const flush = useCallback((requestMessages?: UIMessage[]) => {
     clearTimeout(timer.current)
     timer.current = undefined
+    const requestPosition = requestMessages && { ...position.current }
     const save = async () => {
       if (!initial || rewriting.current) return
-      const current = latest.current
+      if (requestPosition && (requestPosition.messageOffset !== position.current.messageOffset || requestPosition.historyVersion !== position.current.historyVersion))
+        throw new DOMException('Conversation changed before saving the request.', 'AbortError')
+      // The SDK may prepare a request before React renders its newest user
+      // message/tool result. Save that exact snapshot when shrinking a request.
+      const current = requestMessages ? { ...latest.current, messages: requestMessages } : latest.current
       const changed = current.messages.map((message, order) => ({ message, order: order + position.current.messageOffset }))
-        .filter(item => snapshots.current.get(item.message.id) !== item.message).map(item => ({ ...item, snapshot: JSON.stringify(item.message) }))
+        .filter(item => !sameSavedMessage(item.message, snapshots.current.get(item.message.id))).map(item => ({ ...item, snapshot: JSON.stringify(item.message) }))
       const summaryText = JSON.stringify(current.summary)
       const bindingText = JSON.stringify(current.binding)
       const queued = outboxRef.current
@@ -79,6 +85,26 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
     queue.current = work
     return work
   }, [initial?.id, projectId, outboxRef, position])
+  const prepareRequest = useCallback(async (body: Record<string, unknown>, requestMessages: UIMessage[], isCurrent: () => boolean) => {
+    const origin = { ...position.current }
+    const build = () => ({ ...body, ...pendingSessionMessages(requestMessages, snapshots.current, origin.messageOffset), historyVersion: origin.historyVersion })
+    const checkCurrent = () => {
+      if (!isCurrent() || rewriting.current || origin.messageOffset !== position.current.messageOffset || origin.historyVersion !== position.current.historyVersion)
+        throw new DOMException('Conversation changed before sending the request.', 'AbortError')
+    }
+    checkCurrent()
+    let request = build()
+    let bytes = jsonBytes(request)
+    if (bytes > CHAT_REQUEST_BYTES) {
+      await flush(requestMessages)
+      checkCurrent()
+      request = build()
+      bytes = jsonBytes(request)
+    }
+    if (bytes > CHAT_REQUEST_BYTES)
+      throw new Error(ui("AI 请求内容过大，请减少本条附件或文字后重试。"))
+    return request
+  }, [flush, position])
   const flushRef = useRef(flush)
   flushRef.current = flush
   const rename = useCallback((title: string) => {
@@ -123,7 +149,7 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
     alive.current = true
     const unload = (event: BeforeUnloadEvent) => {
       if (!initial) return
-      const dirty = latest.current.messages.some(message => snapshots.current.get(message.id) !== message)
+      const dirty = latest.current.messages.some(message => !sameSavedMessage(message, snapshots.current.get(message.id)))
         || savedSummary.current !== JSON.stringify(latest.current.summary) || savedBinding.current !== JSON.stringify(latest.current.binding)
         || savedOutbox.current !== outboxRef.current
       if (dirty) { flushRef.current().catch(() => {}); event.preventDefault(); event.returnValue = '' }
@@ -136,5 +162,5 @@ export function useSessionAutosave(initial: SavedSession | undefined, projectId:
       flushRef.current().catch(() => {})
     }
   }, [initial?.id])
-  return { flush, rename, editMessage, saving, error }
+  return { flush, prepareRequest, rename, editMessage, saving, error }
 }

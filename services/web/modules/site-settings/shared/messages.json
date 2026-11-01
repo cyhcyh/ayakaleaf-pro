@@ -1,4 +1,5 @@
 {
+  "AI 请求内容过大，请减少本条附件或文字后重试。": "The AI request is too large. Reduce the attachments or text in this message and try again.",
   "Google Cloud 连接": "Google Cloud connection",
   "Google 翻译无需密钥，MyMemory 有免费额度。大模型翻译使用“功能分配”中的模型。": "Google Translate needs no key. MyMemory offers a free quota. AI translation uses the model selected in Feature assignments.",
   "· 第 {0} 页起": "· from page {0}",
